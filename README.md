@@ -8,4 +8,4 @@ eeg-full-pipeline/
 ├── README.md                      # explains everything
 ├── .gitmodules                    # links to child repos as submodules
 ├── eeg-pyspark-pipeline/          # Git submodule 1
-└── eeg-ray-tuner/                 # Git submodule 2
+└── eeg-ray-tuner/                 # Git submodule 2 
