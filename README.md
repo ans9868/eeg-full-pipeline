@@ -1,3 +1,4 @@
+## eeg-full-pipeline
 
 <pre><code>
 eeg-full-pipeline/
@@ -12,3 +13,12 @@ eeg-full-pipeline/
 ├── eeg-pyspark-pipeline/          # Git submodule 1
 └── eeg-ray-tuner/                 # Git submodule 2
 </code></pre>
+
+## Recommended Git Settings (for submodules)
+
+```bash
+git config --global status.submoduleSummary true
+git config --global diff.submodule log
+git config --global fetch.recurseSubmodules on-demand
+git config --global alias.spush 'push --recurse-submodules=on-demand'
+```
