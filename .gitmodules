@@ -1,0 +1,6 @@
+[submodule "eeg-pyspark-pipeline"]
+	path = eeg-pyspark-pipeline
+	url = https://github.com/yourusername/eeg-pyspark-pipeline.git
+[submodule "eeg-ray-tuner"]
+	path = eeg-ray-tuner
+	url = https://github.com/yourusername/eeg-ray-tuner.git
