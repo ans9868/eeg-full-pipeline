@@ -1,0 +1,29 @@
+project:
+  name: testx3
+  output_dir: ./data
+  experiment_type: Classification
+  config_name: config_20250709_162902.yaml
+data_input:
+  groups:
+    group_1:
+    - /Users/user/bigData/ds004504-download/sub-037/eeg/sub-037-eyesclosed_eeg.set
+    group_2:
+    - /Users/user/bigData/ds004504-download/sub-035/eeg/sub-035-eyesclosed_eeg.set
+  reuse_expanded: 'Yes'
+  save_expanded: 'Yes'
+preprocessing:
+  bands: []
+  downsampling: null
+  artifact_removal: None
+feature_extraction:
+  method: Welch (default)
+  features:
+  - Band Power (averaged across all channels/bands)
+  - Band Power (per channel, averaged across bands)
+  - Band Power (per channel per band) *recommended
+feature_transformation:
+  transformations:
+  - PCA (retain 95% variance)
+  synthetic: None
+classification:
+  split_method: By subject
