@@ -6,7 +6,9 @@ import yaml
 
 
 def infer_target():
-    this_file = Path(__file__).resolve()
+    this_file = Path(
+        __file__
+    )  # no resolve as it gets absolute path which will be the parent directory as we are simlinking
     repo_name = this_file.parent.name
     print(f"Running config_maker from: {repo_name}")
 
@@ -20,7 +22,7 @@ def infer_target():
 
 def validate_downsampling_rate(rate_str):
     """Validate and convert downsampling rate input."""
-    if not rate_str or rate_str.lower() == 'none':
+    if not rate_str or rate_str.lower() == "none":
         return None
     try:
         rate = float(rate_str)
@@ -28,7 +30,9 @@ def validate_downsampling_rate(rate_str):
             raise ValueError("Rate must be positive")
         return rate
     except ValueError:
-        print("[ERROR] Invalid downsampling rate. Please enter a positive number or 'None'.")
+        print(
+            "[ERROR] Invalid downsampling rate. Please enter a positive number or 'None'."
+        )
         return None
 
 
@@ -44,7 +48,20 @@ def build_config(target: str):
     config["project"]["experiment_type"] = questionary.select(
         "0.3 Experiment Type:", choices=["Classification", "Regression", "Clustering"]
     ).ask()
-    
+
+    # 0.4 Deployment Method
+    config["project"]["deployment_method"] = questionary.select(
+        "0.4 Deployment Method:",
+        choices=["Docker", "Singularity with Slurm", "Singularity without Slurm"]
+    ).ask()
+
+    # If Singularity with Slurm is selected, ask for Slurm options
+    if config["project"]["deployment_method"] == "Singularity with Slurm":
+        slurm_options = questionary.text(
+            "Enter Slurm options (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+        ).ask()
+        config["project"]["slurm_options"] = slurm_options if slurm_options else ""
+
     # Use timestamp for config name (consistent approach)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     config_name = f"config_{timestamp}.yaml"
@@ -82,35 +99,41 @@ def build_config(target: str):
     config["preprocessing"] = {}
     config["preprocessing"]["bands"] = questionary.checkbox(
         "Select bandpass filters to apply (for more precise options edit the config file directly):",
-        choices=["Delta", "Theta", "Alpha", "Beta", "Gamma" ],
+        choices=["Delta", "Theta", "Alpha", "Beta", "Gamma"],
     ).ask()
-    
+
     # Handle downsampling rate with validation
     while True:
         downsampling_input = questionary.text("Downsampling rate (Hz) or 'None':").ask()
         downsampling_rate = validate_downsampling_rate(downsampling_input)
-        if downsampling_rate is not None or downsampling_input.lower() == 'none':
+        if downsampling_rate is not None or downsampling_input.lower() == "none":
             break
     config["preprocessing"]["downsampling"] = downsampling_rate
-    
+
     config["preprocessing"]["artifact_removal"] = questionary.select(
-        "Artifact removal method:", choices=["ICA", "Auto-reject", "Where noted in the data", "None"]
+        "Artifact removal method:",
+        choices=["ICA", "Auto-reject", "Where noted in the data", "None"],
     ).ask()
 
     # 3. Feature Extraction
     print("\n[3] Feature Extraction")
     config["feature_extraction"] = {}
     config["feature_extraction"]["method"] = questionary.select(
-        "Extraction method:", choices=["Welch (default)", "Multitaper (slower, more precise)", "Raw FFT (slowest, most precise)"]
+        "Extraction method:",
+        choices=[
+            "Welch (default)",
+            "Multitaper (slower, more precise)",
+            "Raw FFT (slowest, most precise)",
+        ],
     ).ask()
     config["feature_extraction"]["features"] = questionary.checkbox(
-        "Select features to compute:", 
+        "Select features to compute:",
         choices=[
             "Band Power (averaged across all channels/bands)",
             "Band Power (per channel, averaged across bands)",
             "Band Power (averaged across channels, per band) *(not usually used)",
-            "Band Power (per channel per band) *recommended"
-        ]
+            "Band Power (per channel per band) *recommended",
+        ],
     ).ask()
 
     # 4. Feature Transformation
@@ -121,7 +144,7 @@ def build_config(target: str):
         choices=[
             "PCA (retain 95% variance)",
             "PCA (manual count)",
-            "SPCA (manual count)",
+            # "SPCA (manual count)",
             "MinMax scaler",
             "Z-score standardization",
             "None",
@@ -130,18 +153,39 @@ def build_config(target: str):
 
     config["feature_transformation"]["synthetic"] = questionary.select(
         "Synthetic data generation method:",
-        choices=["SMOTE", "Random over-sampling", "Class weights only", "None"],
+        choices=[
+            # "SMOTE",
+            # "Random over-sampling",
+            # "Class weights only",
+            "None"
+        ],
     ).ask()
 
     # 5. Classification
     print("\n[5] Classification")
     config["classification"] = {}
     config["classification"]["split_method"] = questionary.select(
-        "How should we split the test/train/validation sets?",
-        choices=["By subject", "By epoch", "By event(s)", "Custom"],
+        "How should we split the test/train sets?",
+        choices=[
+            "By subject",
+            "By epoch",
+            # "By event(s)",
+            # "Custom"
+        ],
     ).ask()
 
-    # TODO: make it such that select what number of subjects or % of epcohs/evets for test train validate , could do more stuff with it! 
+    # Ask for split details based on the selected method
+    if config["classification"]["split_method"] == "By subject":
+        split_input = questionary.text(
+            "Enter number of subjects for test set (e.g., 5) or percentage (e.g., 20%):"
+        ).ask()
+    else:  # By epoch
+        split_input = questionary.text(
+            "Enter percentage of epochs for test set (e.g., 20%):"
+        ).ask()
+
+    config["classification"]["test_split"] = split_input
+
     return config, config_name
 
 
