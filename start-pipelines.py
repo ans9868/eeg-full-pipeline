@@ -118,6 +118,54 @@ def run_singularity_without_slurm(config_path):
         "--config", "/app/config.yaml"
     ], check=True)
 
+def run_singularity_with_slurm_full(config_path, pyspark_slurm_options="", ray_slurm_options=""):
+    print("\n🧬 Submitting PySpark SLURM job...")
+    
+    # Create temporary SLURM script with custom options for PySpark
+    pyspark_slurm_content = f"""#!/bin/bash
+#SBATCH {pyspark_slurm_options}
+#SBATCH --job-name=eeg-pyspark
+#SBATCH --output=pyspark_%j.out
+#SBATCH --error=pyspark_%j.err
+
+singularity run --bind {config_path}:/app/config.yaml eeg-pyspark.sif --config /app/config.yaml
+"""
+    
+    # Create temporary SLURM script with custom options (overwrite if exists)
+    with open("temp_pyspark.slurm", "w") as f:
+        f.write(pyspark_slurm_content)
+    
+    pyspark_submit = subprocess.run(["sbatch", "temp_pyspark.slurm"], capture_output=True, text=True)
+    print(pyspark_submit.stdout.strip())
+
+    # Extract job ID
+    try:
+        job_id = pyspark_submit.stdout.strip().split()[-1]
+    except IndexError:
+        print("❌ Failed to get job ID from sbatch output.")
+        sys.exit(1)
+
+    # Create temporary SLURM script for Ray with dependency (overwrite if exists)
+    ray_slurm_content = f"""#!/bin/bash
+#SBATCH {ray_slurm_options}
+#SBATCH --job-name=eeg-ray-tuner
+#SBATCH --output=ray_%j.out
+#SBATCH --error=ray_%j.err
+#SBATCH --dependency=afterok:{job_id}
+
+singularity run --bind {config_path}:/app/config.yaml eeg-ray-tuner.sif --config /app/config.yaml
+"""
+    
+    with open("temp_ray.slurm", "w") as f:
+        f.write(ray_slurm_content)
+
+    print(f"\n🧬 Submitting Ray tuner SLURM job (after PySpark job {job_id})...")
+    subprocess.run(["sbatch", "temp_ray.slurm"], check=True)
+    
+    # Clean up temporary files
+    os.remove("temp_pyspark.slurm")
+    os.remove("temp_ray.slurm")
+
 def run_singularity_with_slurm(config_path, slurm_options=""):
     print("\n🧬 Submitting PySpark SLURM job...")
     
@@ -249,13 +297,16 @@ def main():
         else:  # full
             run_singularity_without_slurm(config_path)
     elif deployment_method == "Singularity with Slurm":
-        slurm_options = config.get("project", {}).get("slurm_options", "")
         if pipeline_mode == "pyspark-only":
+            slurm_options = config.get("project", {}).get("slurm_options", "")
             run_singularity_slurm_pyspark_only(config_path, slurm_options)
         elif pipeline_mode == "ray-only":
+            slurm_options = config.get("project", {}).get("slurm_options_ray", "")
             run_singularity_slurm_ray_only(config_path, slurm_options)
         else:  # full
-            run_singularity_with_slurm(config_path, slurm_options)
+            pyspark_slurm = config.get("project", {}).get("slurm_options", "")
+            ray_slurm = config.get("project", {}).get("slurm_options_ray", "")
+            run_singularity_with_slurm_full(config_path, pyspark_slurm, ray_slurm)
     else:
         print(f"❌ Unknown deployment method: {deployment_method}")
         print("Supported methods: Docker, Singularity with Slurm, Singularity without Slurm")

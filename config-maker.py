@@ -36,6 +36,21 @@ def validate_downsampling_rate(rate_str):
         return None
 
 
+def validate_integer_input(prompt, default="", min_value=1):
+    """Validate and get integer input with retry logic."""
+    while True:
+        value = questionary.text(prompt, default=default).ask()
+        try:
+            int_value = int(value)
+            if int_value < min_value:
+                print(f"[ERROR] Value must be at least {min_value}. Please try again.")
+                continue
+            return str(int_value)
+        except ValueError:
+            print("[ERROR] Please enter a valid integer. Please try again.")
+            continue
+
+
 def build_config(target: str):
     config = {}
 
@@ -55,12 +70,90 @@ def build_config(target: str):
         choices=["Docker", "Singularity with Slurm", "Singularity without Slurm"]
     ).ask()
 
-    # If Singularity with Slurm is selected, ask for Slurm options
-    if config["project"]["deployment_method"] == "Singularity with Slurm":
-        slurm_options = questionary.text(
-            "Enter Slurm options (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+    # 0.5 PySpark Resource Configuration
+    if target == "pyspark-only" or target == "full":
+        print("\n[0.5] PySpark Resource Configuration")
+        print("For example, for a 8-core CPU with 16GB memory, we can very safely allocate:")
+        print("  - 4 cores for the driver (master)")
+        print("  - 6GB memory for the driver")
+        print("  - 6GB memory for executors")
+        print("  - 2 cores per executor")
+        print("  - 8 shuffle partitions")
+        print("This is the default and lightweight for testing.")
+        
+        edit_spark_config = questionary.select(
+            "Do you want to edit the PySpark resource configuration?",
+            choices=["Yes", "No (use defaults)"]
         ).ask()
-        config["project"]["slurm_options"] = slurm_options if slurm_options else ""
+        
+        if edit_spark_config == "Yes":
+            config["pyspark"] = {}
+            config["pyspark"]["master"] = validate_integer_input(
+                "Enter number of cores/threads to allocate (master):",
+                default="4"
+            )
+            config["pyspark"]["driver_memory"] = validate_integer_input(
+                "Enter driver memory in GB (e.g., 6):",
+                default="6"
+            )
+            config["pyspark"]["executor_memory"] = validate_integer_input(
+                "Enter executor memory in GB (e.g., 6):",
+                default="6"
+            )
+            config["pyspark"]["executor_cores"] = validate_integer_input(
+                "Enter executor cores/threads:",
+                default="2"
+            )
+            config["pyspark"]["shuffle_partitions"] = validate_integer_input(
+                "Enter shuffle partitions:",
+                default="8"
+            )
+        else:
+            # Use defaults
+            config["pyspark"] = {
+                "master": "4",
+                "driver_memory": "6",
+                "executor_memory": "6", 
+                "executor_cores": "2",
+                "shuffle_partitions": "8"
+            }
+
+    # If Singularity with Slurm is selected, ask for Slurm options based on target
+    if config["project"]["deployment_method"] == "Singularity with Slurm":
+        if target == "full":
+            # Ask if user wants same or different SLURM options for PySpark and Ray
+            slurm_choice = questionary.select(
+                "SLURM options for PySpark and Ray:",
+                choices=["Same options for both", "Different options for each"]
+            ).ask()
+            
+            if slurm_choice == "Same options for both":
+                slurm_options = questionary.text(
+                    "Enter SLURM options for both PySpark and Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+                ).ask()
+                config["project"]["slurm_options_pyspark"] = slurm_options if slurm_options else ""
+                config["project"]["slurm_options_ray"] = slurm_options if slurm_options else ""
+            else:  # Different options
+                pyspark_slurm = questionary.text(
+                    "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
+                ).ask()
+                ray_slurm = questionary.text(
+                    "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+                ).ask()
+                config["project"]["slurm_options_pyspark"] = pyspark_slurm if pyspark_slurm else ""
+                config["project"]["slurm_options_ray"] = ray_slurm if ray_slurm else ""
+        
+        elif target == "pyspark-only":
+            slurm_options = questionary.text(
+                "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
+            ).ask()
+            config["project"]["slurm_options_pyspark"] = slurm_options if slurm_options else ""
+        
+        elif target == "ray-only":
+            slurm_options = questionary.text(
+                "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+            ).ask()
+            config["project"]["slurm_options_ray"] = slurm_options if slurm_options else ""
 
     # Use timestamp for config name (consistent approach)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

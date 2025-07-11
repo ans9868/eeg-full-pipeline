@@ -1,0 +1,5 @@
+Make sure to change symlinks to hardlinks as symlinks don't work with docker for some reason smh. MC
+Make sure that both things build local
+Make sure both things build on github actions
+Make sure that both things run locally in the 4 things (pyspark configmaker, pyspark startpipeline, ray configmaker, ray startpipeline)
+
