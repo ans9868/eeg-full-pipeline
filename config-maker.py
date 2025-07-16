@@ -120,6 +120,17 @@ def build_config(target: str):
 
     # If Singularity with Slurm is selected, ask for Slurm options based on target
     if config["project"]["deployment_method"] == "Singularity with Slurm":
+        print("\n[0.6] SLURM Configuration")
+        
+        # Always ask for build options when using SLURM
+        print("Recommended build options (10 minutes, 8GB RAM, 2 CPUs):")
+        print("  --time=00:10:00 --mem=8G --cpus-per-task=2")
+        build_slurm_options = questionary.text(
+            "Enter SLURM options for building .sif containers:",
+            default="--time=00:10:00 --mem=8G --cpus-per-task=2"
+        ).ask()
+        config["project"]["slurm_options_build"] = build_slurm_options if build_slurm_options else ""
+        
         if target == "full":
             # Ask if user wants same or different SLURM options for PySpark and Ray
             slurm_choice = questionary.select(
@@ -131,7 +142,7 @@ def build_config(target: str):
                 slurm_options = questionary.text(
                     "Enter SLURM options for both PySpark and Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
                 ).ask()
-                config["project"]["slurm_options"] = slurm_options if slurm_options else ""
+                config["project"]["slurm_options_pyspark"] = slurm_options if slurm_options else ""
                 config["project"]["slurm_options_ray"] = slurm_options if slurm_options else ""
             else:  # Different options
                 pyspark_slurm = questionary.text(
@@ -140,16 +151,16 @@ def build_config(target: str):
                 ray_slurm = questionary.text(
                     "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
                 ).ask()
-                config["project"]["slurm_options"] = pyspark_slurm if pyspark_slurm else ""
+                config["project"]["slurm_options_pyspark"] = pyspark_slurm if pyspark_slurm else ""
                 config["project"]["slurm_options_ray"] = ray_slurm if ray_slurm else ""
         
-        elif target == "pyspark":
+        elif target == "pyspark-only":
             slurm_options = questionary.text(
                 "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
             ).ask()
             config["project"]["slurm_options_pyspark"] = slurm_options if slurm_options else ""
         
-        elif target == "ray":
+        elif target == "ray-only":
             slurm_options = questionary.text(
                 "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
             ).ask()
