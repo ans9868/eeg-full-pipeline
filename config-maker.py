@@ -147,7 +147,7 @@ def build_config(target: str):
             slurm_options = questionary.text(
                 "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
             ).ask()
-            config["project"]["slurm_options"] = slurm_options if slurm_options else ""
+            config["project"]["slurm_options_pyspark"] = slurm_options if slurm_options else ""
         
         elif target == "ray":
             slurm_options = questionary.text(
