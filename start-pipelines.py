@@ -129,7 +129,7 @@ def run_singularity_with_slurm_full(config_path, pyspark_slurm_options="", ray_s
 #SBATCH --output=./containers/pyspark_%j.out
 #SBATCH --error=./containers/pyspark_%j.err
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*] /app/src/digit_flatmap.py --config /app/config.yaml
 """
     
     # Create temporary SLURM script with custom options (overwrite if exists)
@@ -225,7 +225,7 @@ def run_singularity_slurm_pyspark_only(config_path, slurm_options=""):
 #SBATCH --output=./containers/pyspark_%j.out
 #SBATCH --error=./containers/pyspark_%j.err
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*] /app/src/digit_flatmap.py --config /app/config.yaml
 """
     
     with open("./containers/temp_pyspark.slurm", "w") as f:
