@@ -154,7 +154,7 @@ singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.s
 #SBATCH --error=./containers/ray_%j.err
 #SBATCH --dependency=afterok:{job_id}
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python test-ray.py --config /app/config.yaml
 """
     
     with open("./containers/temp_ray.slurm", "w") as f:
@@ -202,7 +202,7 @@ singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.s
 #SBATCH --error=./containers/ray_%j.err
 #SBATCH --dependency=afterok:{job_id}
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python test-ray.py --config /app/config.yaml
 """
     
     with open("./containers/temp_ray.slurm", "w") as f:
@@ -246,7 +246,7 @@ def run_singularity_slurm_ray_only(config_path, slurm_options=""):
 #SBATCH --output=./containers/ray_%j.out
 #SBATCH --error=./containers/ray_%j.err
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python test-ray.py --config /app/config.yaml
 """
     
     with open("./containers/temp_ray.slurm", "w") as f:
