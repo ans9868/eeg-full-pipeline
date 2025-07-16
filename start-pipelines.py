@@ -298,13 +298,13 @@ def main():
             run_singularity_without_slurm(config_path)
     elif deployment_method == "Singularity with Slurm":
         if pipeline_mode == "pyspark-only":
-            slurm_options = config.get("project", {}).get("slurm_options", "")
+            slurm_options = config.get("project", {}).get("slurm_options_pyspark", "")
             run_singularity_slurm_pyspark_only(config_path, slurm_options)
         elif pipeline_mode == "ray-only":
             slurm_options = config.get("project", {}).get("slurm_options_ray", "")
             run_singularity_slurm_ray_only(config_path, slurm_options)
         else:  # full
-            pyspark_slurm = config.get("project", {}).get("slurm_options", "")
+            pyspark_slurm = config.get("project", {}).get("slurm_options_pyspark", "")
             ray_slurm = config.get("project", {}).get("slurm_options_ray", "")
             run_singularity_with_slurm_full(config_path, pyspark_slurm, ray_slurm)
     else:
