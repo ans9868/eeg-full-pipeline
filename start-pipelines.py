@@ -6,12 +6,7 @@ import yaml
 from pathlib import Path
 from datetime import datetime
 
-'''
- TODO: Make sure that slurm, singularity, docker are installed and working
- TODO: print warnings if runnign docker when singularity + slurm exists  
- TODO: Make sure that the logs are saved in correct place 
- TODO: add a check to see if the config file is valid
-'''
+
 
 def check_config(specific_config=None):
     """Check for config file and return the path to the most recent one or specified one."""
@@ -58,7 +53,8 @@ def run_docker_pyspark_only(config_path):
     subprocess.run([
         "docker", "run", "--rm",
         "-v", f"{config_path}:/app/config.yaml",
-        "nour333/eeg-spark-pipeline:latest"
+        "nour333/eeg-spark-pipeline:latest",
+        "spark-submit", "--conf", "spark.jars.ivy=/tmp/.ivy2", "--master", "local[*]", "/app/src/digit_flatmap.py", "--config", "/app/config.yaml"
     ], check=True)
 
 def run_docker_ray_only(config_path):
@@ -66,7 +62,8 @@ def run_docker_ray_only(config_path):
     subprocess.run([
         "docker", "run", "--rm",
         "-v", f"{config_path}:/app/config.yaml",
-        "nour333/eeg-ray-tuner:latest"
+        "nour333/eeg-ray-tuner:latest",
+        "python", "/app/test-ray.py", "--config", "/app/config.yaml"
     ], check=True)
 
 def run_docker(config_path):
@@ -74,14 +71,16 @@ def run_docker(config_path):
     subprocess.run([
         "docker", "run", "--rm",
         "-v", f"{config_path}:/app/config.yaml",
-        "nour333/eeg-spark-pipeline:latest"
+        "nour333/eeg-spark-pipeline:latest",
+        "spark-submit", "--conf", "spark.jars.ivy=/tmp/.ivy2", "--master", "local[*]", "/app/src/digit_flatmap.py", "--config", "/app/config.yaml"
     ], check=True)
 
     print("\n🐳 Running Ray tuner container...")
     subprocess.run([
         "docker", "run", "--rm",
         "-v", f"{config_path}:/app/config.yaml",
-        "nour333/eeg-ray-tuner:latest"
+        "nour333/eeg-ray-tuner:latest",
+        "python", "/app/test-ray.py", "--config", "/app/config.yaml"
     ], check=True)
 
 def run_singularity_pyspark_only(config_path):
@@ -89,8 +88,8 @@ def run_singularity_pyspark_only(config_path):
     subprocess.run([
         "singularity", "run",
         "--bind", f"{config_path}:/app/config.yaml",
-        "eeg-pyspark.sif",
-        "--config", "/app/config.yaml"
+        "./containers/eeg-pyspark.sif",
+        "spark-submit", "--conf", "spark.jars.ivy=/tmp/.ivy2", "--master", "local[*]", "/app/src/digit_flatmap.py", "--config", "/app/config.yaml"
     ], check=True)
 
 def run_singularity_ray_only(config_path):
@@ -98,8 +97,8 @@ def run_singularity_ray_only(config_path):
     subprocess.run([
         "singularity", "run",
         "--bind", f"{config_path}:/app/config.yaml",
-        "eeg-ray-tuner.sif",
-        "--config", "/app/config.yaml"
+        "./containers/eeg-ray-tuner.sif",
+        "python", "/app/test-ray.py", "--config", "/app/config.yaml"
     ], check=True)
 
 def run_singularity_without_slurm(config_path):
@@ -107,16 +106,16 @@ def run_singularity_without_slurm(config_path):
     subprocess.run([
         "singularity", "run",
         "--bind", f"{config_path}:/app/config.yaml",
-        "eeg-pyspark.sif",
-        "--config", "/app/config.yaml"
+        "./containers/eeg-pyspark.sif",
+        "spark-submit", "--conf", "spark.jars.ivy=/tmp/.ivy2", "--master", "local[*]", "/app/src/digit_flatmap.py", "--config", "/app/config.yaml"
     ], check=True)
 
     print("\n🔒 Running Ray tuner Singularity container...")
     subprocess.run([
         "singularity", "run",
         "--bind", f"{config_path}:/app/config.yaml",
-        "eeg-ray-tuner.sif",
-        "--config", "/app/config.yaml"
+        "./containers/eeg-ray-tuner.sif",
+        "python", "/app/test-ray.py", "--config", "/app/config.yaml"
     ], check=True)
 
 def run_singularity_with_slurm_full(config_path, pyspark_slurm_options="", ray_slurm_options=""):
@@ -154,7 +153,7 @@ singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.s
 #SBATCH --error=./containers/ray_%j.err
 #SBATCH --dependency=afterok:{job_id}
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python test-ray.py --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python /app/test-ray.py --config /app/config.yaml
 """
     
     with open("./containers/temp_ray.slurm", "w") as f:
@@ -177,7 +176,7 @@ def run_singularity_with_slurm(config_path, slurm_options=""):
 #SBATCH --output=./containers/pyspark_%j.out
 #SBATCH --error=./containers/pyspark_%j.err
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*] /app/src/digit_flatmap.py --config /app/config.yaml
 """
     
     # Create temporary SLURM script with custom options (overwrite if exists)
@@ -202,7 +201,7 @@ singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.s
 #SBATCH --error=./containers/ray_%j.err
 #SBATCH --dependency=afterok:{job_id}
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python test-ray.py --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python /app/test-ray.py --config /app/config.yaml
 """
     
     with open("./containers/temp_ray.slurm", "w") as f:
@@ -246,7 +245,7 @@ def run_singularity_slurm_ray_only(config_path, slurm_options=""):
 #SBATCH --output=./containers/ray_%j.out
 #SBATCH --error=./containers/ray_%j.err
 
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python test-ray.py --config /app/config.yaml
+singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python /app/test-ray.py --config /app/config.yaml
 """
     
     with open("./containers/temp_ray.slurm", "w") as f:
