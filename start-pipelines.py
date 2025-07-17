@@ -2,9 +2,10 @@ import os
 import subprocess
 import sys
 import time
-import yaml
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import yaml
 
 # Configuration constants - edit these to change paths/commands
 CONTAINER_CONFIG = {
@@ -13,29 +14,30 @@ CONTAINER_CONFIG = {
         "singularity_image": "./containers/eeg-pyspark.sif",
         "entrypoint": "/app/src/digit_flatmap.py",
         "command": "spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*]",
-        "job_name": "eeg-pyspark"
+        "job_name": "eeg-pyspark",
     },
     "ray": {
-        "docker_image": "nour333/eeg-ray-tuner:latest", 
+        "docker_image": "nour333/eeg-ray-tuner:latest",
         "singularity_image": "./containers/eeg-ray-tuner.sif",
         "entrypoint": "/app/test-ray.py",
         "command": "python",
-        "job_name": "eeg-ray-tuner"
-    }
+        "job_name": "eeg-ray-tuner",
+    },
 }
 
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
 
+
 def check_config(specific_config=None):
     """Check for config file and return the path to the most recent one or specified one."""
     config_dir = Path("config")
-    
+
     if not config_dir.exists():
         print(f"❌ Config directory not found at {config_dir}")
         sys.exit(1)
-    
+
     if specific_config:
         # Use the specified config file
         config_path = config_dir / specific_config
@@ -44,35 +46,39 @@ def check_config(specific_config=None):
             sys.exit(1)
         print(f"📁 Using specified config: {config_path}")
         return str(config_path.resolve())
-    
+
     # Find the most recent config file
     config_files = list(config_dir.glob("config_*.yaml"))
     if not config_files:
         print(f"❌ No config files found in {config_dir}")
         print("Run config-maker.py first to create a configuration file.")
         sys.exit(1)
-    
+
     # Sort by modification time (most recent first)
     config_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
     most_recent = config_files[0]
-    
+
     print(f"📁 Using most recent config: {most_recent.name}")
     if len(config_files) > 1:
         print(f"📋 Available configs: {[f.name for f in config_files]}")
-    
+
     return str(most_recent.resolve())
+
 
 def load_config(config_path):
     """Load the configuration file to determine deployment method."""
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     return config
 
+
 def infer_pipeline_mode():
     """Infer which pipeline mode to run based on repository name."""
-    this_path = Path(__file__).resolve()
+    this_path = Path(
+        __file__
+    )  # .resolve() # since soft link, if resolved then would get eeg-full-pipeline directory and would get incorrect parent directory
     repo = this_path.parent.name
-    
+
     if repo == "eeg-pyspark-pipeline":
         return "pyspark-only"
     elif repo == "eeg-ray-tuner":
@@ -80,9 +86,11 @@ def infer_pipeline_mode():
     else:
         return "full"
 
+
 # =============================================================================
 # CORE CONTAINER EXECUTION FUNCTIONS
 # =============================================================================
+
 
 def get_container_command(container_type, config_path):
     """Generate the command for a specific container type."""
@@ -92,77 +100,108 @@ def get_container_command(container_type, config_path):
     else:  # ray
         return f"{config['command']} {config['entrypoint']} --config /app/config.yaml"
 
+
 def run_docker_container(container_type, config_path):
     """Run a single Docker container."""
     config = CONTAINER_CONFIG[container_type]
     command_parts = get_container_command(container_type, config_path).split()
-    
-    subprocess.run([
-        "docker", "run", "--rm",
-        "-v", f"{config_path}:/app/config.yaml",
-        config["docker_image"]
-    ] + command_parts, check=True)
+
+    subprocess.run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "-v",
+            f"{config_path}:/app/config.yaml",
+            config["docker_image"],
+        ]
+        + command_parts,
+        check=True,
+    )
+
 
 def run_singularity_container(container_type, config_path):
     """Run a single Singularity container."""
     config = CONTAINER_CONFIG[container_type]
     command_parts = get_container_command(container_type, config_path).split()
-    
-    subprocess.run([
-        "singularity", "run",
-        "--bind", f"{config_path}:/app/config.yaml",
-        config["singularity_image"]
-    ] + command_parts, check=True)
+
+    subprocess.run(
+        [
+            "singularity",
+            "run",
+            "--bind",
+            f"{config_path}:/app/config.yaml",
+            config["singularity_image"],
+        ]
+        + command_parts,
+        check=True,
+    )
+
 
 # =============================================================================
 # DOCKER EXECUTION FUNCTIONS
 # =============================================================================
 
+
 def run_docker_pyspark_only(config_path):
     print("\n🐳 Running PySpark container only...")
     run_docker_container("pyspark", config_path)
+
 
 def run_docker_ray_only(config_path):
     print("\n🐳 Running Ray tuner container only...")
     run_docker_container("ray", config_path)
 
+
 def run_docker(config_path):
     print("\n🐳 Running PySpark container...")
     run_docker_container("pyspark", config_path)
-    
+
     print("\n🐳 Running Ray tuner container...")
     run_docker_container("ray", config_path)
+
 
 # =============================================================================
 # SINGULARITY EXECUTION FUNCTIONS
 # =============================================================================
 
+
 def run_singularity_pyspark_only(config_path):
     print("\n🔒 Running PySpark Singularity container only...")
     run_singularity_container("pyspark", config_path)
+
 
 def run_singularity_ray_only(config_path):
     print("\n🔒 Running Ray tuner Singularity container only...")
     run_singularity_container("ray", config_path)
 
+
 def run_singularity_without_slurm(config_path):
     print("\n🔒 Running PySpark Singularity container...")
     run_singularity_container("pyspark", config_path)
-    
+
     print("\n🔒 Running Ray tuner Singularity container...")
     run_singularity_container("ray", config_path)
+
 
 # =============================================================================
 # SLURM EXECUTION FUNCTIONS
 # =============================================================================
 
-def create_slurm_script(container_type, config_path, slurm_options="", dependency_job_id=None):
+
+def create_slurm_script(
+    container_type, config_path, slurm_options="", dependency_job_id=None
+):
     """Create a SLURM script for a container."""
     config = CONTAINER_CONFIG[container_type]
     command = get_container_command(container_type, config_path)
-    
-    dependency_line = f"#SBATCH --dependency=afterok:{dependency_job_id}\n" if dependency_job_id else ""
-    
+
+    dependency_line = (
+        f"#SBATCH --dependency=afterok:{dependency_job_id}\n"
+        if dependency_job_id
+        else ""
+    )
+
     slurm_content = f"""#!/bin/bash
 #SBATCH {slurm_options}
 #SBATCH --job-name={config['job_name']}
@@ -172,21 +211,31 @@ def create_slurm_script(container_type, config_path, slurm_options="", dependenc
 """
     return slurm_content
 
+
 def run_singularity_with_slurm_shared_options(config_path, slurm_options=""):
     """Convenience function: run with same SLURM options for both containers."""
-    return run_singularity_with_slurm_separate_options(config_path, slurm_options, slurm_options)
+    return run_singularity_with_slurm_separate_options(
+        config_path, slurm_options, slurm_options
+    )
 
-def run_singularity_with_slurm_separate_options(config_path, pyspark_slurm_options="", ray_slurm_options=""):
+
+def run_singularity_with_slurm_separate_options(
+    config_path, pyspark_slurm_options="", ray_slurm_options=""
+):
     """Run full pipeline with separate SLURM options for each container."""
     print("\n🧬 Submitting PySpark SLURM job...")
-    
+
     # Create temporary SLURM script for PySpark
-    pyspark_slurm_content = create_slurm_script("pyspark", config_path, pyspark_slurm_options)
-    
+    pyspark_slurm_content = create_slurm_script(
+        "pyspark", config_path, pyspark_slurm_options
+    )
+
     with open("./containers/temp_pyspark.slurm", "w") as f:
         f.write(pyspark_slurm_content)
-    
-    pyspark_submit = subprocess.run(["sbatch", "./containers/temp_pyspark.slurm"], capture_output=True, text=True)
+
+    pyspark_submit = subprocess.run(
+        ["sbatch", "./containers/temp_pyspark.slurm"], capture_output=True, text=True
+    )
     print(pyspark_submit.stdout.strip())
 
     # Extract job ID
@@ -197,51 +246,57 @@ def run_singularity_with_slurm_separate_options(config_path, pyspark_slurm_optio
         sys.exit(1)
 
     # Create temporary SLURM script for Ray with dependency
-    ray_slurm_content = create_slurm_script("ray", config_path, ray_slurm_options, job_id)
-    
+    ray_slurm_content = create_slurm_script(
+        "ray", config_path, ray_slurm_options, job_id
+    )
+
     with open("./containers/temp_ray.slurm", "w") as f:
         f.write(ray_slurm_content)
 
     print(f"\n🧬 Submitting Ray tuner SLURM job (after PySpark job {job_id})...")
     subprocess.run(["sbatch", "./containers/temp_ray.slurm"], check=True)
-    
+
     # Clean up temporary files
     os.remove("./containers/temp_pyspark.slurm")
     os.remove("./containers/temp_ray.slurm")
 
+
 def run_singularity_slurm_pyspark_only(config_path, slurm_options=""):
     print("\n🧬 Submitting PySpark SLURM job only...")
-    
+
     pyspark_slurm_content = create_slurm_script("pyspark", config_path, slurm_options)
-    
+
     with open("./containers/temp_pyspark.slurm", "w") as f:
         f.write(pyspark_slurm_content)
-    
+
     subprocess.run(["sbatch", "./containers/temp_pyspark.slurm"], check=True)
-    
+
     # Clean up temporary file
     os.remove("./containers/temp_pyspark.slurm")
 
+
 def run_singularity_slurm_ray_only(config_path, slurm_options=""):
     print("\n🧬 Submitting Ray tuner SLURM job only...")
-    
+
     ray_slurm_content = create_slurm_script("ray", config_path, slurm_options)
-    
+
     with open("./containers/temp_ray.slurm", "w") as f:
         f.write(ray_slurm_content)
-    
+
     subprocess.run(["sbatch", "./containers/temp_ray.slurm"], check=True)
-    
+
     # Clean up temporary file
     os.remove("./containers/temp_ray.slurm")
+
 
 # =============================================================================
 # CONTAINER BUILDING FUNCTIONS
 # =============================================================================
 
+
 def check_and_build_sif_files(config, pipeline_mode, use_slurm=False):
     """Check if .sif files exist and build them if they don't.
-    
+
     Args:
         config: The loaded configuration
         pipeline_mode: "pyspark-only", "ray-only", or "full"
@@ -250,16 +305,20 @@ def check_and_build_sif_files(config, pipeline_mode, use_slurm=False):
     # Create containers directory if it doesn't exist
     containers_dir = Path("./containers")
     containers_dir.mkdir(exist_ok=True)
-    
+
     builds_submitted = False
-    
+
     # Determine which containers to check based on pipeline mode
     containers_to_check = []
     if pipeline_mode in ["pyspark-only", "full"]:
-        containers_to_check.append(("eeg-pyspark.sif", "docker://nour333/eeg-spark-pipeline:latest", "pyspark"))
+        containers_to_check.append(
+            ("eeg-pyspark.sif", "docker://nour333/eeg-spark-pipeline:latest", "pyspark")
+        )
     if pipeline_mode in ["ray-only", "full"]:
-        containers_to_check.append(("eeg-ray-tuner.sif", "docker://nour333/eeg-ray-tuner:latest", "ray"))
-    
+        containers_to_check.append(
+            ("eeg-ray-tuner.sif", "docker://nour333/eeg-ray-tuner:latest", "ray")
+        )
+
     # Check and build each required container
     for sif_name, docker_uri, build_type in containers_to_check:
         sif_path = Path(f"./containers/{sif_name}")
@@ -267,40 +326,49 @@ def check_and_build_sif_files(config, pipeline_mode, use_slurm=False):
             print(f"🔨 {build_type.capitalize()} .sif file not found: {sif_name}")
             if use_slurm:
                 slurm_options = config.get("project", {}).get("slurm_options_build", "")
-                build_sif_with_slurm(sif_name, docker_uri, f"{build_type}_build", slurm_options)
+                build_sif_with_slurm(
+                    sif_name, docker_uri, f"{build_type}_build", slurm_options
+                )
                 builds_submitted = True
             else:
                 build_sif_locally(sif_name, docker_uri, build_type)
-    
+
     # If builds were submitted via SLURM, wait for them to complete
     if builds_submitted:
         print("\n⏳ Waiting for container builds to complete...")
         print("💡 You can check build status with: squeue -u $USER")
         print("💡 Build logs are in ./containers/ directory")
-        
+
         # Wait for .sif files to appear
-        max_wait_time = 3600  # 1 hour
-        wait_interval = 30  # 30 seconds
+        max_wait_time = 1800  # 30 minutes
+        wait_interval = 10  # 30 seconds
         waited_time = 0
-        
+
         while waited_time < max_wait_time:
-            all_built = all(Path(f"./containers/{sif_name}").exists() for sif_name, _, _ in containers_to_check)
+            all_built = all(
+                Path(f"./containers/{sif_name}").exists()
+                for sif_name, _, _ in containers_to_check
+            )
             if all_built:
                 print("✅ All container builds completed!")
                 break
             time.sleep(wait_interval)
             waited_time += wait_interval
             print(f"⏳ Still waiting for builds... ({waited_time}s elapsed)")
-        
-        if not all(Path(f"./containers/{sif_name}").exists() for sif_name, _, _ in containers_to_check):
+
+        if not all(
+            Path(f"./containers/{sif_name}").exists()
+            for sif_name, _, _ in containers_to_check
+        ):
             print("❌ Timeout waiting for container builds to complete")
             print("💡 Check build logs in ./containers/ directory")
             sys.exit(1)
 
+
 def build_sif_with_slurm(sif_name, docker_uri, job_prefix, slurm_options=""):
     """Build .sif file using SLURM job."""
     print(f"🧬 Submitting SLURM job to build {sif_name}...")
-    
+
     # Create SLURM script for building
     build_slurm_content = f"""#!/bin/bash
 #SBATCH {slurm_options}
@@ -312,32 +380,36 @@ echo "Building {sif_name} from {docker_uri}"
 singularity build ./containers/{sif_name} {docker_uri}
 echo "Build completed for {sif_name}"
 """
-    
+
     # Write SLURM script to containers directory
     slurm_script_path = f"./containers/{job_prefix}.slurm"
     with open(slurm_script_path, "w") as f:
         f.write(build_slurm_content)
-    
+
     # Submit SLURM job
     subprocess.run(["sbatch", slurm_script_path], check=True)
     print(f"✅ SLURM build job submitted for {sif_name}")
     print(f"📁 Logs will be saved in ./containers/")
     print(f"⏳ Please wait for the build to complete before running the pipeline.")
 
+
 def build_sif_locally(sif_name, docker_uri, build_type):
     """Build .sif file locally."""
     print(f"🔨 Building {sif_name} locally from {docker_uri}...")
-    
+
     # Create log file
     log_file = f"./containers/{build_type}_build.log"
-    
+
     try:
         # Build the .sif file and redirect output to log
-        with open(log_file, 'w') as log:
-            result = subprocess.run([
-                "singularity", "build", f"./containers/{sif_name}", docker_uri
-            ], stdout=log, stderr=log, text=True)
-        
+        with open(log_file, "w") as log:
+            result = subprocess.run(
+                ["singularity", "build", f"./containers/{sif_name}", docker_uri],
+                stdout=log,
+                stderr=log,
+                text=True,
+            )
+
         if result.returncode == 0:
             print(f"✅ Successfully built {sif_name}")
             print(f"📁 Build log saved to {log_file}")
@@ -349,24 +421,25 @@ def build_sif_locally(sif_name, docker_uri, build_type):
         print(f"❌ Error building {sif_name}: {e}")
         sys.exit(1)
 
+
 # =============================================================================
 # MAIN EXECUTION FUNCTION
 # =============================================================================
 
+
 def main():
     # Check if a specific config file was provided as command line argument
     specific_config = sys.argv[1] if len(sys.argv) > 1 else None
-    
+
     config_path = check_config(specific_config)
     config = load_config(config_path)
-    
+
     # Get deployment method from config
     deployment_method = config.get("project", {}).get("deployment_method", "Docker")
     pipeline_mode = infer_pipeline_mode()
-    
+
     print(f"🚀 Starting pipeline with deployment method: {deployment_method}")
     print(f"🎯 Pipeline mode: {pipeline_mode}")
-    
 
     if deployment_method == "Docker":
         if pipeline_mode == "pyspark-only":
@@ -394,11 +467,16 @@ def main():
         else:  # full
             pyspark_slurm = config.get("project", {}).get("slurm_options_pyspark", "")
             ray_slurm = config.get("project", {}).get("slurm_options_ray", "")
-            run_singularity_with_slurm_separate_options(config_path, pyspark_slurm, ray_slurm)
+            run_singularity_with_slurm_separate_options(
+                config_path, pyspark_slurm, ray_slurm
+            )
     else:
         print(f"❌ Unknown deployment method: {deployment_method}")
-        print("Supported methods: Docker, Singularity with Slurm, Singularity without Slurm")
+        print(
+            "Supported methods: Docker, Singularity with Slurm, Singularity without Slurm"
+        )
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
