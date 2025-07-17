@@ -6,7 +6,27 @@ import yaml
 from pathlib import Path
 from datetime import datetime
 
+# Configuration constants - edit these to change paths/commands
+CONTAINER_CONFIG = {
+    "pyspark": {
+        "docker_image": "nour333/eeg-spark-pipeline:latest",
+        "singularity_image": "./containers/eeg-pyspark.sif",
+        "entrypoint": "/app/src/digit_flatmap.py",
+        "command": "spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*]",
+        "job_name": "eeg-pyspark"
+    },
+    "ray": {
+        "docker_image": "nour333/eeg-ray-tuner:latest", 
+        "singularity_image": "./containers/eeg-ray-tuner.sif",
+        "entrypoint": "/app/test-ray.py",
+        "command": "python",
+        "job_name": "eeg-ray-tuner"
+    }
+}
 
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
 
 def check_config(specific_config=None):
     """Check for config file and return the path to the most recent one or specified one."""
@@ -48,90 +68,121 @@ def load_config(config_path):
         config = yaml.safe_load(f)
     return config
 
-def run_docker_pyspark_only(config_path):
-    print("\n🐳 Running PySpark container only...")
+def infer_pipeline_mode():
+    """Infer which pipeline mode to run based on repository name."""
+    this_path = Path(__file__).resolve()
+    repo = this_path.parent.name
+    
+    if repo == "eeg-pyspark-pipeline":
+        return "pyspark-only"
+    elif repo == "eeg-ray-tuner":
+        return "ray-only"
+    else:
+        return "full"
+
+# =============================================================================
+# CORE CONTAINER EXECUTION FUNCTIONS
+# =============================================================================
+
+def get_container_command(container_type, config_path):
+    """Generate the command for a specific container type."""
+    config = CONTAINER_CONFIG[container_type]
+    if container_type == "pyspark":
+        return f"{config['command']} {config['entrypoint']} --config /app/config.yaml"
+    else:  # ray
+        return f"{config['command']} {config['entrypoint']} --config /app/config.yaml"
+
+def run_docker_container(container_type, config_path):
+    """Run a single Docker container."""
+    config = CONTAINER_CONFIG[container_type]
+    command_parts = get_container_command(container_type, config_path).split()
+    
     subprocess.run([
         "docker", "run", "--rm",
         "-v", f"{config_path}:/app/config.yaml",
-        "nour333/eeg-spark-pipeline:latest",
-        "spark-submit", "--conf", "spark.jars.ivy=/tmp/.ivy2", "--master", "local[*]", "/app/src/digit_flatmap.py", "--config", "/app/config.yaml"
-    ], check=True)
+        config["docker_image"]
+    ] + command_parts, check=True)
+
+def run_singularity_container(container_type, config_path):
+    """Run a single Singularity container."""
+    config = CONTAINER_CONFIG[container_type]
+    command_parts = get_container_command(container_type, config_path).split()
+    
+    subprocess.run([
+        "singularity", "run",
+        "--bind", f"{config_path}:/app/config.yaml",
+        config["singularity_image"]
+    ] + command_parts, check=True)
+
+# =============================================================================
+# DOCKER EXECUTION FUNCTIONS
+# =============================================================================
+
+def run_docker_pyspark_only(config_path):
+    print("\n🐳 Running PySpark container only...")
+    run_docker_container("pyspark", config_path)
 
 def run_docker_ray_only(config_path):
     print("\n🐳 Running Ray tuner container only...")
-    subprocess.run([
-        "docker", "run", "--rm",
-        "-v", f"{config_path}:/app/config.yaml",
-        "nour333/eeg-ray-tuner:latest",
-        "python", "/app/test-ray.py", "--config", "/app/config.yaml"
-    ], check=True)
+    run_docker_container("ray", config_path)
 
 def run_docker(config_path):
     print("\n🐳 Running PySpark container...")
-    subprocess.run([
-        "docker", "run", "--rm",
-        "-v", f"{config_path}:/app/config.yaml",
-        "nour333/eeg-spark-pipeline:latest",
-        "spark-submit", "--conf", "spark.jars.ivy=/tmp/.ivy2", "--master", "local[*]", "/app/src/digit_flatmap.py", "--config", "/app/config.yaml"
-    ], check=True)
-
+    run_docker_container("pyspark", config_path)
+    
     print("\n🐳 Running Ray tuner container...")
-    subprocess.run([
-        "docker", "run", "--rm",
-        "-v", f"{config_path}:/app/config.yaml",
-        "nour333/eeg-ray-tuner:latest",
-        "python", "/app/test-ray.py", "--config", "/app/config.yaml"
-    ], check=True)
+    run_docker_container("ray", config_path)
+
+# =============================================================================
+# SINGULARITY EXECUTION FUNCTIONS
+# =============================================================================
 
 def run_singularity_pyspark_only(config_path):
     print("\n🔒 Running PySpark Singularity container only...")
-    subprocess.run([
-        "singularity", "run",
-        "--bind", f"{config_path}:/app/config.yaml",
-        "./containers/eeg-pyspark.sif",
-        "spark-submit", "--conf", "spark.jars.ivy=/tmp/.ivy2", "--master", "local[*]", "/app/src/digit_flatmap.py", "--config", "/app/config.yaml"
-    ], check=True)
+    run_singularity_container("pyspark", config_path)
 
 def run_singularity_ray_only(config_path):
     print("\n🔒 Running Ray tuner Singularity container only...")
-    subprocess.run([
-        "singularity", "run",
-        "--bind", f"{config_path}:/app/config.yaml",
-        "./containers/eeg-ray-tuner.sif",
-        "python", "/app/test-ray.py", "--config", "/app/config.yaml"
-    ], check=True)
+    run_singularity_container("ray", config_path)
 
 def run_singularity_without_slurm(config_path):
     print("\n🔒 Running PySpark Singularity container...")
-    subprocess.run([
-        "singularity", "run",
-        "--bind", f"{config_path}:/app/config.yaml",
-        "./containers/eeg-pyspark.sif",
-        "spark-submit", "--conf", "spark.jars.ivy=/tmp/.ivy2", "--master", "local[*]", "/app/src/digit_flatmap.py", "--config", "/app/config.yaml"
-    ], check=True)
-
+    run_singularity_container("pyspark", config_path)
+    
     print("\n🔒 Running Ray tuner Singularity container...")
-    subprocess.run([
-        "singularity", "run",
-        "--bind", f"{config_path}:/app/config.yaml",
-        "./containers/eeg-ray-tuner.sif",
-        "python", "/app/test-ray.py", "--config", "/app/config.yaml"
-    ], check=True)
+    run_singularity_container("ray", config_path)
 
-def run_singularity_with_slurm_full(config_path, pyspark_slurm_options="", ray_slurm_options=""):
+# =============================================================================
+# SLURM EXECUTION FUNCTIONS
+# =============================================================================
+
+def create_slurm_script(container_type, config_path, slurm_options="", dependency_job_id=None):
+    """Create a SLURM script for a container."""
+    config = CONTAINER_CONFIG[container_type]
+    command = get_container_command(container_type, config_path)
+    
+    dependency_line = f"#SBATCH --dependency=afterok:{dependency_job_id}\n" if dependency_job_id else ""
+    
+    slurm_content = f"""#!/bin/bash
+#SBATCH {slurm_options}
+#SBATCH --job-name={config['job_name']}
+#SBATCH --output=./containers/{container_type}_%j.out
+#SBATCH --error=./containers/{container_type}_%j.err
+{dependency_line}singularity run --bind {config_path}:/app/config.yaml {config['singularity_image']} {command}
+"""
+    return slurm_content
+
+def run_singularity_with_slurm_shared_options(config_path, slurm_options=""):
+    """Convenience function: run with same SLURM options for both containers."""
+    return run_singularity_with_slurm_separate_options(config_path, slurm_options, slurm_options)
+
+def run_singularity_with_slurm_separate_options(config_path, pyspark_slurm_options="", ray_slurm_options=""):
+    """Run full pipeline with separate SLURM options for each container."""
     print("\n🧬 Submitting PySpark SLURM job...")
     
-    # Create temporary SLURM script with custom options for PySpark
-    pyspark_slurm_content = f"""#!/bin/bash
-#SBATCH {pyspark_slurm_options}
-#SBATCH --job-name=eeg-pyspark
-#SBATCH --output=./containers/pyspark_%j.out
-#SBATCH --error=./containers/pyspark_%j.err
-
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*] /app/src/digit_flatmap.py --config /app/config.yaml
-"""
+    # Create temporary SLURM script for PySpark
+    pyspark_slurm_content = create_slurm_script("pyspark", config_path, pyspark_slurm_options)
     
-    # Create temporary SLURM script with custom options (overwrite if exists)
     with open("./containers/temp_pyspark.slurm", "w") as f:
         f.write(pyspark_slurm_content)
     
@@ -145,64 +196,8 @@ singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.s
         print("❌ Failed to get job ID from sbatch output.")
         sys.exit(1)
 
-    # Create temporary SLURM script for Ray with dependency (overwrite if exists)
-    ray_slurm_content = f"""#!/bin/bash
-#SBATCH {ray_slurm_options}
-#SBATCH --job-name=eeg-ray-tuner
-#SBATCH --output=./containers/ray_%j.out
-#SBATCH --error=./containers/ray_%j.err
-#SBATCH --dependency=afterok:{job_id}
-
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python /app/test-ray.py --config /app/config.yaml
-"""
-    
-    with open("./containers/temp_ray.slurm", "w") as f:
-        f.write(ray_slurm_content)
-
-    print(f"\n🧬 Submitting Ray tuner SLURM job (after PySpark job {job_id})...")
-    subprocess.run(["sbatch", "./containers/temp_ray.slurm"], check=True)
-    
-    # Clean up temporary files
-    os.remove("./containers/temp_pyspark.slurm")
-    os.remove("./containers/temp_ray.slurm")
-
-def run_singularity_with_slurm(config_path, slurm_options=""):
-    print("\n🧬 Submitting PySpark SLURM job...")
-    
-    # Create temporary SLURM script with custom options
-    pyspark_slurm_content = f"""#!/bin/bash
-#SBATCH {slurm_options}
-#SBATCH --job-name=eeg-pyspark
-#SBATCH --output=./containers/pyspark_%j.out
-#SBATCH --error=./containers/pyspark_%j.err
-
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*] /app/src/digit_flatmap.py --config /app/config.yaml
-"""
-    
-    # Create temporary SLURM script with custom options (overwrite if exists)
-    with open("./containers/temp_pyspark.slurm", "w") as f:
-        f.write(pyspark_slurm_content)
-    
-    pyspark_submit = subprocess.run(["sbatch", "./containers/temp_pyspark.slurm"], capture_output=True, text=True)
-    print(pyspark_submit.stdout.strip())
-
-    # Extract job ID
-    try:
-        job_id = pyspark_submit.stdout.strip().split()[-1]
-    except IndexError:
-        print("❌ Failed to get job ID from sbatch output.")
-        sys.exit(1)
-
-    # Create temporary SLURM script for Ray with dependency (overwrite if exists)
-    ray_slurm_content = f"""#!/bin/bash
-#SBATCH {slurm_options}
-#SBATCH --job-name=eeg-ray-tuner
-#SBATCH --output=./containers/ray_%j.out
-#SBATCH --error=./containers/ray_%j.err
-#SBATCH --dependency=afterok:{job_id}
-
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python /app/test-ray.py --config /app/config.yaml
-"""
+    # Create temporary SLURM script for Ray with dependency
+    ray_slurm_content = create_slurm_script("ray", config_path, ray_slurm_options, job_id)
     
     with open("./containers/temp_ray.slurm", "w") as f:
         f.write(ray_slurm_content)
@@ -217,15 +212,7 @@ singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner
 def run_singularity_slurm_pyspark_only(config_path, slurm_options=""):
     print("\n🧬 Submitting PySpark SLURM job only...")
     
-    # Create temporary SLURM script with custom options
-    pyspark_slurm_content = f"""#!/bin/bash
-#SBATCH {slurm_options}
-#SBATCH --job-name=eeg-pyspark
-#SBATCH --output=./containers/pyspark_%j.out
-#SBATCH --error=./containers/pyspark_%j.err
-
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.sif spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*] /app/src/digit_flatmap.py --config /app/config.yaml
-"""
+    pyspark_slurm_content = create_slurm_script("pyspark", config_path, slurm_options)
     
     with open("./containers/temp_pyspark.slurm", "w") as f:
         f.write(pyspark_slurm_content)
@@ -238,15 +225,7 @@ singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-pyspark.s
 def run_singularity_slurm_ray_only(config_path, slurm_options=""):
     print("\n🧬 Submitting Ray tuner SLURM job only...")
     
-    # Create temporary SLURM script with custom options
-    ray_slurm_content = f"""#!/bin/bash
-#SBATCH {slurm_options}
-#SBATCH --job-name=eeg-ray-tuner
-#SBATCH --output=./containers/ray_%j.out
-#SBATCH --error=./containers/ray_%j.err
-
-singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner.sif python /app/test-ray.py --config /app/config.yaml
-"""
+    ray_slurm_content = create_slurm_script("ray", config_path, slurm_options)
     
     with open("./containers/temp_ray.slurm", "w") as f:
         f.write(ray_slurm_content)
@@ -256,17 +235,9 @@ singularity run --bind {config_path}:/app/config.yaml ./containers/eeg-ray-tuner
     # Clean up temporary file
     os.remove("./containers/temp_ray.slurm")
 
-def infer_pipeline_mode():
-    """Infer which pipeline mode to run based on repository name."""
-    this_path = Path(__file__).resolve()
-    repo = this_path.parent.name
-    
-    if repo == "eeg-pyspark-pipeline":
-        return "pyspark-only"
-    elif repo == "eeg-ray-tuner":
-        return "ray-only"
-    else:
-        return "full"
+# =============================================================================
+# CONTAINER BUILDING FUNCTIONS
+# =============================================================================
 
 def check_and_build_sif_files(config, pipeline_mode, use_slurm=False):
     """Check if .sif files exist and build them if they don't.
@@ -378,6 +349,10 @@ def build_sif_locally(sif_name, docker_uri, build_type):
         print(f"❌ Error building {sif_name}: {e}")
         sys.exit(1)
 
+# =============================================================================
+# MAIN EXECUTION FUNCTION
+# =============================================================================
+
 def main():
     # Check if a specific config file was provided as command line argument
     specific_config = sys.argv[1] if len(sys.argv) > 1 else None
@@ -419,7 +394,7 @@ def main():
         else:  # full
             pyspark_slurm = config.get("project", {}).get("slurm_options_pyspark", "")
             ray_slurm = config.get("project", {}).get("slurm_options_ray", "")
-            run_singularity_with_slurm_full(config_path, pyspark_slurm, ray_slurm)
+            run_singularity_with_slurm_separate_options(config_path, pyspark_slurm, ray_slurm)
     else:
         print(f"❌ Unknown deployment method: {deployment_method}")
         print("Supported methods: Docker, Singularity with Slurm, Singularity without Slurm")
