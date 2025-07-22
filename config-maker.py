@@ -1,11 +1,13 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, List
 
 import questionary
 import yaml
+import re
 
 
-def infer_target():
+def infer_target() -> str:
     this_file = Path(
         __file__
     )  # no resolve as it gets absolute path which will be the parent directory as we are simlinking
@@ -20,7 +22,7 @@ def infer_target():
         return "full"
 
 
-def validate_downsampling_rate(rate_str):
+def validate_downsampling_rate(rate_str: Optional[str]) -> Optional[float]:
     """Validate and convert downsampling rate input."""
     if not rate_str or rate_str.lower() == "none":
         return None
@@ -36,7 +38,7 @@ def validate_downsampling_rate(rate_str):
         return None
 
 
-def validate_integer_input(prompt, default="", min_value=1):
+def validate_integer_input(prompt: str, default: str = "", min_value: int = 1) -> str:
     """Validate and get integer input with retry logic."""
     while True:
         value = questionary.text(prompt, default=default).ask()
@@ -51,8 +53,8 @@ def validate_integer_input(prompt, default="", min_value=1):
             continue
 
 
-def build_config(target: str):
-    config = {}
+def build_config(target: str) -> Tuple[Dict[str, Any], str]:
+    config: Dict[str, Any] = {}
 
     # 0. Metadata
     print("\n[0] Project Metadata")
@@ -71,7 +73,7 @@ def build_config(target: str):
     ).ask()
 
     # 0.5 PySpark Resource Configuration
-    if target == "pyspark" or target == "full":
+    if target == "pyspark" or target == "pyspark-only" or target == "full":
         print("\n[0.5] PySpark Resource Configuration")
         print("For example, for a 8-core CPU with 16GB memory, we can safely allocate:")
         print("  - 4 cores for the driver (master)")
@@ -129,7 +131,7 @@ def build_config(target: str):
             "Enter SLURM options for building .sif containers:",
             default="--time=00:10:00 --mem=8G --cpus-per-task=2"
         ).ask()
-        config["project"]["slurm_options_build"] = build_slurm_options if build_slurm_options else ""
+        config["project"]["slurm_options_build"] = sanitize_slurm_options(build_slurm_options) if build_slurm_options else ""
         
         if target == "full":
             # Ask if user wants same or different SLURM options for PySpark and Ray
@@ -142,8 +144,8 @@ def build_config(target: str):
                 slurm_options = questionary.text(
                     "Enter SLURM options for both PySpark and Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
                 ).ask()
-                config["project"]["slurm_options_pyspark"] = slurm_options if slurm_options else ""
-                config["project"]["slurm_options_ray"] = slurm_options if slurm_options else ""
+                config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
+                config["project"]["slurm_options_ray"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
             else:  # Different options
                 pyspark_slurm = questionary.text(
                     "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
@@ -151,24 +153,27 @@ def build_config(target: str):
                 ray_slurm = questionary.text(
                     "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
                 ).ask()
-                config["project"]["slurm_options_pyspark"] = pyspark_slurm if pyspark_slurm else ""
-                config["project"]["slurm_options_ray"] = ray_slurm if ray_slurm else ""
+                config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(pyspark_slurm) if pyspark_slurm else ""
+                config["project"]["slurm_options_ray"] = sanitize_slurm_options(ray_slurm) if ray_slurm else ""
         
         elif target == "pyspark-only":
             slurm_options = questionary.text(
                 "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
             ).ask()
-            config["project"]["slurm_options_pyspark"] = slurm_options if slurm_options else ""
+            config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
         
         elif target == "ray-only":
             slurm_options = questionary.text(
                 "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
             ).ask()
-            config["project"]["slurm_options_ray"] = slurm_options if slurm_options else ""
+            config["project"]["slurm_options_ray"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
 
-    # Use timestamp for config name (consistent approach)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    config_name = f"config_{timestamp}.yaml"
+    # Use user-supplied project name and timestamp for config name
+    project_name = config["project"]["name"] or "project"
+    # Sanitize project name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore
+    sanitized_name = re.sub(r'[^a-zA-Z0-9_]', '', project_name.replace(' ', '_').lower())
+    timestamp = datetime.now().strftime("%d-%m-%Y_%H%M")
+    config_name = f"config_{sanitized_name}_{timestamp}.yaml"
     config["project"]["config_name"] = config_name
 
     if target == "pyspark-only" or target == "full":
@@ -176,20 +181,23 @@ def build_config(target: str):
         print("\n[1] Data Input")
         config["data_input"] = {}
         config["data_input"]["groups"] = {}
-        i = 1
+        group_number = 1
         while True:
             group_input = questionary.text(
-                f"Enter comma-separated EEG paths for Group {i} (or 'done'):"
+                f"Enter comma-separated EEG paths for Group {group_number} (or 'done'):"
             ).ask()
             if group_input.lower() == "done":
                 break
             if not group_input.strip():
                 print("[ERROR] Please enter valid paths to the *.set/.fif files or 'done'")
                 continue
-            config["data_input"]["groups"][f"group_{i}"] = [
-                path.strip() for path in group_input.split(",") if path.strip()
-            ]
-            i += 1
+            try:
+                valid_paths = validate_eeg_paths([path.strip() for path in group_input.split(",") if path.strip()])
+                config["data_input"]["groups"][f"group_{group_number}"] = valid_paths
+            except ValueError as e:
+                print(f"[ERROR] {e}")
+                continue
+            group_number += 1
 
         config["data_input"]["reuse_expanded"] = questionary.select(
             "Reuse expanded .set/.fif files if they exist?", choices=["Yes", "No"]
@@ -206,6 +214,21 @@ def build_config(target: str):
             "Select bandpass filters to apply (for more precise options edit the config file directly):",
             choices=["Delta", "Theta", "Alpha", "Beta", "Gamma"],
         ).ask()
+
+        # Ask for sliding window amount (float between 0 and 0.95)
+        while True:
+            sliding_window_input = questionary.text(
+                "Sliding window amount (0 for none, up to 0.95 for max):"
+            ).ask()
+            try:
+                sliding_window = float(sliding_window_input)
+                if 0 <= sliding_window <= 0.95:
+                    break
+                else:
+                    print("[ERROR] Please enter a float between 0 and 0.95.")
+            except (ValueError, TypeError):
+                print("[ERROR] Please enter a valid float value.")
+        config["preprocessing"]["sliding_window"] = sliding_window
 
         # Handle downsampling rate with validation
         while True:
@@ -295,7 +318,7 @@ def build_config(target: str):
     return config, config_name
 
 
-def save_config(config, config_name):
+def save_config(config: Dict[str, Any], config_name: str) -> None:
     config_dir = Path("config")
     config_dir.mkdir(exist_ok=True)
 
@@ -314,8 +337,38 @@ def save_config(config, config_name):
     print(f"\n✅ Saved configuration to {full_path.resolve()}")
 
 
+def sanitize_slurm_options(options: str) -> str:
+    # Remove newlines and extra spaces
+    return ' '.join(options.split())
+
+
+def validate_eeg_paths(paths: List[str]) -> List[str]:
+    """Validate EEG file paths - check they exist and don't contain spaces."""
+    valid_paths = []
+    for path in paths:
+        path = path.strip()
+        if not path:
+            continue
+            
+        # Check for spaces in path
+        if ' ' in path:
+            raise ValueError(f"Path contains spaces: '{path}'. Please use paths without spaces.")
+        
+        # Check if file exists
+        if not Path(path).exists():
+            raise ValueError(f"File does not exist: '{path}'")
+        
+        # Check if it's a valid EEG file (optional - basic check)
+        if not (path.endswith('.set') or path.endswith('.fif')):
+            print(f"⚠️ Warning: '{path}' doesn't end with .set or .fif")
+        
+        valid_paths.append(path)
+    
+    return valid_paths
+
+
 if __name__ == "__main__":
-    target = infer_target()
+    target: str = infer_target()
     print(f"Generating config for target: {target}")
     config, config_name = build_config(target=target)
     save_config(config, config_name)

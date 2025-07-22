@@ -4,7 +4,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-
+from typing import Any, Dict, Optional, List, Tuple, Union, cast
 import yaml
 
 # Configuration constants - edit these to change paths/commands
@@ -12,7 +12,7 @@ CONTAINER_CONFIG = {
     "pyspark": {
         "docker_image": "nour333/eeg-spark-pipeline:latest",
         "singularity_image": "./containers/eeg-pyspark.sif",
-        "entrypoint": "/app/src/digit_flatmap.py",
+        "entrypoint": "/app/src/main.py",
         # "entrypoint": "/app/src/test_config_access.py",
         "command": "spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*]",
         "job_name": "eeg-pyspark",
@@ -31,7 +31,7 @@ CONTAINER_CONFIG = {
 # =============================================================================
 
 
-def check_config(specific_config=None):
+def check_config(specific_config: Optional[str] = None) -> str:
     """Check for config file and return the path to the most recent one or specified one."""
     config_dir = Path("config")
 
@@ -49,10 +49,11 @@ def check_config(specific_config=None):
         return str(config_path.resolve())
 
     # Find the most recent config file
+    # Config files are now named as config_<projectname>_<day-month-year>_<HHMM>.yaml
     config_files = list(config_dir.glob("config_*.yaml"))
     if not config_files:
         print(f"❌ No config files found in {config_dir}")
-        print("Run config-maker.py first to create a configuration file.")
+        print("Run config-maker.py first to create a configuration file (format: config_<projectname>_<day-month-year>_<HHMM>.yaml).")
         sys.exit(1)
 
     # Sort by modification time (most recent first)
@@ -61,19 +62,19 @@ def check_config(specific_config=None):
 
     print(f"📁 Using most recent config: {most_recent.name}")
     if len(config_files) > 1:
-        print(f"📋 Available configs: {[f.name for f in config_files]}")
+        print(f"📋 Available configs: {[f.name for f in config_files]} (format: config_<projectname>_<day-month-year>_<HHMM>.yaml)")
 
     return str(most_recent.resolve())
 
 
-def load_config(config_path):
+def load_config(config_path: str) -> Dict[str, Any]:
     """Load the configuration file to determine deployment method."""
     with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+        config = cast(Dict[str, Any], yaml.safe_load(f)) # cast to Dict[str, Any] to avoid type errors
     return config
 
 
-def infer_pipeline_mode():
+def infer_pipeline_mode() -> str:
     """Infer which pipeline mode to run based on repository name."""
     this_path = Path(
         __file__
@@ -93,7 +94,7 @@ def infer_pipeline_mode():
 # =============================================================================
 
 
-def get_container_command(container_type, config_path):
+def get_container_command(container_type: str, config_path: str) -> str:
     """Generate the command for a specific container type."""
     config = CONTAINER_CONFIG[container_type]
     if container_type == "pyspark":
@@ -102,41 +103,124 @@ def get_container_command(container_type, config_path):
         return f"{config['command']} {config['entrypoint']} --config /app/config.yaml"
 
 
-def run_docker_container(container_type, config_path):
+def get_data_directories_to_mount(config: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """Extract unique directories from file paths in config and return mount mappings."""
+    mount_mappings = []
+    seen_dirs = set()
+    
+    # Extract all file paths from the config
+    all_file_paths = []
+    if "data_input" in config and "groups" in config["data_input"]:
+        for group_name, file_list in config["data_input"]["groups"].items():
+            if isinstance(file_list, list):
+                all_file_paths.extend(file_list)
+    
+    # Extract unique directories
+    for file_path in all_file_paths:
+        if isinstance(file_path, str):
+            # Get the directory containing the file
+            dir_path = str(Path(file_path).parent)
+            if dir_path not in seen_dirs:
+                seen_dirs.add(dir_path)
+                # Mount the directory to the same path inside the container
+                mount_mappings.append((dir_path, dir_path))
+    
+    # Add output directory FIRST (so it appears in the top few)
+    output_mount = None
+    if "project" in config and "output_dir" in config["project"]:
+        output_dir = config["project"]["output_dir"]
+        # Convert relative path to absolute path
+        if output_dir.startswith("./"):
+            output_dir = str(Path.cwd() / output_dir[2:])
+        elif output_dir.startswith("."):
+            output_dir = str(Path.cwd() / output_dir[1:])
+        
+        # Create output directory if it doesn't exist
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        
+        # Mount output directory to the same path inside container
+        output_mount = (output_dir, output_dir)
+    
+    # Put output directory first, then data directories
+    if output_mount:
+        mount_mappings.insert(0, output_mount)
+    
+    return mount_mappings
+
+
+def run_docker_container(container_type: str, config_path: str) -> None:
     """Run a single Docker container."""
     config = CONTAINER_CONFIG[container_type]
     command_parts = get_container_command(container_type, config_path).split()
+    
+    # Load config to get data directories
+    config_data = load_config(config_path)
+    mount_mappings = get_data_directories_to_mount(config_data)
+    
+    # Build docker run command with volume mounts
+    docker_cmd = [
+        "docker",
+        "run",
+        "--rm",
+        "-v",
+        f"{config_path}:/app/config.yaml",
+    ]
+    
+    # Add data directory mounts
+    for host_path, container_path in mount_mappings:
+        docker_cmd.extend(["-v", f"{host_path}:{container_path}"])
+    
+    # Add image and command
+    docker_cmd.extend([config["docker_image"]] + command_parts)
+    
+    print(f"🔗 Mounting {len(mount_mappings)} directories:")
+    
+    # Show first few directories (including output directory which is first)
+    show_count = min(5, len(mount_mappings))
+    for i, (host_path, container_path) in enumerate(mount_mappings[:show_count], 1):
+        print(f"   {i}. {host_path} -> {container_path}")
+    
+    if len(mount_mappings) > show_count:
+        print(f"   ... and {len(mount_mappings) - show_count} more directories")
+    
+    subprocess.run(docker_cmd, check=True)
 
-    subprocess.run(
-        [
-            "docker",
-            "run",
-            "--rm",
-            "-v",
-            f"{config_path}:/app/config.yaml",
-            config["docker_image"],
-        ]
-        + command_parts,
-        check=True,
-    )
 
-
-def run_singularity_container(container_type, config_path):
+def run_singularity_container(container_type: str, config_path: str) -> None:
     """Run a single Singularity container."""
     config = CONTAINER_CONFIG[container_type]
     command_parts = get_container_command(container_type, config_path).split()
-
-    subprocess.run(
-        [
-            "singularity",
-            "run",
-            "--bind",
-            f"{config_path}:/app/config.yaml",
-            config["singularity_image"],
-        ]
-        + command_parts,
-        check=True,
-    )
+    
+    # Load config to get data directories
+    config_data = load_config(config_path)
+    mount_mappings = get_data_directories_to_mount(config_data)
+    
+    # Build singularity run command with bind mounts
+    singularity_cmd = [
+        "singularity",
+        "run",
+        "--bind",
+        f"{config_path}:/app/config.yaml",
+    ]
+    
+    # Add data directory bind mounts
+    for host_path, container_path in mount_mappings:
+        singularity_cmd.extend(["--bind", f"{host_path}:{container_path}"])
+    
+    # Add image and command
+    singularity_cmd.extend([config["singularity_image"]] + command_parts)
+    
+    print(f"🔗 Mounting {len(mount_mappings)} directories:")
+    
+    # Show first few directories (including output directory which is first)
+    show_count = min(5, len(mount_mappings))
+    for i, (host_path, container_path) in enumerate(mount_mappings[:show_count], 1):
+        print(f"   {i}. {host_path} -> {container_path}")
+    
+    if len(mount_mappings) > show_count:
+        print(f"   ... and {len(mount_mappings) - show_count} more directories")
+    
+    subprocess.run(singularity_cmd, check=True)
 
 
 # =============================================================================
@@ -144,17 +228,17 @@ def run_singularity_container(container_type, config_path):
 # =============================================================================
 
 
-def run_docker_pyspark_only(config_path):
+def run_docker_pyspark_only(config_path: str) -> None:
     print("\n🐳 Running PySpark container only...")
     run_docker_container("pyspark", config_path)
 
 
-def run_docker_ray_only(config_path):
+def run_docker_ray_only(config_path: str) -> None:
     print("\n🐳 Running Ray tuner container only...")
     run_docker_container("ray", config_path)
 
 
-def run_docker(config_path):
+def run_docker(config_path: str) -> None:
     print("\n🐳 Running PySpark container...")
     run_docker_container("pyspark", config_path)
 
@@ -167,17 +251,17 @@ def run_docker(config_path):
 # =============================================================================
 
 
-def run_singularity_pyspark_only(config_path):
+def run_singularity_pyspark_only(config_path: str) -> None:
     print("\n🔒 Running PySpark Singularity container only...")
     run_singularity_container("pyspark", config_path)
 
 
-def run_singularity_ray_only(config_path):
+def run_singularity_ray_only(config_path: str) -> None:
     print("\n🔒 Running Ray tuner Singularity container only...")
     run_singularity_container("ray", config_path)
 
 
-def run_singularity_without_slurm(config_path):
+def run_singularity_without_slurm(config_path: str) -> None:
     print("\n🔒 Running PySpark Singularity container...")
     run_singularity_container("pyspark", config_path)
 
@@ -191,11 +275,18 @@ def run_singularity_without_slurm(config_path):
 
 
 def create_slurm_script(
-    container_type, config_path, slurm_options="", dependency_job_id=None
-):
+    container_type: str,
+    config_path: str,
+    slurm_options: str = "",
+    dependency_job_id: Optional[str] = None
+) -> str:
     """Create a SLURM script for a container."""
     config = CONTAINER_CONFIG[container_type]
     command = get_container_command(container_type, config_path)
+
+    # Load config to get data directories
+    config_data = load_config(config_path)
+    mount_mappings = get_data_directories_to_mount(config_data)
 
     dependency_line = (
         f"#SBATCH --dependency=afterok:{dependency_job_id}\n"
@@ -203,17 +294,24 @@ def create_slurm_script(
         else ""
     )
 
+    # Build bind mount string for singularity
+    bind_mounts = [f"{config_path}:/app/config.yaml"]
+    for host_path, container_path in mount_mappings:
+        bind_mounts.append(f"{host_path}:{container_path}")
+    
+    bind_mount_string = ",".join(bind_mounts)
+
     slurm_content = f"""#!/bin/bash
 #SBATCH {slurm_options}
 #SBATCH --job-name={config['job_name']}
 #SBATCH --output=./containers/{container_type}_%j.out
 #SBATCH --error=./containers/{container_type}_%j.err
-{dependency_line}singularity run --bind {config_path}:/app/config.yaml {config['singularity_image']} {command}
+{dependency_line}singularity run --bind {bind_mount_string} {config['singularity_image']} {command}
 """
     return slurm_content
 
 
-def run_singularity_with_slurm_shared_options(config_path, slurm_options=""):
+def run_singularity_with_slurm_shared_options(config_path: str, slurm_options: str = "") -> None:
     """Convenience function: run with same SLURM options for both containers."""
     return run_singularity_with_slurm_separate_options(
         config_path, slurm_options, slurm_options
@@ -221,8 +319,8 @@ def run_singularity_with_slurm_shared_options(config_path, slurm_options=""):
 
 
 def run_singularity_with_slurm_separate_options(
-    config_path, pyspark_slurm_options="", ray_slurm_options=""
-):
+    config_path: str, pyspark_slurm_options: str = "", ray_slurm_options: str = ""
+) -> None:
     """Run full pipeline with separate SLURM options for each container."""
     print("\n🧬 Submitting PySpark SLURM job...")
 
@@ -262,7 +360,7 @@ def run_singularity_with_slurm_separate_options(
     os.remove("./containers/temp_ray.slurm")
 
 
-def run_singularity_slurm_pyspark_only(config_path, slurm_options=""):
+def run_singularity_slurm_pyspark_only(config_path: str, slurm_options: str = "") -> None:
     print("\n🧬 Submitting PySpark SLURM job only...")
 
     pyspark_slurm_content = create_slurm_script("pyspark", config_path, slurm_options)
@@ -276,8 +374,8 @@ def run_singularity_slurm_pyspark_only(config_path, slurm_options=""):
     os.remove("./containers/temp_pyspark.slurm")
 
 
-def run_singularity_slurm_ray_only(config_path, slurm_options=""):
-    print("\n🧬 Submitting Ray tuner SLURM job only...")
+def run_singularity_slurm_ray_only(config_path: str, slurm_options: str = "") -> None:
+    print("\n�� Submitting Ray tuner SLURM job only...")
 
     ray_slurm_content = create_slurm_script("ray", config_path, slurm_options)
 
@@ -295,7 +393,7 @@ def run_singularity_slurm_ray_only(config_path, slurm_options=""):
 # =============================================================================
 
 
-def check_and_build_sif_files(config, pipeline_mode, use_slurm=False):
+def check_and_build_sif_files(config: Dict[str, Any], pipeline_mode: str, use_slurm: bool = False) -> None:
     """Check if .sif files exist and build them if they don't.
 
     Args:
@@ -366,7 +464,7 @@ def check_and_build_sif_files(config, pipeline_mode, use_slurm=False):
             sys.exit(1)
 
 
-def build_sif_with_slurm(sif_name, docker_uri, job_prefix, slurm_options=""):
+def build_sif_with_slurm(sif_name: str, docker_uri: str, job_prefix: str, slurm_options: str = "") -> None:
     """Build .sif file using SLURM job."""
     print(f"🧬 Submitting SLURM job to build {sif_name}...")
 
@@ -394,7 +492,7 @@ echo "Build completed for {sif_name}"
     print(f"⏳ Please wait for the build to complete before running the pipeline.")
 
 
-def build_sif_locally(sif_name, docker_uri, build_type):
+def build_sif_locally(sif_name: str, docker_uri: str, build_type: str) -> None:
     """Build .sif file locally."""
     print(f"🔨 Building {sif_name} locally from {docker_uri}...")
 
@@ -428,7 +526,7 @@ def build_sif_locally(sif_name, docker_uri, build_type):
 # =============================================================================
 
 
-def main():
+def main() -> None:
     # Check if a specific config file was provided as command line argument
     specific_config = sys.argv[1] if len(sys.argv) > 1 else None
 
