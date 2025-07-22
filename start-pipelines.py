@@ -13,6 +13,7 @@ CONTAINER_CONFIG = {
         "docker_image": "nour333/eeg-spark-pipeline:latest",
         "singularity_image": "./containers/eeg-pyspark.sif",
         "entrypoint": "/app/src/digit_flatmap.py",
+        # "entrypoint": "/app/src/test_config_access.py",
         "command": "spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*]",
         "job_name": "eeg-pyspark",
     },
