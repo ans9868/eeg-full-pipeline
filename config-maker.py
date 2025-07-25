@@ -63,110 +63,30 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     output_dir = questionary.text("0.2 Output directory (default is ./data):").ask()
     config["project"]["output_dir"] = output_dir if output_dir else "./data"
     config["project"]["experiment_type"] = questionary.select(
-        "0.3 Experiment Type:", choices=["Classification", "Regression", "Clustering"]
+        "0.3 Experiment Type:", choices=["Classification", "Clustering"] # "Regression"
     ).ask()
 
-    # 0.4 Deployment Method
-    config["project"]["deployment_method"] = questionary.select(
-        "0.4 Deployment Method:",
-        choices=["Docker", "Singularity with Slurm", "Singularity without Slurm"]
+    config["project"]["subjects_or_events"] = questionary.select(
+        "0.4 Are we analyzing subjects or events:", choices=["subjects", "events"]
     ).ask()
 
-    # 0.5 PySpark Resource Configuration
-    if target == "pyspark" or target == "pyspark-only" or target == "full":
-        print("\n[0.5] PySpark Resource Configuration")
-        print("For example, for a 8-core CPU with 16GB memory, we can safely allocate:")
-        print("  - 4 cores for the driver (master)")
-        print("  - 6GB memory for the driver")
-        print("  - 6GB memory for executors")
-        print("  - 2 cores per executor")
-        print("  - 8 shuffle partitions")
-        print("This is the default and lightweight for testing.")
-        
-        edit_spark_config = questionary.select(
-            "Do you want to edit the PySpark resource configuration?",
-            choices=["Yes", "No (use defaults)"]
+    # 0.4.1 Event selection (only if analyzing events)
+    if config["project"]["subjects_or_events"] == "events":
+        events_input = questionary.text(
+            "0.4.1 Enter comma-separated list of events to analyze (must match exactly as written in the data):"
         ).ask()
-        
-        if edit_spark_config == "Yes":
-            config["pyspark"] = {}
-            config["pyspark"]["master"] = validate_integer_input(
-                "Enter number of cores/threads to allocate (master):",
-                default="4"
-            )
-            config["pyspark"]["driver_memory"] = validate_integer_input(
-                "Enter driver memory in GB (e.g., 6):",
-                default="6"
-            )
-            config["pyspark"]["executor_memory"] = validate_integer_input(
-                "Enter executor memory in GB (e.g., 6):",
-                default="6"
-            )
-            config["pyspark"]["executor_cores"] = validate_integer_input(
-                "Enter executor cores/threads:",
-                default="2"
-            )
-            config["pyspark"]["shuffle_partitions"] = validate_integer_input(
-                "Enter shuffle partitions:",
-                default="8"
-            )
+        if events_input.strip():
+            config["project"]["events_of_interest"] = [event.strip() for event in events_input.split(",") if event.strip()]
         else:
-            # Use defaults
-            config["pyspark"] = {
-                "master": "4",
-                "driver_memory": "6",
-                "executor_memory": "6", 
-                "executor_cores": "2",
-                "shuffle_partitions": "8"
-            }
+            config["project"]["events_of_interest"] = []
 
-    # If Singularity with Slurm is selected, ask for Slurm options based on target
-    if config["project"]["deployment_method"] == "Singularity with Slurm":
-        print("\n[0.6] SLURM Configuration")
-        
-        # Always ask for build options when using SLURM
-        print("Recommended build options (10 minutes, 8GB RAM, 2 CPUs):")
-        print("  --time=00:10:00 --mem=8G --cpus-per-task=2")
-        build_slurm_options = questionary.text(
-            "Enter SLURM options for building .sif containers:",
-            default="--time=00:10:00 --mem=8G --cpus-per-task=2"
-        ).ask()
-        config["project"]["slurm_options_build"] = sanitize_slurm_options(build_slurm_options) if build_slurm_options else ""
-        
-        if target == "full":
-            # Ask if user wants same or different SLURM options for PySpark and Ray
-            slurm_choice = questionary.select(
-                "SLURM options for PySpark and Ray:",
-                choices=["Same options for both", "Different options for each"]
-            ).ask()
-            
-            if slurm_choice == "Same options for both":
-                slurm_options = questionary.text(
-                    "Enter SLURM options for both PySpark and Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
-                ).ask()
-                config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
-                config["project"]["slurm_options_ray"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
-            else:  # Different options
-                pyspark_slurm = questionary.text(
-                    "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
-                ).ask()
-                ray_slurm = questionary.text(
-                    "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
-                ).ask()
-                config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(pyspark_slurm) if pyspark_slurm else ""
-                config["project"]["slurm_options_ray"] = sanitize_slurm_options(ray_slurm) if ray_slurm else ""
-        
-        elif target == "pyspark-only":
-            slurm_options = questionary.text(
-                "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
-            ).ask()
-            config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
-        
-        elif target == "ray-only":
-            slurm_options = questionary.text(
-                "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
-            ).ask()
-            config["project"]["slurm_options_ray"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
+    # 0.4.2 Artifact removal method (fundamental metadata)
+    config["project"]["artifact_removal"] = questionary.select(
+        "0.4.2 Artifact removal method (defines how data was processed):",
+        choices=["ICA", "Auto-reject where noted in the data", "None"], #costum list of events to remove
+    ).ask()
+
+ 
 
     # Use user-supplied project name and timestamp for config name
     project_name = config["project"]["name"] or "project"
@@ -210,15 +130,48 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         # 2. Preprocessing
         print("\n[2] Preprocessing")
         config["preprocessing"] = {}
-        config["preprocessing"]["bands"] = questionary.checkbox(
+        
+        
+        
+        # Define band frequency ranges
+        band_ranges = {
+            "Delta (0.5-4 Hz)": {"Delta": [0.5, 4]},
+            "Theta (4-8 Hz)": {"Theta": [4, 8]},
+            "Alpha (8-12 Hz)": {"Alpha": [8, 12]},
+            "Beta (12-30 Hz)": {"Beta": [12, 30]},
+            "Gamma (30-50 Hz)": {"Gamma": [30, 50]}
+        }
+        
+        selected_bands_display = questionary.checkbox(
             "Select bandpass filters to apply (for more precise options edit the config file directly):",
-            choices=["Delta", "Theta", "Alpha", "Beta", "Gamma"],
+            choices=[ key for key in band_ranges.keys() ],
         ).ask()
+        
+        # Convert display names to structured band data
+        config["preprocessing"]["bands"] = {}
+        for band_display in selected_bands_display:
+            if band_display in band_ranges:
+                config["preprocessing"]["bands"].update(band_ranges[band_display])
+
+        # Ask for window size
+        while True:
+            window_size_input = questionary.text(
+                "Enter window size in seconds (e.g., 1):"
+            ).ask()
+            try:
+                window_size = float(window_size_input)
+                if window_size > 0:
+                    break
+                else:
+                    print("[ERROR] Please enter a positive number.")
+            except (ValueError, TypeError):
+                print("[ERROR] Please enter a valid number.")
+        config["preprocessing"]["window_size"] = window_size
 
         # Ask for sliding window amount (float between 0 and 0.95)
         while True:
             sliding_window_input = questionary.text(
-                "Sliding window amount (0 for none, up to 0.95 for max):"
+                "Sliding window amount as a percentage of the window size (0 for none, up to 0.95 for max):"
             ).ask()
             try:
                 sliding_window = float(sliding_window_input)
@@ -237,11 +190,6 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             if downsampling_rate is not None or downsampling_input.lower() == "none":
                 break
         config["preprocessing"]["downsampling"] = downsampling_rate
-
-        config["preprocessing"]["artifact_removal"] = questionary.select(
-            "Artifact removal method:",
-            choices=["ICA", "Auto-reject", "Where noted in the data", "None"],
-        ).ask()
 
         # 3. Feature Extraction
         print("\n[3] Feature Extraction")
@@ -288,6 +236,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 "None"
             ],
         ).ask()
+    else:
+        print("\nSkipping [1] Data Input [2] Preprocessing [3] Feature Extraction [4] Feature Transformation, and [5] Classification as we are not using ray")
 
     if target == "ray-only" or target == "full":
         # 5. Classification
@@ -297,7 +247,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             "How should we split the test/train sets?",
             choices=[
                 "By subject",
-                "By epoch",
+                "By epoch"
                 # "By event(s)",
                 # "Custom"
             ],
@@ -313,7 +263,112 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 "Enter percentage of epochs for test set (e.g., 20%):"
             ).ask()
         
-        config["classification"]["test_split"] = split_input
+            config["classification"]["test_split"] = split_input
+    else:
+        print("\nSkipping [5] Classification as we are not using ray")
+
+    # 5. Deployment Configuration
+    print("\n[6] Deployment Configuration")
+    config["project"]["deployment_method"] = questionary.select(
+        "6.1 Deployment Method:",
+        choices=["Docker", "Singularity with Slurm", "Singularity without Slurm"]
+    ).ask()
+
+    # 5.2 PySpark Resource Configuration
+    if target == "pyspark" or target == "pyspark-only" or target == "full":
+        print("\n[6.2] PySpark Resource Configuration")
+        print("For example, for a 8-core CPU with 16GB memory, we can safely allocate:")
+        print("  - 4 cores for the driver (master)")
+        print("  - 6GB memory for the driver")
+        print("  - 6GB memory for executors")
+        print("  - 2 cores per executor")
+        print("  - 8 shuffle partitions")
+        print("This is the default and lightweight for testing.")
+        
+        edit_spark_config = questionary.select(
+            "Do you want to edit the PySpark resource configuration?",
+            choices=["Yes", "No (use defaults)"]
+        ).ask()
+        
+        if edit_spark_config == "Yes":
+            config["pyspark"] = {}
+            config["pyspark"]["master"] = validate_integer_input(
+                "Enter number of cores/threads to allocate (master):",
+                default="4"
+            )
+            config["pyspark"]["driver_memory"] = validate_integer_input(
+                "Enter driver memory in GB (e.g., 6):",
+                default="6"
+            )
+            config["pyspark"]["executor_memory"] = validate_integer_input(
+                "Enter executor memory in GB (e.g., 6):",
+                default="6"
+            )
+            config["pyspark"]["executor_cores"] = validate_integer_input(
+                "Enter executor cores/threads:",
+                default="2"
+            )
+            config["pyspark"]["shuffle_partitions"] = validate_integer_input(
+                "Enter shuffle partitions:",
+                default="8"
+            )
+        else:
+            # Use defaults
+            config["pyspark"] = {
+                "master": "4",
+                "driver_memory": "6",
+                "executor_memory": "6", 
+                "executor_cores": "2",
+                "shuffle_partitions": "8"
+            }
+
+    # 5.3 SLURM Configuration (if Singularity with Slurm is selected)
+    if config["project"]["deployment_method"] == "Singularity with Slurm":
+        print("\n[6.3] SLURM Configuration")
+        
+        # Always ask for build options when using SLURM
+        print("Recommended build options (10 minutes, 8GB RAM, 2 CPUs):")
+        print("  --time=00:10:00 --mem=8G --cpus-per-task=2")
+        build_slurm_options = questionary.text(
+            "Enter SLURM options for building .sif containers:",
+            default="--time=00:10:00 --mem=8G --cpus-per-task=2"
+        ).ask()
+        config["project"]["slurm_options_build"] = sanitize_slurm_options(build_slurm_options) if build_slurm_options else ""
+        
+        if target == "full":
+            # Ask if user wants same or different SLURM options for PySpark and Ray
+            slurm_choice = questionary.select(
+                "SLURM options for PySpark and Ray:",
+                choices=["Same options for both", "Different options for each"]
+            ).ask()
+            
+            if slurm_choice == "Same options for both":
+                slurm_options = questionary.text(
+                    "Enter SLURM options for both PySpark and Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+                ).ask()
+                config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
+                config["project"]["slurm_options_ray"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
+            else:  # Different options
+                pyspark_slurm = questionary.text(
+                    "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
+                ).ask()
+                ray_slurm = questionary.text(
+                    "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+                ).ask()
+                config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(pyspark_slurm) if pyspark_slurm else ""
+                config["project"]["slurm_options_ray"] = sanitize_slurm_options(ray_slurm) if ray_slurm else ""
+        
+        elif target == "pyspark-only":
+            slurm_options = questionary.text(
+                "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
+            ).ask()
+            config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
+        
+        elif target == "ray-only":
+            slurm_options = questionary.text(
+                "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+            ).ask()
+            config["project"]["slurm_options_ray"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
 
     return config, config_name
 

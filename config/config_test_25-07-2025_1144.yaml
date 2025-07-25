@@ -1,35 +1,39 @@
 project:
-  name: testx1
+  name: test
   output_dir: ./data
   experiment_type: Classification
+  subjects_or_events: subjects
+  artifact_removal: ICA
+  config_name: config_test_25-07-2025_1144.yaml
   deployment_method: Docker
-  config_name: config_testx1_23-07-2025_1346.yaml
-pyspark:
-  master: '4'
-  driver_memory: '6'
-  executor_memory: '6'
-  executor_cores: '2'
-  shuffle_partitions: '8'
 data_input:
   groups:
     group_1:
     - /Users/user/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
-    - /Users/user/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
     group_2:
     - /Users/user/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
-    - /Users/user/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
   reuse_expanded: 'Yes'
   save_expanded: 'Yes'
 preprocessing:
   bands:
-  - Delta
-  - Theta
-  - Alpha
-  - Beta
-  - Gamma
+    Delta:
+    - 0.5
+    - 4
+    Theta:
+    - 4
+    - 8
+    Alpha:
+    - 8
+    - 12
+    Beta:
+    - 12
+    - 30
+    Gamma:
+    - 30
+    - 50
+  window_size: 3.0
   sliding_window: 0.5
   downsampling: null
-  artifact_removal: Where noted in the data
 feature_extraction:
   method: Welch (default)
   features:
@@ -42,4 +46,9 @@ feature_transformation:
   synthetic: None
 classification:
   split_method: By subject
-  test_split: '2'
+pyspark:
+  master: '4'
+  driver_memory: '6'
+  executor_memory: '6'
+  executor_cores: '2'
+  shuffle_partitions: '8'
