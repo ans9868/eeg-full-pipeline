@@ -1,0 +1,151 @@
+mypy by default cghecks if puttng in values where have specified return type
+in general must use ... 
+mypy --strict filename.py # this will tell all places where values not put in
+
+MyPy Example 
+
+def double(n: int) -> int:
+  return n*2 
+
+num1 : int = double(21)
+num2  = double(21)
+
+static analysis tool: does checkign without running code (mypy is this)
+
+Collection types: list, dict, set, defualtDict, deque, counter 
+
+
+from typing import List 
+
+def average(nums: List[int) -> float])
+  total = sum(nums)
+  count = len(nums)
+  return total / count 
+
+average([1,2,3,4,5]) 
+
+
+def get_total_marks(scorecard: Dict[str, int]) -> int:
+  marks = list(scorecard.values())
+  return sum(marks)
+
+scores = {'english': 84, 'coding': 99}
+
+from typing import Counter, List 
+
+def count_occurences(data: List[float]) -> Counter[float]:
+  occurences = Counter(data)
+  return occurences
+
+nums = [ 2.5, 3.3, 7, 1, 34]
+print(count_occurences(nums)) # Counter({1.0: 3, 2.5: 2, 7: 1, 6: 1})
+
+
+# empty sets need to be explicitly set for examples 
+uniques: Set[int] = set()
+
+for num in nums:
+    uniques.add(num)
+
+*****  Type debugging = Part 1 *****
+
+
+can reveal the type of a variable with 'reveal_type' + mypy --strict myfile.py
+
+Can use reveal_type for when need to, but won't run if have it on 
+
+if have Union, then can be more then 1 type , i can be bot hie 
+
+'Union[builtins.str*, None']'
+
+Optional[str] === Union[str, None]
+
+can use Any when don't know , but use it as little as possible 
+
+def post_data_to_api(data: Any) -> None:
+
+can create a tuble of size ?? of type str like this 
+
+veggies: Tuple[str, ...]
+
+Can use literals ! this are useful to ensure that waht is inputed is EXACTLY what you want , like enums
+Literal is like 'Literally has to be the type or it will fail'
+
+def make_request(method: Literal['GET', 'POST', 'DELETE'], data: Any) -> None 
+  print(f'making a {method} HTTP request)
+
+make_request('GET', 'data') # ok 
+make_request('PUT', 'data') # Fails type check since no 'PUT' in the literal
+
+Final === const 
+
+api_url : Final = 'https://me.com/api'
+
+def event_loop() --> NoReturn
+
+def raise_exception(exc: Exception) -> NoReturn 
+  print('An exception is about to be raised')
+  raise exc 
+
+
+Notice that -> None works too for -> NoReturn but no reutrn is more specific 
+
+can use @overlaod when the types can be different for different scenarios 
+
+@overload 
+def read_file(file: TextIO) -> str: ...
+
+@overload
+def read_file(file: BinaryIO) -> bytes: ...
+
+def read(file(file: Union[textIO, BinaryIO])) -> Union[str, bytes]:
+  data = file.read()
+  print('length of data is ...', len(data))
+  return data
+
+
+
+Cna Type preexisting projects with .pyi files for example 
+
+test.py 
+
+def finonacci(n):
+  #some code 
+
+test.pyi
+
+def fivonacci(n: int) -> int: ...
+
+if want to allow personal package to have type checkign  , need to have py.typed in the project 
+
+
+
+
+
+$ tree ..
+..
+├── setup.py
+├── src
+│   └── mypackage
+│       ├── __init__.py
+│       ├── py.typed
+│       └── utils
+│           ├── foo.py
+│           └── __init__.py
+└── test
+    └── test.py
+
+There's yet another third pitfall that you might encounter sometimes, which is if a.py declares a class MyClass, and it imports stuff from a file b.py which requires to import MyClass from a.py for type-checking purposes.
+
+This creates an import cycle, and Python gives you an ImportError. To avoid this, simple add an if typing.TYPE_CHECKING: block to the import statement in b.py, since it only needs MyClass for type checking. Also, everywhere you use MyClass, add quotes: 'MyClass' so that Python is happy.
+
+
+Typing context Manages 
+
+Genearic Functions 
+
+T = TypeVar('T') # this is how create generaic type in python
+def make_obj(cls: Type[T], *args: Any) -> T:
+  print('making object of', cls)
+  obj = cls(*args)
+  return obj

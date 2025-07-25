@@ -1,0 +1,14 @@
+spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*] /app/src/main.py --config /app/config.yaml
+
+docker run --rm \
+  -v /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/config/config_testx1_23-07-2025_1454.yaml:/app/config.yaml \
+  -v ./config/spark:/opt/bitnami/spark/conf \
+  -v ./logs/spark-events:/opt/bitnami/spark/logs/ \
+  -v /Users/user/bigData/ds004504-download/sub-001/eeg:/Users/user/bigData/ds004504-download/sub-001/eeg \
+  -v /Users/user/bigData/ds004504-download/sub-002/eeg:/Users/user/bigData/ds004504-download/sub-002/eeg \
+  -v /Users/user/bigData/ds004504-download/sub-037/eeg:/Users/user/bigData/ds004504-download/sub-037/eeg \
+  -v /Users/user/bigData/ds004504-download/sub-038/eeg:/Users/user/bigData/ds004504-download/sub-038/eeg \
+  -v /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/data:/app/data \
+  -it nour333/eeg-spark-pipeline:latest \
+  /bin/bash
+

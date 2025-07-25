@@ -16,6 +16,16 @@ CONTAINER_CONFIG = {
         # "entrypoint": "/app/src/test_config_access.py",
         "command": "spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*]",
         "job_name": "eeg-pyspark",
+        "mounts": [
+            # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
+            ("./config/spark", "/opt/bitnami/spark/conf"),        # Spark configs (editable)
+            ("./data", "/app/data"),                              # Output / intermediate features
+            # entrypoint.sh --> export LOG_FILE_PATH="/opt/bitnami/spark/logs/spark-driver-$(date +%Y-%m-%d_%H-%M).log"
+            ("./logs/spark-events", "/opt/bitnami/spark/logs/"),   # Spark event logs
+            # Future additions (e.g., user EEG data, model output, results)
+            # ("./user_data", "/app/user_data"),
+            # ("./output", "/app/output"),
+        ]
     },
     "ray": {
         "docker_image": "nour333/eeg-ray-tuner:latest",
@@ -23,6 +33,11 @@ CONTAINER_CONFIG = {
         "entrypoint": "/app/test-ray.py",
         "command": "python",
         "job_name": "eeg-ray-tuner",
+        "mounts": [
+            # Editable + persistent (bind mount everything explicitly)
+            # Add any additional mounts here if needed for Ray
+            # Example: ("./ray_config", "/app/ray_config"),
+        ]
     },
 }
 
@@ -89,6 +104,21 @@ def infer_pipeline_mode() -> str:
         return "full"
 
 
+def create_required_directories() -> None:
+    """Create required directories for the pipeline."""
+    directories = [
+        "config",
+        "config/spark", 
+        "logs",
+        "logs/spark-events",
+        "data" # we can override this with the user config , need implement logic for this
+    ]
+    
+    for directory in directories:
+        Path(directory).mkdir(parents=True, exist_ok=True)
+        print(f"📁 Created/verified directory: {directory}")
+
+
 # =============================================================================
 # CORE CONTAINER EXECUTION FUNCTIONS
 # =============================================================================
@@ -103,32 +133,28 @@ def get_container_command(container_type: str, config_path: str) -> str:
         return f"{config['command']} {config['entrypoint']} --config /app/config.yaml"
 
 
-def get_data_directories_to_mount(config: Dict[str, Any]) -> List[Tuple[str, str]]:
-    """Extract unique directories from file paths in config and return mount mappings."""
-    mount_mappings = []
-    seen_dirs = set()
+def build_user_mounts(config: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """Build user-specific mounts from config."""
+    user_mounts = []
     
-    # Extract all file paths from the config
-    all_file_paths = []
+    # Add data directories from config
     if "data_input" in config and "groups" in config["data_input"]:
+        seen_dirs = set()
         for group_name, file_list in config["data_input"]["groups"].items():
             if isinstance(file_list, list):
-                all_file_paths.extend(file_list)
+                for file_path in file_list:
+                    if isinstance(file_path, str):
+                        # Get the directory containing the file
+                        dir_path = str(Path(file_path).parent)
+                        if dir_path not in seen_dirs:
+                            seen_dirs.add(dir_path)
+                            # Mount the directory to the same path inside the container
+                            user_mounts.append((dir_path, dir_path))
     
-    # Extract unique directories
-    for file_path in all_file_paths:
-        if isinstance(file_path, str):
-            # Get the directory containing the file
-            dir_path = str(Path(file_path).parent)
-            if dir_path not in seen_dirs:
-                seen_dirs.add(dir_path)
-                # Mount the directory to the same path inside the container
-                mount_mappings.append((dir_path, dir_path))
-    
-    # Add output directory FIRST (so it appears in the top few)
-    output_mount = None
+    # Add output directory (this can override the default ./data mount)
     if "project" in config and "output_dir" in config["project"]:
         output_dir = config["project"]["output_dir"]
+        
         # Convert relative path to absolute path
         if output_dir.startswith("./"):
             output_dir = str(Path.cwd() / output_dir[2:])
@@ -138,12 +164,44 @@ def get_data_directories_to_mount(config: Dict[str, Any]) -> List[Tuple[str, str
         # Create output directory if it doesn't exist
         Path(output_dir).mkdir(parents=True, exist_ok=True)
         
-        # Mount output directory to the same path inside container
-        output_mount = (output_dir, output_dir)
+        # Mount output directory to /app/data (overriding default ./data)
+        user_mounts.append((output_dir, "/app/data"))
+        print(f"🔧 User config overrides default ./data mount with: {config['project']['output_dir']}")
     
-    # Put output directory first, then data directories
-    if output_mount:
-        mount_mappings.insert(0, output_mount)
+    return user_mounts
+
+
+def get_all_mount_mappings(container_type: str, config_path: str, config_data: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """Get all mount mappings for a container type based on CONTAINER_CONFIG."""
+    container_config = CONTAINER_CONFIG[container_type]
+    mount_mappings = []
+    
+    # Add specific config file mount
+    mount_mappings.append((config_path, "/app/config.yaml"))
+    
+    # Add static mounts from configuration (but check for user overrides)
+    static_mounts = container_config["mounts"].copy()
+    
+    # Check if user config has output_dir that would override ./data
+    user_has_output_dir = (
+        "project" in config_data and 
+        "output_dir" in config_data["project"]
+    )
+    
+    # If user specified output_dir, filter out the default ./data mount to avoid conflicts
+    if user_has_output_dir:
+        static_mounts = [
+            (host_path, container_path) 
+            for host_path, container_path in static_mounts 
+            if not (host_path == "./data" and container_path == "/app/data")
+        ]
+        print(f"🔧 User config overrides default ./data mount with: {config_data['project']['output_dir']}")
+    
+    mount_mappings.extend(static_mounts)
+    
+    # Add dynamic mounts (built from user config)
+    dynamic_mounts = build_user_mounts(config_data)
+    mount_mappings.extend(dynamic_mounts)
     
     return mount_mappings
 
@@ -155,18 +213,12 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     
     # Load config to get data directories
     config_data = load_config(config_path)
-    mount_mappings = get_data_directories_to_mount(config_data)
+    mount_mappings = get_all_mount_mappings(container_type, config_path, config_data)
     
     # Build docker run command with volume mounts
-    docker_cmd = [
-        "docker",
-        "run",
-        "--rm",
-        "-v",
-        f"{config_path}:/app/config.yaml",
-    ]
+    docker_cmd = ["docker", "run", "--rm"]
     
-    # Add data directory mounts
+    # Add volume mounts
     for host_path, container_path in mount_mappings:
         docker_cmd.extend(["-v", f"{host_path}:{container_path}"])
     
@@ -175,14 +227,16 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     
     print(f"🔗 Mounting {len(mount_mappings)} directories:")
     
-    # Show first few directories (including output directory which is first)
+    # Show first few directories
     show_count = min(5, len(mount_mappings))
     for i, (host_path, container_path) in enumerate(mount_mappings[:show_count], 1):
         print(f"   {i}. {host_path} -> {container_path}")
     
     if len(mount_mappings) > show_count:
         print(f"   ... and {len(mount_mappings) - show_count} more directories")
-    
+
+    print(f"🔗 Running command: {docker_cmd}")
+
     subprocess.run(docker_cmd, check=True)
 
 
@@ -193,17 +247,12 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
     
     # Load config to get data directories
     config_data = load_config(config_path)
-    mount_mappings = get_data_directories_to_mount(config_data)
+    mount_mappings = get_all_mount_mappings(container_type, config_path, config_data)
     
     # Build singularity run command with bind mounts
-    singularity_cmd = [
-        "singularity",
-        "run",
-        "--bind",
-        f"{config_path}:/app/config.yaml",
-    ]
+    singularity_cmd = ["singularity", "run"]
     
-    # Add data directory bind mounts
+    # Add bind mounts
     for host_path, container_path in mount_mappings:
         singularity_cmd.extend(["--bind", f"{host_path}:{container_path}"])
     
@@ -212,7 +261,7 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
     
     print(f"🔗 Mounting {len(mount_mappings)} directories:")
     
-    # Show first few directories (including output directory which is first)
+    # Show first few directories
     show_count = min(5, len(mount_mappings))
     for i, (host_path, container_path) in enumerate(mount_mappings[:show_count], 1):
         print(f"   {i}. {host_path} -> {container_path}")
@@ -286,7 +335,7 @@ def create_slurm_script(
 
     # Load config to get data directories
     config_data = load_config(config_path)
-    mount_mappings = get_data_directories_to_mount(config_data)
+    mount_mappings = get_all_mount_mappings(container_type, config_path, config_data)
 
     dependency_line = (
         f"#SBATCH --dependency=afterok:{dependency_job_id}\n"
@@ -295,10 +344,7 @@ def create_slurm_script(
     )
 
     # Build bind mount string for singularity
-    bind_mounts = [f"{config_path}:/app/config.yaml"]
-    for host_path, container_path in mount_mappings:
-        bind_mounts.append(f"{host_path}:{container_path}")
-    
+    bind_mounts = [f"{host_path}:{container_path}" for host_path, container_path in mount_mappings]
     bind_mount_string = ",".join(bind_mounts)
 
     slurm_content = f"""#!/bin/bash
@@ -539,6 +585,10 @@ def main() -> None:
 
     print(f"🚀 Starting pipeline with deployment method: {deployment_method}")
     print(f"🎯 Pipeline mode: {pipeline_mode}")
+    
+    # Create required directories
+    print("\n📁 Setting up required directories...")
+    create_required_directories()
 
     if deployment_method == "Docker":
         if pipeline_mode == "pyspark-only":
