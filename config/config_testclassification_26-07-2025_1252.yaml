@@ -1,10 +1,10 @@
 project:
-  name: test
+  name: testClassification
   output_dir: ./data
   experiment_type: Classification
   subjects_or_events: subjects
-  artifact_removal: ICA
-  config_name: config_test_25-07-2025_1144.yaml
+  artifact_removal: Auto-reject where noted in the data
+  config_name: config_testclassification_26-07-2025_1252.yaml
   deployment_method: Docker
 data_input:
   groups:
@@ -14,6 +14,10 @@ data_input:
     - /Users/user/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
   reuse_expanded: 'Yes'
   save_expanded: 'Yes'
+  reuse_feature_extracted: 'Yes'
+  save_feature_extracted: 'Yes'
+  reuse_transformed: 'Yes'
+  save_transformed: 'Yes'
 preprocessing:
   bands:
     Delta:
@@ -28,9 +32,6 @@ preprocessing:
     Beta:
     - 12
     - 30
-    Gamma:
-    - 30
-    - 50
   window_size: 3.0
   sliding_window: 0.5
   downsampling: null
@@ -39,13 +40,18 @@ feature_extraction:
   features:
   - Band Power (averaged across all channels/bands)
   - Band Power (per channel, averaged across bands)
-  - Band Power (averaged across channels, per band) *(not usually used)
   - Band Power (per channel per band) *recommended
 feature_transformation:
-  transformations: PCA (retain 95% variance)
+  transformations: MinMax scaler
   synthetic: None
-classification:
-  split_method: By subject
+data_leakage_prevention:
+  strategy: 1 test/1 train split with transforms applied to training set only (faster,
+    single split)
+  single_split_method: Manually select test subjects and provide full paths
+  test_subjects_count: 2
+  test_subjects_paths:
+  - /Users/user/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+  - /Users/user/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
 pyspark:
   master: '4'
   driver_memory: '6'
