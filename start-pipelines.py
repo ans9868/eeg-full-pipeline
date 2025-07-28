@@ -144,15 +144,13 @@ def build_user_mounts(config: Dict[str, Any]) -> List[Tuple[str, str]]:
             if isinstance(file_list, list):
                 for file_path in file_list:
                     if isinstance(file_path, str):
-                        # Get the immediate parent directory of each file
-                        # This preserves the expected directory structure
-                        file_path_obj = Path(file_path)
-                        parent_dir = str(file_path_obj.parent)
-                        if parent_dir not in seen_dirs:
-                            seen_dirs.add(parent_dir)
-                            # Mount the parent directory to the same path inside the container
-                            user_mounts.append((parent_dir, parent_dir))
-                            print(f"🔗 Adding mount: {parent_dir} -> {parent_dir}")
+                        # Bind individual files directly
+                        # This is more precise and avoids directory permission issues
+                        if file_path not in seen_dirs:
+                            seen_dirs.add(file_path)
+                            # Mount the individual file to the same path inside the container
+                            user_mounts.append((file_path, file_path))
+                            print(f"🔗 Adding mount: {file_path} -> {file_path}")
     
     # Add output directory (this can override the default ./data mount)
     if "project" in config and "output_dir" in config["project"]:
@@ -425,12 +423,13 @@ def create_slurm_script(
         else ""
     )
 
-    # Build bind mount string for singularity
-    bind_mounts = [f"{host_path}:{container_path}" for host_path, container_path in mount_mappings]
-    bind_mount_string = ",".join(bind_mounts)
+    # Build bind mount arguments for singularity (separate --bind flags)
+    bind_args = []
+    for host_path, container_path in mount_mappings:
+        bind_args.extend(["--bind", f"{host_path}:{container_path}"])
 
     # Create the full singularity command for debugging
-    singularity_cmd = f"singularity run --bind {bind_mount_string} {config['singularity_image']} {command}"
+    singularity_cmd = f"singularity run {' '.join(bind_args)} {config['singularity_image']} {command}"
     
     print(f"🔗 SLURM will execute this Singularity command:")
     print(f"   {singularity_cmd}")
