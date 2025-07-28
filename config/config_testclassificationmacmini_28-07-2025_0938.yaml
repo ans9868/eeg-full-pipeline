@@ -1,0 +1,59 @@
+project:
+  name: testClassificationMacMini
+  output_dir: ./data
+  experiment_type: Classification
+  subjects_or_events: subjects
+  artifact_removal: Auto-reject where noted in the data
+  config_name: config_testclassificationmacmini_28-07-2025_0938.yaml
+  deployment_method: Docker
+data_input:
+  groups:
+    alz:
+    - /Users/user/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+    - /Users/user/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+    cntrl:
+    - /Users/user/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+    - /Users/user/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+  reuse_expanded: 'Yes'
+  save_expanded: 'Yes'
+  reuse_feature_extracted: 'Yes'
+  save_feature_extracted: 'Yes'
+  reuse_transformed: 'Yes'
+  save_transformed: 'Yes'
+preprocessing:
+  bands:
+    Delta:
+    - 0.5
+    - 4
+    Theta:
+    - 4
+    - 8
+    Alpha:
+    - 8
+    - 12
+    Beta:
+    - 12
+    - 30
+  window_size: 3.0
+  sliding_window: 0.5
+  downsampling: null
+feature_extraction:
+  method: Welch (default)
+  features:
+  - Band Power (averaged across all channels/bands)
+  - Band Power (per channel, averaged across bands)
+  - Band Power (per channel per band) *recommended
+feature_transformation:
+  transformations: MinMax scaler
+  synthetic: None
+data_leakage_prevention:
+  strategy: 1 test/1 train split with transforms applied to training set only (faster,
+    single split)
+  single_split_method: Automatically split subjects (e.g., 5 test subjects)
+  test_subjects_count: 1
+pyspark:
+  master: '4'
+  driver_memory: '6'
+  executor_memory: '6'
+  executor_cores: '2'
+  shuffle_partitions: '8'
