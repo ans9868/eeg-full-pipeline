@@ -453,6 +453,9 @@ def create_slurm_script(
 #SBATCH --error=./containers/{container_type}_%j.err
 {dependency_line}{singularity_cmd}
 """
+    print("\nHere is the SLURM script: \n")
+    print(slurm_content)
+    print("\n")
     return slurm_content
 
 
