@@ -118,6 +118,40 @@ def create_required_directories() -> None:
         Path(directory).mkdir(parents=True, exist_ok=True)
         print(f"📁 Created/verified directory: {directory}")
 
+def copy_data_to_scratch(config: Dict[str, Any]) -> None:
+    """Copy data files to /scratch/ for compute node access."""
+    if "data_input" in config and "groups" in config["data_input"]:
+        scratch_dir = "/scratch/ans9868/eeg-data"
+        Path(scratch_dir).mkdir(parents=True, exist_ok=True)
+        
+        print(f"📁 Copying data files to {scratch_dir}...")
+        
+        for group_name, file_list in config["data_input"]["groups"].items():
+            if isinstance(file_list, list):
+                for file_path in file_list:
+                    if isinstance(file_path, str):
+                        # Get just the filename
+                        filename = Path(file_path).name
+                        dest_path = f"{scratch_dir}/{filename}"
+                        
+                        # Copy if not already there
+                        if not Path(dest_path).exists():
+                            print(f"   Copying {file_path} -> {dest_path}")
+                            import shutil
+                            shutil.copy2(file_path, dest_path)
+                        else:
+                            print(f"   Skipping {filename} (already exists)")
+        
+        print(f"✅ Data files copied to {scratch_dir}")
+        
+        # Update the config to use scratch paths
+        for group_name, file_list in config["data_input"]["groups"].items():
+            if isinstance(file_list, list):
+                for i, file_path in enumerate(file_list):
+                    if isinstance(file_path, str):
+                        filename = Path(file_path).name
+                        config["data_input"]["groups"][group_name][i] = f"{scratch_dir}/{filename}"
+
 
 # =============================================================================
 # CORE CONTAINER EXECUTION FUNCTIONS
@@ -691,6 +725,11 @@ def main() -> None:
     # Create required directories
     print("\n📁 Setting up required directories...")
     create_required_directories()
+
+    # Copy data to scratch if using SLURM (for compute node access)
+    if deployment_method == "Singularity with Slurm":
+        print("\n📁 Copying data files to /scratch/ for compute node access...")
+        copy_data_to_scratch(config)
 
     if deployment_method == "Docker":
         if pipeline_mode == "pyspark-only":
