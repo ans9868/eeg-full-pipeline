@@ -429,12 +429,21 @@ def create_slurm_script(
     bind_mounts = [f"{host_path}:{container_path}" for host_path, container_path in mount_mappings]
     bind_mount_string = ",".join(bind_mounts)
 
+    # Create the full singularity command for debugging
+    singularity_cmd = f"singularity run --bind {bind_mount_string} {config['singularity_image']} {command}"
+    
+    print(f"🔗 SLURM will execute this Singularity command:")
+    print(f"   {singularity_cmd}")
+    print(f"🔗 With {len(mount_mappings)} bind mounts:")
+    for i, (host_path, container_path) in enumerate(mount_mappings, 1):
+        print(f"   {i}. {host_path} -> {container_path}")
+
     slurm_content = f"""#!/bin/bash
 #SBATCH {slurm_options}
 #SBATCH --job-name={config['job_name']}
 #SBATCH --output=./containers/{container_type}_%j.out
 #SBATCH --error=./containers/{container_type}_%j.err
-{dependency_line}singularity run --bind {bind_mount_string} {config['singularity_image']} {command}
+{dependency_line}{singularity_cmd}
 """
     return slurm_content
 
