@@ -437,11 +437,10 @@ def create_slurm_script(
     print(f"🔗 SLURM will execute this Singularity command:")
     
     # Print the command in a readable single-line format
-    print("   singularity run \\")
     bind_parts = []
     for host_path, container_path in mount_mappings:
         bind_parts.append(f"--bind {host_path}:{container_path}")
-    print(f"     {' '.join(bind_parts)} {config['singularity_image']} {command}")
+    print(f"   singularity run {' '.join(bind_parts)} {config['singularity_image']} {command}")
     
     print(f"🔗 With {len(mount_mappings)} bind mounts:")
     for i, (host_path, container_path) in enumerate(mount_mappings, 1):
