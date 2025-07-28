@@ -1,17 +1,19 @@
 project:
-  name: testClassification
+  name: testClassificationMacMini
   output_dir: ./data
   experiment_type: Classification
   subjects_or_events: subjects
   artifact_removal: Auto-reject where noted in the data
-  config_name: config_testclassification_26-07-2025_1252.yaml
+  config_name: config_testclassificationmacmini_28-07-2025_1917.yaml
   deployment_method: Docker
 data_input:
   groups:
-    group_1:
-      - /Users/user/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set, /Users/user/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
-    group_2:
-      - /Users/user/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set, /Users/user/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+    alz:
+      - /Volumes/CrucialX7/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+      - /Volumes/CrucialX7/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+    cntrl:
+      - /Volumes/CrucialX7/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+      - /Volumes/CrucialX7/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
   reuse_expanded: "Yes"
   save_expanded: "Yes"
   reuse_feature_extracted: "Yes"
@@ -22,10 +24,10 @@ preprocessing:
   bands:
     Delta:
       - 0.5
-      - 4
+      - 5
     Theta:
-      - 4
-      - 8
+      - 5
+      - 9
     Alpha:
       - 8
       - 12
@@ -48,11 +50,8 @@ data_leakage_prevention:
   strategy:
     1 test/1 train split with transforms applied to training set only (faster,
     single split)
-  single_split_method: Manually select test subjects and provide full paths
-  test_subjects_count: 2
-  test_subjects_paths:
-    - /Users/user/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
-    - /Users/user/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+  single_split_method: Automatically split subjects (e.g., 5 test subjects)
+  test_subjects_count: 1
 pyspark:
   master: "4"
   driver_memory: "6"

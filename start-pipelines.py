@@ -237,7 +237,46 @@ def run_docker_container(container_type: str, config_path: str) -> None:
 
     print(f"🔗 Running command: {docker_cmd}")
 
-    subprocess.run(docker_cmd, check=True)
+    try:
+        subprocess.run(docker_cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"\n❌ Docker command failed with exit code {e.returncode}")
+        
+        # Check for common Docker mount errors
+        if "operation not permitted" in str(e).lower() or "mkdir" in str(e).lower():
+            print("\n🔍 Most likely causes:")
+            print("   1. Docker doesn't have full disk access")
+            print("   2. Docker doesn't have permission to access the specified files/directories")
+            print("   3. The files/directories don't exist")
+            print("\n💡 Solutions:")
+            print("   • On macOS: Go to System Preferences > Security & Privacy > Privacy > Full Disk Access")
+            print("     and add Docker to the list")
+            print("   • Check that all paths in your config file exist and are accessible")
+            print("   • Ensure Docker has permission to access the mounted directories")
+            print("   • Try running with sudo if on Linux (not recommended for production)")
+        if "no such file or directory" in str(e).lower():
+            print("\n🔍 Most likely cause: One or more files/directories don't exist")
+            print("\n💡 Solution: Check that all paths in your config file exist")
+        if "permission denied" in str(e).lower():
+            print("\n🔍 Most likely cause: Permission denied accessing files/directories")
+            print("\n💡 Solutions:")
+            print("   • Check file permissions on the mounted directories")
+            print("   • Ensure Docker has permission to access the files")
+            print("   • On macOS: Check Docker's Full Disk Access permissions")
+        
+        print(f"\n🔍 Error details: {e}")
+        
+        print(f"\n📋 Full error output:")
+        if e.stdout:
+            print(f"STDOUT: {e.stdout.decode()}")
+        if e.stderr:
+            print(f"STDERR: {e.stderr.decode()}")
+        
+        sys.exit(1)
+    except FileNotFoundError:
+        print("\n❌ Docker command not found")
+        print("💡 Please ensure Docker is installed and available in your PATH")
+        sys.exit(1)
 
 
 def run_singularity_container(container_type: str, config_path: str) -> None:
@@ -269,7 +308,47 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
     if len(mount_mappings) > show_count:
         print(f"   ... and {len(mount_mappings) - show_count} more directories")
     
-    subprocess.run(singularity_cmd, check=True)
+    print(f"🔗 Running command: {singularity_cmd}")
+    
+    try:
+        subprocess.run(singularity_cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"\n❌ Singularity command failed with exit code {e.returncode}")
+        
+        # Check for common Singularity mount errors
+        if "operation not permitted" in str(e).lower() or "mkdir" in str(e).lower():
+            print("\n🔍 Most likely causes:")
+            print("   1. Singularity doesn't have permission to access the specified files/directories")
+            print("   2. The files/directories don't exist")
+            print("   3. Insufficient permissions to bind mount directories")
+            print("\n💡 Solutions:")
+            print("   • Check that all paths in your config file exist and are accessible")
+            print("   • Ensure Singularity has permission to access the mounted directories")
+            print("   • Check file permissions on the directories you're trying to mount")
+            print("   • Try running with sudo if on Linux (not recommended for production)")
+        elif "no such file or directory" in str(e).lower():
+            print("\n🔍 Most likely cause: One or more files/directories don't exist")
+            print("\n💡 Solution: Check that all paths in your config file exist")
+        elif "permission denied" in str(e).lower():
+            print("\n🔍 Most likely cause: Permission denied accessing files/directories")
+            print("\n💡 Solutions:")
+            print("   • Check file permissions on the mounted directories")
+            print("   • Ensure Singularity has permission to access the files")
+            print("   • Check if the .sif file exists and is accessible")
+        else:
+            print(f"\n🔍 Error details: {e}")
+        
+        print(f"\n📋 Full error output:")
+        if e.stdout:
+            print(f"STDOUT: {e.stdout.decode()}")
+        if e.stderr:
+            print(f"STDERR: {e.stderr.decode()}")
+        
+        sys.exit(1)
+    except FileNotFoundError:
+        print("\n❌ Singularity command not found")
+        print("💡 Please ensure Singularity is installed and available in your PATH")
+        sys.exit(1)
 
 
 # =============================================================================

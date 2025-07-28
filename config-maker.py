@@ -105,28 +105,63 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         # TODO: Check if the paths are in the correct group in [1] data inputs
         # TODO: check if there is no overlap between the groups
         while True:
-            group_input = questionary.text(
-                f"Enter comma-separated EEG paths for Group {group_number} (or 'done'):"
+            # Ask for group name first
+            group_name = questionary.text(
+                f"What is the name for group number {group_number}? (e.g., 'alz', 'control', 'patient') (or 'done' to finish):"
             ).ask()
-            if group_input.lower() == "done":
+            
+            if group_name.lower() == "done":
                 # Check if we have at least 1 group with at least 1 path
                 if len(config["data_input"]["groups"]) == 0:
                     print("[ERROR] You must enter at least 1 group with at least 1 path before finishing.")
                     continue
                 break
-            if not group_input.strip():
-                print("[ERROR] Please enter valid paths to the *.set/.fif files or 'done'")
+            
+            if not group_name.strip():
+                print("[ERROR] Please enter a valid group name or 'done'")
                 continue
-            try:
-                valid_paths = validate_eeg_paths([path.strip() for path in group_input.split(",") if path.strip()])
-                if len(valid_paths) == 0:
-                    print("[ERROR] At least 1 valid path is required per group.")
+            
+            # Validate group name length and content
+            if len(group_name.strip()) > 8:
+                print("[ERROR] Group name must be 8 characters or less. Please use a shorter name.")
+                continue
+            
+            # Check if group name contains file path indicators (likely user mistake)
+            if '/' in group_name or '\\' in group_name or group_name.endswith('.set') or group_name.endswith('.fif'):
+                print("[ERROR] It looks like you entered file paths instead of a group name.")
+                print("Please enter a short group name (e.g., 'alz', 'control', 'patient') and then provide the file paths in the next step.")
+                continue
+            
+            # Sanitize group name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore
+            sanitized_group_name = re.sub(r'[^a-zA-Z0-9_]', '', group_name.replace(' ', '_').lower())
+            
+            # Check if group name already exists
+            if sanitized_group_name in config["data_input"]["groups"]:
+                print(f"[ERROR] Group name '{sanitized_group_name}' already exists. Please choose a different name.")
+                continue
+            
+            # Ask for paths for this group - use a separate loop for path validation
+            while True:
+                group_input = questionary.text(
+                    f"Enter comma-separated EEG paths for the '{group_name}' group:"
+                ).ask()
+                
+                if not group_input.strip():
+                    print("[ERROR] Please enter valid paths to the *.set/.fif files")
                     continue
-                config["data_input"]["groups"][f"group_{group_number}"] = valid_paths
-                group_number += 1
-            except ValueError as e:
-                print(f"[ERROR] {e}")
-                continue
+                    
+                try:
+                    valid_paths = validate_eeg_paths([path.strip() for path in group_input.split(",") if path.strip()])
+                    if len(valid_paths) == 0:
+                        print("[ERROR] At least 1 valid path is required per group.")
+                        continue
+                    config["data_input"]["groups"][sanitized_group_name] = valid_paths
+                    group_number += 1
+                    break  # Successfully added group, exit the path input loop
+                except ValueError as e:
+                    print(f"[ERROR] {e}")
+                    # Continue the inner loop to ask for paths again
+                    continue
 
         config["data_input"]["reuse_expanded"] = questionary.select(
             "Reuse expanded .set/.fif files if they exist?", choices=["Yes", "No"]
@@ -311,9 +346,14 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                         # Ask for fold paths
                         config["data_leakage_prevention"]["fold_paths"] = {}
                         fold_number = 1
+                        
+                        # Get available group names for reference
+                        available_groups = list(config["data_input"]["groups"].keys())
+                        groups_text = ", ".join(available_groups)
+                        
                         while True:
                             fold_input = questionary.text(
-                                f"Enter comma-separated paths to test subjects for fold {fold_number} (or 'done')\n*Notice these paths should have been inputed in the correct group in [1] data inputs:"
+                                f"Enter comma-separated paths to test subjects for fold {fold_number} (or 'done')\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
                             ).ask()
                             if fold_input.lower() == "done":
                                 break
@@ -326,6 +366,21 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                                 fold_paths = [path.strip() for path in fold_input.split(",") if path.strip()]
                                 valid_fold_paths = validate_eeg_paths(fold_paths)
                                 
+                                # Check if paths exist in groups from part 1
+                                found_paths, missing_paths = check_paths_in_groups(valid_fold_paths, config["data_input"]["groups"])
+                                
+                                if missing_paths:
+                                    print(f"⚠️  WARNING: The following paths were not found in part 1 groups: {', '.join(missing_paths)}")
+                                    action = questionary.select(
+                                        "What would you like to do?",
+                                        choices=["Exit program (go back to [1] to add missing paths)", "Re-enter paths for this fold"]
+                                    ).ask()
+                                    if action == "Exit program (go back to [1] to add missing paths)":
+                                        print("Exiting config maker. Please run it again and add the missing paths in [1] Data Input.")
+                                        exit(0)
+                                    else:
+                                        continue
+                                
                                 # Check if number of subjects matches expected count
                                 if len(valid_fold_paths) != config["data_leakage_prevention"]["test_subjects_per_fold"]:
                                     confirm = questionary.select(
@@ -334,7 +389,6 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                                     ).ask()
                                     if confirm == "No, re-enter":
                                         continue
-                                # TODO: Check if the paths are in the correct group in [1] data inputs
                                 
                                 config["data_leakage_prevention"]["fold_paths"][f"fold_{fold_number}"] = valid_fold_paths
                                 fold_number += 1
@@ -386,9 +440,13 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                                 print("[ERROR] Please enter a valid integer.")
                         
                         # Ask for test subject paths with validation
+                        # Get available group names for reference
+                        available_groups = list(config["data_input"]["groups"].keys())
+                        groups_text = ", ".join(available_groups)
+                        
                         while True:
                             test_subjects_input = questionary.text(
-                                f"Enter comma-separated paths to test subjects (expected {config['data_leakage_prevention']['test_subjects_count']} subjects)*Notice these paths should have been inputed in the correct group in [1] data inputs:"
+                                f"Enter comma-separated paths to test subjects (expected {config['data_leakage_prevention']['test_subjects_count']} subjects)\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
                             ).ask()
                             if not test_subjects_input.strip():
                                 print("[ERROR] Please enter valid paths.")
@@ -397,6 +455,21 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                             try:
                                 test_paths = [path.strip() for path in test_subjects_input.split(",") if path.strip()]
                                 valid_test_paths = validate_eeg_paths(test_paths)
+                                
+                                # Check if paths exist in groups from part 1
+                                found_paths, missing_paths = check_paths_in_groups(valid_test_paths, config["data_input"]["groups"])
+                                
+                                if missing_paths:
+                                    print(f"⚠️  WARNING: The following paths were not found in part 1 groups: {', '.join(missing_paths)}")
+                                    action = questionary.select(
+                                        "What would you like to do?",
+                                        choices=["Exit program (go back to [1] to add missing paths)", "Re-enter paths for this test set"]
+                                    ).ask()
+                                    if action == "Exit program (go back to [1] to add missing paths)":
+                                        print("Exiting config maker. Please run it again and add the missing paths in [1] Data Input.")
+                                        exit(0)
+                                    else:
+                                        continue
                                 
                                 # Check if number of subjects matches expected count
                                 if len(valid_test_paths) != config["data_leakage_prevention"]["test_subjects_count"]:
@@ -592,6 +665,25 @@ def validate_eeg_paths(paths: List[str]) -> List[str]:
         valid_paths.append(path)
     
     return valid_paths
+
+
+def check_paths_in_groups(paths: List[str], groups: Dict[str, List[str]]) -> Tuple[List[str], List[str]]:
+    """Check which paths exist in groups and which don't. Returns (found_paths, missing_paths)."""
+    found_paths = []
+    missing_paths = []
+    
+    # Flatten all paths from all groups
+    all_group_paths = []
+    for group_paths in groups.values():
+        all_group_paths.extend(group_paths)
+    
+    for path in paths:
+        if path in all_group_paths:
+            found_paths.append(path)
+        else:
+            missing_paths.append(path)
+    
+    return found_paths, missing_paths
 
 
 if __name__ == "__main__":
