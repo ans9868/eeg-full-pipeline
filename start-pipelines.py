@@ -144,12 +144,15 @@ def build_user_mounts(config: Dict[str, Any]) -> List[Tuple[str, str]]:
             if isinstance(file_list, list):
                 for file_path in file_list:
                     if isinstance(file_path, str):
-                        # Get the directory containing the file
-                        dir_path = str(Path(file_path).parent)
-                        if dir_path not in seen_dirs:
-                            seen_dirs.add(dir_path)
-                            # Mount the directory to the same path inside the container
-                            user_mounts.append((dir_path, dir_path))
+                        # Get the immediate parent directory of each file
+                        # This preserves the expected directory structure
+                        file_path_obj = Path(file_path)
+                        parent_dir = str(file_path_obj.parent)
+                        if parent_dir not in seen_dirs:
+                            seen_dirs.add(parent_dir)
+                            # Mount the parent directory to the same path inside the container
+                            user_mounts.append((parent_dir, parent_dir))
+                            print(f"🔗 Adding mount: {parent_dir} -> {parent_dir}")
     
     # Add output directory (this can override the default ./data mount)
     if "project" in config and "output_dir" in config["project"]:
