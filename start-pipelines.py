@@ -14,8 +14,12 @@ CONTAINER_CONFIG = {
         "singularity_image": "./containers/eeg-pyspark.sif",
         "entrypoint": "/app/main.py",
         # "entrypoint": "/app/src/test_config_access.py",
-        "command": "spark-submit --conf spark.jars.ivy=/tmp/.ivy2 --master local[*]",
+        "command": "spark-submit",
         "job_name": "eeg-pyspark",
+        # Spark-submit specific configurations (most Spark configs are in session_builder.py)
+        "spark_configs": [
+            "--conf", "spark.jars.ivy=/tmp/.ivy2"
+        ],
         "mounts": [
             # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
             ("./config/spark", "/opt/bitnami/spark/conf"),        # Spark configs (editable)
@@ -159,12 +163,24 @@ def copy_data_to_scratch(config: Dict[str, Any]) -> None:
 
 
 def get_container_command(container_type: str, config_path: str) -> str:
-    """Generate the command for a specific container type."""
+    """Get the command to run inside the container."""
     config = CONTAINER_CONFIG[container_type]
+    
+    # Build command parts
+    command_parts = [config["command"]]
+    
+    # Add spark-submit specific configs for pyspark
     if container_type == "pyspark":
-        return f"{config['command']} {config['entrypoint']} --config /app/config.yaml"
-    else:  # ray
-        return f"{config['command']} {config['entrypoint']} --config /app/config.yaml"
+        spark_configs = config.get("spark_configs", [])
+        command_parts.extend(spark_configs)
+    
+    # Add entrypoint and config
+    command_parts.extend([
+        config["entrypoint"],
+        "--config", "/app/config.yaml"
+    ])
+    
+    return " ".join(command_parts)
 
 
 def build_user_mounts(config: Dict[str, Any]) -> List[Tuple[str, str]]:
@@ -252,6 +268,10 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     
     # Build docker run command with volume mounts
     docker_cmd = ["docker", "run", "--rm"]
+    
+    # All Spark and Hadoop configurations are now centralized in session_builder.py
+    # But LD_PRELOAD is still needed for nss_wrapper in Docker
+    docker_cmd.extend(["-e", "LD_PRELOAD=/opt/bitnami/common/lib/libnss_wrapper.so"])
     
     # Add volume mounts
     for host_path, container_path in mount_mappings:

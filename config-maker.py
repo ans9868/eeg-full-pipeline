@@ -59,9 +59,16 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     # 0. Metadata
     print("\n[0] Project Metadata")
     config["project"] = {}
-    config["project"]["name"] = questionary.text("0.1 Project name:").ask()
+    project_name_input = questionary.text("0.1 Project name:").ask()
+    config["project"]["name"] = project_name_input.strip() if project_name_input else ""
+    
+    # Ensure project name is not empty
+    if not config["project"]["name"]:
+        print("⚠️  Warning: Project name is empty, using default name 'project'")
+        config["project"]["name"] = "project"
+    
     output_dir = questionary.text("0.2 Output directory (default is ./data):").ask()
-    config["project"]["output_dir"] = output_dir if output_dir else "./data"
+    config["project"]["output_dir"] = output_dir.strip() if output_dir else "./data"
     config["project"]["experiment_type"] = questionary.select(
         "0.3 Experiment Type:", choices=["Classification", "Clustering"] # "Regression"
     ).ask()
@@ -92,6 +99,10 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     project_name = config["project"]["name"] or "project"
     # Sanitize project name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore
     sanitized_name = re.sub(r'[^a-zA-Z0-9_]', '', project_name.replace(' ', '_').lower())
+    
+    # Debug: show the sanitized name
+    print(f"📝 Project name: '{project_name}' -> sanitized: '{sanitized_name}'")
+    
     timestamp = datetime.now().strftime("%d-%m-%Y_%H%M")
     config_name = f"config_{sanitized_name}_{timestamp}.yaml"
     config["project"]["config_name"] = config_name
@@ -106,9 +117,10 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         # TODO: check if there is no overlap between the groups
         while True:
             # Ask for group name first
-            group_name = questionary.text(
+            group_name_input = questionary.text(
                 f"What is the name for group number {group_number}? (e.g., 'alz', 'control', 'patient') (or 'done' to finish):"
             ).ask()
+            group_name = group_name_input.strip() if group_name_input else ""
             
             if group_name.lower() == "done":
                 # Check if we have at least 1 group with at least 1 path
@@ -117,7 +129,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                     continue
                 break
             
-            if not group_name.strip():
+            if not group_name:
                 print("[ERROR] Please enter a valid group name or 'done'")
                 continue
             
@@ -163,28 +175,26 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                     # Continue the inner loop to ask for paths again
                     continue
 
-        config["data_input"]["reuse_expanded"] = questionary.select(
-            "Reuse expanded .set/.fif files if they exist?", choices=["Yes", "No"]
+
+        config["data_input"]["reuse_raw"] = questionary.select(
+            "Reuse raw data processing if it exists?", choices=["Yes", "No"]
+        ).ask()
+        config["data_input"]["save_raw"] = questionary.select(
+            "Save raw data processing for reuse?", choices=["Yes", "No"]
         ).ask()
 
-        config["data_input"]["save_expanded"] = questionary.select(
-            "Save expanded .set/.fif files for reuse?", choices=["Yes", "No"]
+        config["data_input"]["reuse_processed_features"] = questionary.select(
+            "Reuse processed features (bandpower, entropy etc.) if they exist?", choices=["Yes", "No"]
         ).ask()
-
-        config["data_input"]["reuse_feature_extracted"] = questionary.select(
-            "Reuse feature extracted table (bandpower, entropy etc.) if it exists?", choices=["Yes", "No"]
-        ).ask()
-
-        config["data_input"]["save_feature_extracted"] = questionary.select(
-            "Save feature extracted table (bandpower, entropy etc.) for reuse?", choices=["Yes", "No"]
+        config["data_input"]["save_processed_features"] = questionary.select(
+            "Save processed features (bandpower, entropy etc.) for reuse?", choices=["Yes", "No"]
         ).ask()
 
         config["data_input"]["reuse_transformed"] = questionary.select(
-            "Reuse transformed table (extracted table post PCA, z-score etc.) if it exists?", choices=["Yes", "No"]
+            "Reuse transformed data (post PCA, z-score etc.) if it exists?", choices=["Yes", "No"]
         ).ask()
-
         config["data_input"]["save_transformed"] = questionary.select(
-            "Save transformed table (extracted table post PCA, z-score etc.) for reuse?", choices=["Yes", "No"]
+            "Save transformed data (post PCA, z-score etc.) for reuse?", choices=["Yes", "No"]
         ).ask()
 
 
