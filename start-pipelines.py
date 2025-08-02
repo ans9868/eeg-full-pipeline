@@ -32,11 +32,11 @@ CONTAINER_CONFIG = {
         ]
     },
     "ray": {
-        "docker_image": "nour333/eeg-ray-tuner:latest",
-        "singularity_image": "./containers/eeg-ray-tuner.sif",
+        "docker_image": "nour333/eeg-ray-pipeline:latest",
+        "singularity_image": "./containers/eeg-ray-pipeline.sif",
         "entrypoint": "/app/test-ray.py",
         "command": "python",
-        "job_name": "eeg-ray-tuner",
+        "job_name": "eeg-ray-pipeline",
         "mounts": [
             # Editable + persistent (bind mount everything explicitly)
             # Add any additional mounts here if needed for Ray
@@ -102,7 +102,7 @@ def infer_pipeline_mode() -> str:
 
     if repo == "eeg-pyspark-pipeline":
         return "pyspark-only"
-    elif repo == "eeg-ray-tuner":
+    elif repo == "eeg-ray-pipeline":
         return "ray-only"
     else:
         return "full"
@@ -417,7 +417,7 @@ def run_docker_pyspark_only(config_path: str) -> None:
 
 
 def run_docker_ray_only(config_path: str) -> None:
-    print("\n🐳 Running Ray tuner container only...")
+    print("\n🐳 Running Ray pipeline container only...")
     run_docker_container("ray", config_path)
 
 
@@ -425,7 +425,7 @@ def run_docker(config_path: str) -> None:
     print("\n🐳 Running PySpark container...")
     run_docker_container("pyspark", config_path)
 
-    print("\n🐳 Running Ray tuner container...")
+    print("\n🐳 Running Ray pipeline container...")
     run_docker_container("ray", config_path)
 
 
@@ -440,7 +440,7 @@ def run_singularity_pyspark_only(config_path: str) -> None:
 
 
 def run_singularity_ray_only(config_path: str) -> None:
-    print("\n🔒 Running Ray tuner Singularity container only...")
+    print("\n🔒 Running Ray pipeline Singularity container only...")
     run_singularity_container("ray", config_path)
 
 
@@ -448,7 +448,7 @@ def run_singularity_without_slurm(config_path: str) -> None:
     print("\n🔒 Running PySpark Singularity container...")
     run_singularity_container("pyspark", config_path)
 
-    print("\n🔒 Running Ray tuner Singularity container...")
+    print("\n🔒 Running Ray pipeline Singularity container...")
     run_singularity_container("ray", config_path)
 
 
@@ -554,7 +554,7 @@ def run_singularity_with_slurm_separate_options(
     with open("./containers/temp_ray.slurm", "w") as f:
         f.write(ray_slurm_content)
 
-    print(f"\n🧬 Submitting Ray tuner SLURM job (after PySpark job {job_id})...")
+    print(f"\n🧬 Submitting Ray pipeline SLURM job (after PySpark job {job_id})...")
     subprocess.run(["sbatch", "./containers/temp_ray.slurm"], check=True)
 
     # Clean up temporary files
@@ -577,7 +577,7 @@ def run_singularity_slurm_pyspark_only(config_path: str, slurm_options: str = ""
 
 
 def run_singularity_slurm_ray_only(config_path: str, slurm_options: str = "") -> None:
-    print("\n�� Submitting Ray tuner SLURM job only...")
+    print("\n�� Submitting Ray pipeline SLURM job only...")
 
     ray_slurm_content = create_slurm_script("ray", config_path, slurm_options)
 
@@ -613,11 +613,11 @@ def check_and_build_sif_files(config: Dict[str, Any], pipeline_mode: str, use_sl
     containers_to_check = []
     if pipeline_mode in ["pyspark-only", "full"]:
         containers_to_check.append(
-            ("eeg-pyspark.sif", "docker://nour333/eeg-spark-pipeline:latest", "pyspark")
+            ("eeg-pyspark-pipeline.sif", CONTAINER_CONFIG["pyspark"]["singularity_image"], "pyspark")
         )
     if pipeline_mode in ["ray-only", "full"]:
         containers_to_check.append(
-            ("eeg-ray-tuner.sif", "docker://nour333/eeg-ray-tuner:latest", "ray")
+            ("eeg-ray-pipeline.sif", CONTAINER_CONFIG["ray"]["singularity_image"], "ray")
         )
 
     # Check and build each required container
