@@ -94,7 +94,6 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         "0.4.2 Artifact removal method (defines how data was processed):",
         choices=[
             "ICA",
-            "Auto-reject where noted in the data",
             "None",
         ],  # costum list of events to remove
     ).ask()
@@ -283,6 +282,12 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 print("[ERROR] Please enter a valid float value.")
         config["preprocessing"]["sliding_window"] = sliding_window
 
+        # Ask for reject by annotation setting
+        config["preprocessing"]["reject_by_annotation"] = questionary.select(
+            "Reject epochs based on annotations (e.g., boundary events)?",
+            choices=["Yes", "No"]
+        ).ask()
+
         # Handle downsampling rate with validation
         while True:
             downsampling_input = questionary.text(
@@ -297,11 +302,10 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print("\n[3] Feature Extraction")
         config["feature_extraction"] = {}
         config["feature_extraction"]["method"] = questionary.select(
-            "Extraction method:",
+            "Extraction method (welch is default and fastest, multitaper is slower but more precise):",
             choices=[
-                "Welch (default)",
-                "Multitaper (slower, more precise)",
-                "Raw FFT (slowest, most precise)",
+                "welch",
+                "multitaper",
             ],
         ).ask()
         config["feature_extraction"]["features"] = questionary.checkbox(
@@ -312,6 +316,12 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 "Band Power (averaged across channels, per band) *(not usually used)",
                 "Band Power (per channel per band) *recommended",
             ],
+        ).ask()
+        
+        # Ask for PSD normalization
+        config["preprocessing"]["normalize_psd"] = questionary.select(
+            "Normalize PSD values? (Highly recommended!)",
+            choices=["Yes", "No"]
         ).ask()
 
         # 4. Feature Transformation

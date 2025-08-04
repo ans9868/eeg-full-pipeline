@@ -16,7 +16,7 @@ CONTAINER_CONFIG = {
         "entrypoint": "/app/main.py",
         # "entrypoint": "/app/src/test_config_access.py",
         "command": "spark-submit",
-        "job_name": "eeg-pyspark",
+        "job_name": "pyspark-pipeline",
         # Spark-submit specific configurations (most Spark configs are in session_builder.py)
         "spark_configs": ["--conf", "spark.jars.ivy=/tmp/.ivy2"],
         "mounts": [
@@ -29,13 +29,16 @@ CONTAINER_CONFIG = {
             # ("./user_data", "/app/user_data"),
             # ("./output", "/app/output"),
         ],
+        "ports": [
+            "4040:4040"
+        ],
     },
     "ray": {
         "docker_image": "nour333/eeg-ray-tuner:latest",
         "singularity_image": "./containers/eeg-ray-pipeline.sif",
         "entrypoint": "/app/test-ray.py",
         "command": "python",
-        "job_name": "eeg-ray-pipeline",
+        "job_name": "ray-tuner",
         "mounts": [
             # Editable + persistent (bind mount everything explicitly)
             # Add any additional mounts here if needed for Ray
@@ -283,6 +286,12 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     # All Spark and Hadoop configurations are now centralized in session_builder.py
     # But LD_PRELOAD is still needed for nss_wrapper in Docker
     docker_cmd.extend(["-e", "LD_PRELOAD=/opt/bitnami/common/lib/libnss_wrapper.so"])
+
+    # Add port mappings for pyspark container
+    if container_type == "pyspark":
+        ports = config.get("ports", [])
+        for port_mapping in ports:
+            docker_cmd.extend(["-p", port_mapping])
 
     # Add volume mounts
     for host_path, container_path in mount_mappings:
