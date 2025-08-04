@@ -1,10 +1,10 @@
+import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import questionary
 import yaml
-import re
 
 
 def infer_target() -> str:
@@ -61,16 +61,16 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     config["project"] = {}
     project_name_input = questionary.text("0.1 Project name:").ask()
     config["project"]["name"] = project_name_input.strip() if project_name_input else ""
-    
+
     # Ensure project name is not empty
     if not config["project"]["name"]:
         print("⚠️  Warning: Project name is empty, using default name 'project'")
         config["project"]["name"] = "project"
-    
+
     output_dir = questionary.text("0.2 Output directory (default is ./data):").ask()
     config["project"]["output_dir"] = output_dir.strip() if output_dir else "./data"
     config["project"]["experiment_type"] = questionary.select(
-        "0.3 Experiment Type:", choices=["Classification", "Clustering"] # "Regression"
+        "0.3 Experiment Type:", choices=["Classification", "Clustering"]  # "Regression"
     ).ask()
 
     config["project"]["subjects_or_events"] = questionary.select(
@@ -83,26 +83,32 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             "0.4.1 Enter comma-separated list of events to analyze (must match exactly as written in the data):"
         ).ask()
         if events_input.strip():
-            config["project"]["events_of_interest"] = [event.strip() for event in events_input.split(",") if event.strip()]
+            config["project"]["events_of_interest"] = [
+                event.strip() for event in events_input.split(",") if event.strip()
+            ]
         else:
             config["project"]["events_of_interest"] = []
 
     # 0.4.2 Artifact removal method (fundamental metadata)
     config["project"]["artifact_removal"] = questionary.select(
         "0.4.2 Artifact removal method (defines how data was processed):",
-        choices=["ICA", "Auto-reject where noted in the data", "None"], #costum list of events to remove
+        choices=[
+            "ICA",
+            "Auto-reject where noted in the data",
+            "None",
+        ],  # costum list of events to remove
     ).ask()
-
- 
 
     # Use user-supplied project name and timestamp for config name
     project_name = config["project"]["name"] or "project"
     # Sanitize project name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore
-    sanitized_name = re.sub(r'[^a-zA-Z0-9_]', '', project_name.replace(' ', '_').lower())
-    
+    sanitized_name = re.sub(
+        r"[^a-zA-Z0-9_]", "", project_name.replace(" ", "_").lower()
+    )
+
     # Debug: show the sanitized name
     print(f"📝 Project name: '{project_name}' -> sanitized: '{sanitized_name}'")
-    
+
     timestamp = datetime.now().strftime("%d-%m-%Y_%H%M")
     config_name = f"config_{sanitized_name}_{timestamp}.yaml"
     config["project"]["config_name"] = config_name
@@ -121,49 +127,72 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 f"What is the name for group number {group_number}? (e.g., 'alz', 'control', 'patient') (or 'done' to finish):"
             ).ask()
             group_name = group_name_input.strip() if group_name_input else ""
-            
+
             if group_name.lower() == "done":
                 # Check if we have at least 1 group with at least 1 path
                 if len(config["data_input"]["groups"]) == 0:
-                    print("[ERROR] You must enter at least 1 group with at least 1 path before finishing.")
+                    print(
+                        "[ERROR] You must enter at least 1 group with at least 1 path before finishing."
+                    )
                     continue
                 break
-            
+
             if not group_name:
                 print("[ERROR] Please enter a valid group name or 'done'")
                 continue
-            
+
             # Validate group name length and content
             if len(group_name.strip()) > 8:
-                print("[ERROR] Group name must be 8 characters or less. Please use a shorter name.")
+                print(
+                    "[ERROR] Group name must be 8 characters or less. Please use a shorter name."
+                )
                 continue
-            
+
             # Check if group name contains file path indicators (likely user mistake)
-            if '/' in group_name or '\\' in group_name or group_name.endswith('.set') or group_name.endswith('.fif'):
-                print("[ERROR] It looks like you entered file paths instead of a group name.")
-                print("Please enter a short group name (e.g., 'alz', 'control', 'patient') and then provide the file paths in the next step.")
+            if (
+                "/" in group_name
+                or "\\" in group_name
+                or group_name.endswith(".set")
+                or group_name.endswith(".fif")
+            ):
+                print(
+                    "[ERROR] It looks like you entered file paths instead of a group name."
+                )
+                print(
+                    "Please enter a short group name (e.g., 'alz', 'control', 'patient') and then provide the file paths in the next step."
+                )
                 continue
-            
+
             # Sanitize group name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore
-            sanitized_group_name = re.sub(r'[^a-zA-Z0-9_]', '', group_name.replace(' ', '_').lower())
-            
+            sanitized_group_name = re.sub(
+                r"[^a-zA-Z0-9_]", "", group_name.replace(" ", "_").lower()
+            )
+
             # Check if group name already exists
             if sanitized_group_name in config["data_input"]["groups"]:
-                print(f"[ERROR] Group name '{sanitized_group_name}' already exists. Please choose a different name.")
+                print(
+                    f"[ERROR] Group name '{sanitized_group_name}' already exists. Please choose a different name."
+                )
                 continue
-            
+
             # Ask for paths for this group - use a separate loop for path validation
             while True:
                 group_input = questionary.text(
                     f"Enter comma-separated EEG paths for the '{group_name}' group:"
                 ).ask()
-                
+
                 if not group_input.strip():
                     print("[ERROR] Please enter valid paths to the *.set/.fif files")
                     continue
-                    
+
                 try:
-                    valid_paths = validate_eeg_paths([path.strip() for path in group_input.split(",") if path.strip()])
+                    valid_paths = validate_eeg_paths(
+                        [
+                            path.strip()
+                            for path in group_input.split(",")
+                            if path.strip()
+                        ]
+                    )
                     if len(valid_paths) == 0:
                         print("[ERROR] At least 1 valid path is required per group.")
                         continue
@@ -175,7 +204,6 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                     # Continue the inner loop to ask for paths again
                     continue
 
-
         config["data_input"]["reuse_raw"] = questionary.select(
             "Reuse raw data processing if it exists?", choices=["Yes", "No"]
         ).ask()
@@ -183,41 +211,42 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             "Save raw data processing for reuse?", choices=["Yes", "No"]
         ).ask()
 
-        config["data_input"]["reuse_processed_features"] = questionary.select(
-            "Reuse processed features (bandpower, entropy etc.) if they exist?", choices=["Yes", "No"]
+        config["data_input"]["reuse_processed_subjects"] = questionary.select(
+            "Reuse processed features (bandpower, entropy etc.) if they exist?",
+            choices=["Yes", "No"],
         ).ask()
-        config["data_input"]["save_processed_features"] = questionary.select(
-            "Save processed features (bandpower, entropy etc.) for reuse?", choices=["Yes", "No"]
+        config["data_input"]["save_processed_subjects"] = questionary.select(
+            "Save processed features (bandpower, entropy etc.) for reuse?",
+            choices=["Yes", "No"],
         ).ask()
 
         config["data_input"]["reuse_transformed"] = questionary.select(
-            "Reuse transformed data (post PCA, z-score etc.) if it exists?", choices=["Yes", "No"]
+            "Reuse transformed data (post PCA, z-score etc.) if it exists?",
+            choices=["Yes", "No"],
         ).ask()
         config["data_input"]["save_transformed"] = questionary.select(
-            "Save transformed data (post PCA, z-score etc.) for reuse?", choices=["Yes", "No"]
+            "Save transformed data (post PCA, z-score etc.) for reuse?",
+            choices=["Yes", "No"],
         ).ask()
-
 
         # 2. Preprocessing
         print("\n[2] Preprocessing")
         config["preprocessing"] = {}
-        
-        
-        
+
         # Define band frequency ranges
         band_ranges = {
             "Delta (0.5-4 Hz)": {"Delta": [0.5, 4]},
             "Theta (4-8 Hz)": {"Theta": [4, 8]},
             "Alpha (8-12 Hz)": {"Alpha": [8, 12]},
             "Beta (12-30 Hz)": {"Beta": [12, 30]},
-            "Gamma (30-50 Hz)": {"Gamma": [30, 50]}
+            "Gamma (30-50 Hz)": {"Gamma": [30, 50]},
         }
-        
+
         selected_bands_display = questionary.checkbox(
             "Select bandpass filters to apply (for more precise options edit the config file directly):",
-            choices=[ key for key in band_ranges.keys() ],
+            choices=[key for key in band_ranges.keys()],
         ).ask()
-        
+
         # Convert display names to structured band data
         config["preprocessing"]["bands"] = {}
         for band_display in selected_bands_display:
@@ -256,7 +285,9 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
         # Handle downsampling rate with validation
         while True:
-            downsampling_input = questionary.text("Downsampling rate (Hz) or 'None':").ask()
+            downsampling_input = questionary.text(
+                "Downsampling rate (Hz) or 'None':"
+            ).ask()
             downsampling_rate = validate_downsampling_rate(downsampling_input)
             if downsampling_rate is not None or downsampling_input.lower() == "none":
                 break
@@ -310,34 +341,49 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
         # 5. Data Leakage Prevention (only if Classification and Feature Transformation are enabled)
         if target == "pyspark-only" or target == "full":
-            if config["project"]["experiment_type"] == "Classification" and config["feature_transformation"]["transformations"] != "None":
+            if (
+                config["project"]["experiment_type"] == "Classification"
+                and config["feature_transformation"]["transformations"] != "None"
+            ):
                 print("\n[5] Data Leakage Prevention")
-                print("⚠️  WARNING: You selected Classification with Feature Transformation.")
-                print("   This can cause data leakage if test data influences training transforms.")
-                
+                print(
+                    "⚠️  WARNING: You selected Classification with Feature Transformation."
+                )
+                print(
+                    "   This can cause data leakage if test data influences training transforms."
+                )
+
                 config["data_leakage_prevention"] = {}
-                
+
                 # Question 1: Data leakage prevention strategy
                 config["data_leakage_prevention"]["strategy"] = questionary.select(
                     "How would you like to handle data leakage during feature transformation?",
                     choices=[
                         "Rotate test subjects and recompute transforms for each fold (slow, very storage heavy, most reliable)",
                         "1 test/1 train split with transforms applied to training set only (faster, single split)",
-                        "Transform all data together (no split - fastest, and potential data leakage)"
-                    ]
+                        "Transform all data together (no split - fastest, and potential data leakage)",
+                    ],
                 ).ask()
-                
+
                 # Question 2: Test subject definition (if rotation is selected)
-                if "Rotate test subjects" in config["data_leakage_prevention"]["strategy"]:
-                    config["data_leakage_prevention"]["test_subject_method"] = questionary.select(
-                        "How would you like to define test subjects for rotation?",
-                        choices=[
-                            "Manually select X test subjects per fold and provide full paths",
-                            "Automatically rotate all subjects (leave-X-out cross-validation)"
-                        ]
-                    ).ask()
-                    
-                    if "Manually select" in config["data_leakage_prevention"]["test_subject_method"]:
+                if (
+                    "Rotate test subjects"
+                    in config["data_leakage_prevention"]["strategy"]
+                ):
+                    config["data_leakage_prevention"]["test_subject_method"] = (
+                        questionary.select(
+                            "How would you like to define test subjects for rotation?",
+                            choices=[
+                                "Manually select X test subjects per fold and provide full paths",
+                                "Automatically rotate all subjects (leave-X-out cross-validation)",
+                            ],
+                        ).ask()
+                    )
+
+                    if (
+                        "Manually select"
+                        in config["data_leakage_prevention"]["test_subject_method"]
+                    ):
                         # Ask for number of test subjects per fold
                         while True:
                             test_subjects_count = questionary.text(
@@ -346,21 +392,23 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                             try:
                                 count = int(test_subjects_count)
                                 if count > 0:
-                                    config["data_leakage_prevention"]["test_subjects_per_fold"] = count
+                                    config["data_leakage_prevention"][
+                                        "test_subjects_per_fold"
+                                    ] = count
                                     break
                                 else:
                                     print("[ERROR] Please enter a positive number.")
                             except ValueError:
                                 print("[ERROR] Please enter a valid integer.")
-                        
+
                         # Ask for fold paths
                         config["data_leakage_prevention"]["fold_paths"] = {}
                         fold_number = 1
-                        
+
                         # Get available group names for reference
                         available_groups = list(config["data_input"]["groups"].keys())
                         groups_text = ", ".join(available_groups)
-                        
+
                         while True:
                             fold_input = questionary.text(
                                 f"Enter comma-separated paths to test subjects for fold {fold_number} (or 'done')\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
@@ -370,44 +418,70 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                             if not fold_input.strip():
                                 print("[ERROR] Please enter valid paths or 'done'")
                                 continue
-                            
+
                             # Validate paths
                             try:
-                                fold_paths = [path.strip() for path in fold_input.split(",") if path.strip()]
+                                fold_paths = [
+                                    path.strip()
+                                    for path in fold_input.split(",")
+                                    if path.strip()
+                                ]
                                 valid_fold_paths = validate_eeg_paths(fold_paths)
-                                
+
                                 # Check if paths exist in groups from part 1
-                                found_paths, missing_paths = check_paths_in_groups(valid_fold_paths, config["data_input"]["groups"])
-                                
+                                found_paths, missing_paths = check_paths_in_groups(
+                                    valid_fold_paths, config["data_input"]["groups"]
+                                )
+
                                 if missing_paths:
-                                    print(f"⚠️  WARNING: The following paths were not found in part 1 groups: {', '.join(missing_paths)}")
+                                    print(
+                                        f"⚠️  WARNING: The following paths were not found in part 1 groups: {', '.join(missing_paths)}"
+                                    )
                                     action = questionary.select(
                                         "What would you like to do?",
-                                        choices=["Exit program (go back to [1] to add missing paths)", "Re-enter paths for this fold"]
+                                        choices=[
+                                            "Exit program (go back to [1] to add missing paths)",
+                                            "Re-enter paths for this fold",
+                                        ],
                                     ).ask()
-                                    if action == "Exit program (go back to [1] to add missing paths)":
-                                        print("Exiting config maker. Please run it again and add the missing paths in [1] Data Input.")
+                                    if (
+                                        action
+                                        == "Exit program (go back to [1] to add missing paths)"
+                                    ):
+                                        print(
+                                            "Exiting config maker. Please run it again and add the missing paths in [1] Data Input."
+                                        )
                                         exit(0)
                                     else:
                                         continue
-                                
+
                                 # Check if number of subjects matches expected count
-                                if len(valid_fold_paths) != config["data_leakage_prevention"]["test_subjects_per_fold"]:
+                                if (
+                                    len(valid_fold_paths)
+                                    != config["data_leakage_prevention"][
+                                        "test_subjects_per_fold"
+                                    ]
+                                ):
                                     confirm = questionary.select(
                                         f"⚠️  You entered {len(valid_fold_paths)} subjects but expected {config['data_leakage_prevention']['test_subjects_per_fold']}. Continue anyway?",
-                                        choices=["Yes, continue", "No, re-enter"]
+                                        choices=["Yes, continue", "No, re-enter"],
                                     ).ask()
                                     if confirm == "No, re-enter":
                                         continue
-                                
-                                config["data_leakage_prevention"]["fold_paths"][f"fold_{fold_number}"] = valid_fold_paths
+
+                                config["data_leakage_prevention"]["fold_paths"][
+                                    f"fold_{fold_number}"
+                                ] = valid_fold_paths
                                 fold_number += 1
-                                
+
                             except ValueError as e:
                                 print(f"[ERROR] {e}")
                                 continue
-                    
-                    elif "Automatically rotate" in config["data_leakage_prevention"]["test_subject_method"]:
+
+                    elif (
+                        "Automatically rotate"
+                        in config["data_leakage_prevention"]["test_subject_method"]
+                    ):
                         # Ask for number of test subjects to leave out
                         while True:
                             leave_out_count = questionary.text(
@@ -416,24 +490,34 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                             try:
                                 count = int(leave_out_count)
                                 if count > 0:
-                                    config["data_leakage_prevention"]["leave_out_count"] = count
+                                    config["data_leakage_prevention"][
+                                        "leave_out_count"
+                                    ] = count
                                     break
                                 else:
                                     print("[ERROR] Please enter a positive number.")
                             except ValueError:
                                 print("[ERROR] Please enter a valid integer.")
-                
+
                 # Question 2: Single train/test set definition (if single split is selected)
-                elif "1 test/1 train split" in config["data_leakage_prevention"]["strategy"]:
-                    config["data_leakage_prevention"]["single_split_method"] = questionary.select(
-                        "How would you like to define this 1 training/testing set?",
-                        choices=[
-                            "Manually select test subjects and provide full paths",
-                            "Automatically split subjects (e.g., 5 test subjects)"
-                        ]
-                    ).ask()
-                    
-                    if "Manually select" in config["data_leakage_prevention"]["single_split_method"]:
+                elif (
+                    "1 test/1 train split"
+                    in config["data_leakage_prevention"]["strategy"]
+                ):
+                    config["data_leakage_prevention"]["single_split_method"] = (
+                        questionary.select(
+                            "How would you like to define this 1 training/testing set?",
+                            choices=[
+                                "Manually select test subjects and provide full paths",
+                                "Automatically split subjects (e.g., 5 test subjects)",
+                            ],
+                        ).ask()
+                    )
+
+                    if (
+                        "Manually select"
+                        in config["data_leakage_prevention"]["single_split_method"]
+                    ):
                         # Ask for number of test subjects
                         while True:
                             test_subjects_count = questionary.text(
@@ -442,18 +526,20 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                             try:
                                 count = int(test_subjects_count)
                                 if count > 0:
-                                    config["data_leakage_prevention"]["test_subjects_count"] = count
+                                    config["data_leakage_prevention"][
+                                        "test_subjects_count"
+                                    ] = count
                                     break
                                 else:
                                     print("[ERROR] Please enter a positive number.")
                             except ValueError:
                                 print("[ERROR] Please enter a valid integer.")
-                        
+
                         # Ask for test subject paths with validation
                         # Get available group names for reference
                         available_groups = list(config["data_input"]["groups"].keys())
                         groups_text = ", ".join(available_groups)
-                        
+
                         while True:
                             test_subjects_input = questionary.text(
                                 f"Enter comma-separated paths to test subjects (expected {config['data_leakage_prevention']['test_subjects_count']} subjects)\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
@@ -461,43 +547,69 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                             if not test_subjects_input.strip():
                                 print("[ERROR] Please enter valid paths.")
                                 continue
-                            
+
                             try:
-                                test_paths = [path.strip() for path in test_subjects_input.split(",") if path.strip()]
+                                test_paths = [
+                                    path.strip()
+                                    for path in test_subjects_input.split(",")
+                                    if path.strip()
+                                ]
                                 valid_test_paths = validate_eeg_paths(test_paths)
-                                
+
                                 # Check if paths exist in groups from part 1
-                                found_paths, missing_paths = check_paths_in_groups(valid_test_paths, config["data_input"]["groups"])
-                                
+                                found_paths, missing_paths = check_paths_in_groups(
+                                    valid_test_paths, config["data_input"]["groups"]
+                                )
+
                                 if missing_paths:
-                                    print(f"⚠️  WARNING: The following paths were not found in part 1 groups: {', '.join(missing_paths)}")
+                                    print(
+                                        f"⚠️  WARNING: The following paths were not found in part 1 groups: {', '.join(missing_paths)}"
+                                    )
                                     action = questionary.select(
                                         "What would you like to do?",
-                                        choices=["Exit program (go back to [1] to add missing paths)", "Re-enter paths for this test set"]
+                                        choices=[
+                                            "Exit program (go back to [1] to add missing paths)",
+                                            "Re-enter paths for this test set",
+                                        ],
                                     ).ask()
-                                    if action == "Exit program (go back to [1] to add missing paths)":
-                                        print("Exiting config maker. Please run it again and add the missing paths in [1] Data Input.")
+                                    if (
+                                        action
+                                        == "Exit program (go back to [1] to add missing paths)"
+                                    ):
+                                        print(
+                                            "Exiting config maker. Please run it again and add the missing paths in [1] Data Input."
+                                        )
                                         exit(0)
                                     else:
                                         continue
-                                
+
                                 # Check if number of subjects matches expected count
-                                if len(valid_test_paths) != config["data_leakage_prevention"]["test_subjects_count"]:
+                                if (
+                                    len(valid_test_paths)
+                                    != config["data_leakage_prevention"][
+                                        "test_subjects_count"
+                                    ]
+                                ):
                                     confirm = questionary.select(
                                         f"⚠️  You entered {len(valid_test_paths)} subjects but expected {config['data_leakage_prevention']['test_subjects_count']}. Continue anyway?",
-                                        choices=["Yes, continue", "No, re-enter"]
+                                        choices=["Yes, continue", "No, re-enter"],
                                     ).ask()
                                     if confirm == "No, re-enter":
                                         continue
-                                
-                                config["data_leakage_prevention"]["test_subjects_paths"] = valid_test_paths
+
+                                config["data_leakage_prevention"][
+                                    "test_subjects_paths"
+                                ] = valid_test_paths
                                 break
-                                
+
                             except ValueError as e:
                                 print(f"[ERROR] {e}")
                                 continue
-                    
-                    elif "Automatically split" in config["data_leakage_prevention"]["single_split_method"]:
+
+                    elif (
+                        "Automatically split"
+                        in config["data_leakage_prevention"]["single_split_method"]
+                    ):
                         # Ask for number of test subjects
                         while True:
                             test_subjects_count = questionary.text(
@@ -506,27 +618,38 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                             try:
                                 count = int(test_subjects_count)
                                 if count > 0:
-                                    config["data_leakage_prevention"]["test_subjects_count"] = count
+                                    config["data_leakage_prevention"][
+                                        "test_subjects_count"
+                                    ] = count
                                     break
                                 else:
                                     print("[ERROR] Please enter a positive number.")
                             except ValueError:
-                                    print("[ERROR] Please enter a valid integer.")
-                
+                                print("[ERROR] Please enter a valid integer.")
+
                 # Question 2: No split needed (if transform all data is selected)
-                elif "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
+                elif (
+                    "Transform all data together"
+                    in config["data_leakage_prevention"]["strategy"]
+                ):
                     print("⚠️  WARNING: You selected to transform all data together.")
-                    print("   This may cause data leakage as test data will influence training transforms.")
-                    print("   No additional configuration needed - all data will be transformed together.")
-                
+                    print(
+                        "   This may cause data leakage as test data will influence training transforms."
+                    )
+                    print(
+                        "   No additional configuration needed - all data will be transformed together."
+                    )
+
     else:
-        print("\nSkipping [1] Data Input [2] Preprocessing [3] Feature Extraction [4] Feature Transformation, and [5] Data Leakage Prevention as we are not using PySpark")
+        print(
+            "\nSkipping [1] Data Input [2] Preprocessing [3] Feature Extraction [4] Feature Transformation, and [5] Data Leakage Prevention as we are not using PySpark"
+        )
 
     # 6. Deployment Configuration
     print("\n[6] Deployment Configuration")
     config["project"]["deployment_method"] = questionary.select(
         "6.1 Deployment Method:",
-        choices=["Docker", "Singularity with Slurm", "Singularity without Slurm"]
+        choices=["Docker", "Singularity with Slurm", "Singularity without Slurm"],
     ).ask()
 
     # 6.2 PySpark Resource Configuration
@@ -539,70 +662,71 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print("  - 2 cores per executor")
         print("  - 8 shuffle partitions")
         print("This is the default and lightweight for testing.")
-        
+
         edit_spark_config = questionary.select(
             "Do you want to edit the PySpark resource configuration?",
-            choices=["Yes", "No (use defaults)"]
+            choices=["Yes", "No (use defaults)"],
         ).ask()
-        
+
         if edit_spark_config == "Yes":
             config["pyspark"] = {}
             config["pyspark"]["master"] = validate_integer_input(
-                "Enter number of cores/threads to allocate (master):",
-                default="4"
+                "Enter number of cores/threads to allocate (master):", default="4"
             )
             config["pyspark"]["driver_memory"] = validate_integer_input(
-                "Enter driver memory in GB (e.g., 6):",
-                default="6"
+                "Enter driver memory in GB (e.g., 6):", default="6"
             )
             config["pyspark"]["executor_memory"] = validate_integer_input(
-                "Enter executor memory in GB (e.g., 6):",
-                default="6"
+                "Enter executor memory in GB (e.g., 6):", default="6"
             )
             config["pyspark"]["executor_cores"] = validate_integer_input(
-                "Enter executor cores/threads:",
-                default="2"
+                "Enter executor cores/threads:", default="2"
             )
             config["pyspark"]["shuffle_partitions"] = validate_integer_input(
-                "Enter shuffle partitions:",
-                default="8"
+                "Enter shuffle partitions:", default="8"
             )
         else:
             # Use defaults
             config["pyspark"] = {
                 "master": "4",
                 "driver_memory": "6",
-                "executor_memory": "6", 
+                "executor_memory": "6",
                 "executor_cores": "2",
-                "shuffle_partitions": "8"
+                "shuffle_partitions": "8",
             }
 
     # 6.3 SLURM Configuration (if Singularity with Slurm is selected)
     if config["project"]["deployment_method"] == "Singularity with Slurm":
         print("\n[6.3] SLURM Configuration")
-        
+
         # Always ask for build options when using SLURM
         print("Recommended build options (10 minutes, 8GB RAM, 2 CPUs):")
         print("  --time=00:10:00 --mem=8G --cpus-per-task=2")
         build_slurm_options = questionary.text(
             "Enter SLURM options for building .sif containers:",
-            default="--time=00:10:00 --mem=8G --cpus-per-task=2"
+            default="--time=00:10:00 --mem=8G --cpus-per-task=2",
         ).ask()
-        config["project"]["slurm_options_build"] = sanitize_slurm_options(build_slurm_options) if build_slurm_options else ""
-        
+        config["project"]["slurm_options_build"] = (
+            sanitize_slurm_options(build_slurm_options) if build_slurm_options else ""
+        )
+
         if target == "full":
             # Ask if user wants same or different SLURM options for PySpark and Ray
             slurm_choice = questionary.select(
                 "SLURM options for PySpark and Ray:",
-                choices=["Same options for both", "Different options for each"]
+                choices=["Same options for both", "Different options for each"],
             ).ask()
-            
+
             if slurm_choice == "Same options for both":
                 slurm_options = questionary.text(
                     "Enter SLURM options for both PySpark and Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
                 ).ask()
-                config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
-                config["project"]["slurm_options_ray"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
+                config["project"]["slurm_options_pyspark"] = (
+                    sanitize_slurm_options(slurm_options) if slurm_options else ""
+                )
+                config["project"]["slurm_options_ray"] = (
+                    sanitize_slurm_options(slurm_options) if slurm_options else ""
+                )
             else:  # Different options
                 pyspark_slurm = questionary.text(
                     "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
@@ -610,20 +734,28 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 ray_slurm = questionary.text(
                     "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
                 ).ask()
-                config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(pyspark_slurm) if pyspark_slurm else ""
-                config["project"]["slurm_options_ray"] = sanitize_slurm_options(ray_slurm) if ray_slurm else ""
-        
+                config["project"]["slurm_options_pyspark"] = (
+                    sanitize_slurm_options(pyspark_slurm) if pyspark_slurm else ""
+                )
+                config["project"]["slurm_options_ray"] = (
+                    sanitize_slurm_options(ray_slurm) if ray_slurm else ""
+                )
+
         elif target == "pyspark-only":
             slurm_options = questionary.text(
                 "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
             ).ask()
-            config["project"]["slurm_options_pyspark"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
-        
+            config["project"]["slurm_options_pyspark"] = (
+                sanitize_slurm_options(slurm_options) if slurm_options else ""
+            )
+
         elif target == "ray-only":
             slurm_options = questionary.text(
                 "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
             ).ask()
-            config["project"]["slurm_options_ray"] = sanitize_slurm_options(slurm_options) if slurm_options else ""
+            config["project"]["slurm_options_ray"] = (
+                sanitize_slurm_options(slurm_options) if slurm_options else ""
+            )
 
     return config, config_name
 
@@ -649,7 +781,7 @@ def save_config(config: Dict[str, Any], config_name: str) -> None:
 
 def sanitize_slurm_options(options: str) -> str:
     # Remove newlines and extra spaces
-    return ' '.join(options.split())
+    return " ".join(options.split())
 
 
 def validate_eeg_paths(paths: List[str]) -> List[str]:
@@ -659,40 +791,44 @@ def validate_eeg_paths(paths: List[str]) -> List[str]:
         path = path.strip()
         if not path:
             continue
-            
+
         # Check for spaces in path
-        if ' ' in path:
-            raise ValueError(f"Path contains spaces: '{path}'. Please use paths without spaces.")
-        
+        if " " in path:
+            raise ValueError(
+                f"Path contains spaces: '{path}'. Please use paths without spaces."
+            )
+
         # Check if file exists
         if not Path(path).exists():
             raise ValueError(f"File does not exist: '{path}'")
-        
+
         # Check if it's a valid EEG file (optional - basic check)
-        if not (path.endswith('.set') or path.endswith('.fif')):
+        if not (path.endswith(".set") or path.endswith(".fif")):
             print(f"⚠️ Warning: '{path}' doesn't end with .set or .fif")
-        
+
         valid_paths.append(path)
-    
+
     return valid_paths
 
 
-def check_paths_in_groups(paths: List[str], groups: Dict[str, List[str]]) -> Tuple[List[str], List[str]]:
+def check_paths_in_groups(
+    paths: List[str], groups: Dict[str, List[str]]
+) -> Tuple[List[str], List[str]]:
     """Check which paths exist in groups and which don't. Returns (found_paths, missing_paths)."""
     found_paths = []
     missing_paths = []
-    
+
     # Flatten all paths from all groups
     all_group_paths = []
     for group_paths in groups.values():
         all_group_paths.extend(group_paths)
-    
+
     for path in paths:
         if path in all_group_paths:
             found_paths.append(path)
         else:
             missing_paths.append(path)
-    
+
     return found_paths, missing_paths
 
 
@@ -701,3 +837,4 @@ if __name__ == "__main__":
     print(f"Generating config for target: {target}")
     config, config_name = build_config(target=target)
     save_config(config, config_name)
+

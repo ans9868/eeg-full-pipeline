@@ -4,7 +4,8 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, List, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
+
 import yaml
 
 # Configuration constants - edit these to change paths/commands
@@ -17,22 +18,20 @@ CONTAINER_CONFIG = {
         "command": "spark-submit",
         "job_name": "eeg-pyspark",
         # Spark-submit specific configurations (most Spark configs are in session_builder.py)
-        "spark_configs": [
-            "--conf", "spark.jars.ivy=/tmp/.ivy2"
-        ],
+        "spark_configs": ["--conf", "spark.jars.ivy=/tmp/.ivy2"],
         "mounts": [
             # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
-            ("./config/spark", "/opt/bitnami/spark/conf"),        # Spark configs (editable)
-            ("./data", "/app/data"),                              # Output / intermediate features
+            ("./config/spark", "/opt/bitnami/spark/conf"),  # Spark configs (editable)
+            ("./data", "/app/data"),  # Output / intermediate features
             # entrypoint.sh --> export LOG_FILE_PATH="/opt/bitnami/spark/logs/spark-driver-$(date +%Y-%m-%d_%H-%M).log"
-            ("./logs/spark-events", "/opt/bitnami/spark/logs/"),   # Spark event logs
+            ("./logs/spark-events", "/opt/bitnami/spark/logs/"),  # Spark event logs
             # Future additions (e.g., user EEG data, model output, results)
             # ("./user_data", "/app/user_data"),
             # ("./output", "/app/output"),
-        ]
+        ],
     },
     "ray": {
-        "docker_image": "nour333/eeg-ray-pipeline:latest",
+        "docker_image": "nour333/eeg-ray-tuner:latest",
         "singularity_image": "./containers/eeg-ray-pipeline.sif",
         "entrypoint": "/app/test-ray.py",
         "command": "python",
@@ -41,7 +40,7 @@ CONTAINER_CONFIG = {
             # Editable + persistent (bind mount everything explicitly)
             # Add any additional mounts here if needed for Ray
             # Example: ("./ray_config", "/app/ray_config"),
-        ]
+        ],
     },
 }
 
@@ -72,7 +71,9 @@ def check_config(specific_config: Optional[str] = None) -> str:
     config_files = list(config_dir.glob("config_*.yaml"))
     if not config_files:
         print(f"❌ No config files found in {config_dir}")
-        print("Run config-maker.py first to create a configuration file (format: config_<projectname>_<day-month-year>_<HHMM>.yaml).")
+        print(
+            "Run config-maker.py first to create a configuration file (format: config_<projectname>_<day-month-year>_<HHMM>.yaml)."
+        )
         sys.exit(1)
 
     # Sort by modification time (most recent first)
@@ -81,7 +82,9 @@ def check_config(specific_config: Optional[str] = None) -> str:
 
     print(f"📁 Using most recent config: {most_recent.name}")
     if len(config_files) > 1:
-        print(f"📋 Available configs: {[f.name for f in config_files]} (format: config_<projectname>_<day-month-year>_<HHMM>.yaml)")
+        print(
+            f"📋 Available configs: {[f.name for f in config_files]} (format: config_<projectname>_<day-month-year>_<HHMM>.yaml)"
+        )
 
     return str(most_recent.resolve())
 
@@ -89,7 +92,9 @@ def check_config(specific_config: Optional[str] = None) -> str:
 def load_config(config_path: str) -> Dict[str, Any]:
     """Load the configuration file to determine deployment method."""
     with open(config_path, "r") as f:
-        config = cast(Dict[str, Any], yaml.safe_load(f)) # cast to Dict[str, Any] to avoid type errors
+        config = cast(
+            Dict[str, Any], yaml.safe_load(f)
+        )  # cast to Dict[str, Any] to avoid type errors
     return config
 
 
@@ -112,24 +117,25 @@ def create_required_directories() -> None:
     """Create required directories for the pipeline."""
     directories = [
         "config",
-        "config/spark", 
+        "config/spark",
         "logs",
         "logs/spark-events",
-        "data" # we can override this with the user config , need implement logic for this
+        "data",  # we can override this with the user config , need implement logic for this
     ]
-    
+
     for directory in directories:
         Path(directory).mkdir(parents=True, exist_ok=True)
         print(f"📁 Created/verified directory: {directory}")
+
 
 def copy_data_to_scratch(config: Dict[str, Any]) -> None:
     """Copy data files to /scratch/ for compute node access."""
     if "data_input" in config and "groups" in config["data_input"]:
         scratch_dir = "/scratch/ans9868/eeg-data"
         Path(scratch_dir).mkdir(parents=True, exist_ok=True)
-        
+
         print(f"📁 Copying data files to {scratch_dir}...")
-        
+
         for group_name, file_list in config["data_input"]["groups"].items():
             if isinstance(file_list, list):
                 for file_path in file_list:
@@ -137,24 +143,27 @@ def copy_data_to_scratch(config: Dict[str, Any]) -> None:
                         # Get just the filename
                         filename = Path(file_path).name
                         dest_path = f"{scratch_dir}/{filename}"
-                        
+
                         # Copy if not already there
                         if not Path(dest_path).exists():
                             print(f"   Copying {file_path} -> {dest_path}")
                             import shutil
+
                             shutil.copy2(file_path, dest_path)
                         else:
                             print(f"   Skipping {filename} (already exists)")
-        
+
         print(f"✅ Data files copied to {scratch_dir}")
-        
+
         # Update the config to use scratch paths
         for group_name, file_list in config["data_input"]["groups"].items():
             if isinstance(file_list, list):
                 for i, file_path in enumerate(file_list):
                     if isinstance(file_path, str):
                         filename = Path(file_path).name
-                        config["data_input"]["groups"][group_name][i] = f"{scratch_dir}/{filename}"
+                        config["data_input"]["groups"][group_name][
+                            i
+                        ] = f"{scratch_dir}/{filename}"
 
 
 # =============================================================================
@@ -165,28 +174,25 @@ def copy_data_to_scratch(config: Dict[str, Any]) -> None:
 def get_container_command(container_type: str, config_path: str) -> str:
     """Get the command to run inside the container."""
     config = CONTAINER_CONFIG[container_type]
-    
+
     # Build command parts
     command_parts = [config["command"]]
-    
+
     # Add spark-submit specific configs for pyspark
     if container_type == "pyspark":
         spark_configs = config.get("spark_configs", [])
         command_parts.extend(spark_configs)
-    
+
     # Add entrypoint and config
-    command_parts.extend([
-        config["entrypoint"],
-        "--config", "/app/config.yaml"
-    ])
-    
+    command_parts.extend([config["entrypoint"], "--config", "/app/config.yaml"])
+
     return " ".join(command_parts)
 
 
 def build_user_mounts(config: Dict[str, Any]) -> List[Tuple[str, str]]:
     """Build user-specific mounts from config."""
     user_mounts = []
-    
+
     # Add data directories from config
     if "data_input" in config and "groups" in config["data_input"]:
         seen_dirs = set()
@@ -201,59 +207,64 @@ def build_user_mounts(config: Dict[str, Any]) -> List[Tuple[str, str]]:
                             # Mount the individual file to the same path inside the container
                             user_mounts.append((file_path, file_path))
                             print(f"🔗 Adding mount: {file_path} -> {file_path}")
-    
+
     # Add output directory (this can override the default ./data mount)
     if "project" in config and "output_dir" in config["project"]:
         output_dir = config["project"]["output_dir"]
-        
+
         # Convert relative path to absolute path
         if output_dir.startswith("./"):
             output_dir = str(Path.cwd() / output_dir[2:])
         elif output_dir.startswith("."):
             output_dir = str(Path.cwd() / output_dir[1:])
-        
+
         # Create output directory if it doesn't exist
         Path(output_dir).mkdir(parents=True, exist_ok=True)
-        
+
         # Mount output directory to /app/data (overriding default ./data)
         user_mounts.append((output_dir, "/app/data"))
-        print(f"🔧 User config overrides default ./data mount with: {config['project']['output_dir']}")
-    
+        print(
+            f"🔧 User config overrides default ./data mount with: {config['project']['output_dir']}"
+        )
+
     return user_mounts
 
 
-def get_all_mount_mappings(container_type: str, config_path: str, config_data: Dict[str, Any]) -> List[Tuple[str, str]]:
+def get_all_mount_mappings(
+    container_type: str, config_path: str, config_data: Dict[str, Any]
+) -> List[Tuple[str, str]]:
     """Get all mount mappings for a container type based on CONTAINER_CONFIG."""
     container_config = CONTAINER_CONFIG[container_type]
     mount_mappings = []
-    
+
     # Add specific config file mount
     mount_mappings.append((config_path, "/app/config.yaml"))
-    
+
     # Add static mounts from configuration (but check for user overrides)
     static_mounts = container_config["mounts"].copy()
-    
+
     # Check if user config has output_dir that would override ./data
     user_has_output_dir = (
-        "project" in config_data and 
-        "output_dir" in config_data["project"]
+        "project" in config_data and "output_dir" in config_data["project"]
     )
-    
+
     # If user specified output_dir, filter out the default ./data mount to avoid conflicts
     if user_has_output_dir:
         static_mounts = [
-            (host_path, container_path) 
-            for host_path, container_path in static_mounts 
+            (host_path, container_path)
+            for host_path, container_path in static_mounts
             if not (host_path == "./data" and container_path == "/app/data")
         ]
-        print(f"🔧 User config overrides default ./data mount with: {config_data['project']['output_dir']}")
-    
+        print(
+            f"🔧 User config overrides default ./data mount with: {config_data['project']['output_dir']}"
+        )
+
     mount_mappings.extend(static_mounts)
-    
+
     # Add dynamic mounts (built from user config)
     dynamic_mounts = build_user_mounts(config_data)
     mount_mappings.extend(dynamic_mounts)
-    
+
     return mount_mappings
 
 
@@ -261,32 +272,32 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     """Run a single Docker container."""
     config = CONTAINER_CONFIG[container_type]
     command_parts = get_container_command(container_type, config_path).split()
-    
+
     # Load config to get data directories
     config_data = load_config(config_path)
     mount_mappings = get_all_mount_mappings(container_type, config_path, config_data)
-    
+
     # Build docker run command with volume mounts
     docker_cmd = ["docker", "run", "--rm"]
-    
+
     # All Spark and Hadoop configurations are now centralized in session_builder.py
     # But LD_PRELOAD is still needed for nss_wrapper in Docker
     docker_cmd.extend(["-e", "LD_PRELOAD=/opt/bitnami/common/lib/libnss_wrapper.so"])
-    
+
     # Add volume mounts
     for host_path, container_path in mount_mappings:
         docker_cmd.extend(["-v", f"{host_path}:{container_path}"])
-    
+
     # Add image and command
     docker_cmd.extend([config["docker_image"]] + command_parts)
-    
+
     print(f"🔗 Mounting {len(mount_mappings)} directories:")
-    
+
     # Show first few directories
     show_count = min(5, len(mount_mappings))
     for i, (host_path, container_path) in enumerate(mount_mappings[:show_count], 1):
         print(f"   {i}. {host_path} -> {container_path}")
-    
+
     if len(mount_mappings) > show_count:
         print(f"   ... and {len(mount_mappings) - show_count} more directories")
 
@@ -296,37 +307,47 @@ def run_docker_container(container_type: str, config_path: str) -> None:
         subprocess.run(docker_cmd, check=True)
     except subprocess.CalledProcessError as e:
         print(f"\n❌ Docker command failed with exit code {e.returncode}")
-        
+
         # Check for common Docker mount errors
         if "operation not permitted" in str(e).lower() or "mkdir" in str(e).lower():
             print("\n🔍 Most likely causes:")
             print("   1. Docker doesn't have full disk access")
-            print("   2. Docker doesn't have permission to access the specified files/directories")
+            print(
+                "   2. Docker doesn't have permission to access the specified files/directories"
+            )
             print("   3. The files/directories don't exist")
             print("\n💡 Solutions:")
-            print("   • On macOS: Go to System Preferences > Security & Privacy > Privacy > Full Disk Access")
+            print(
+                "   • On macOS: Go to System Preferences > Security & Privacy > Privacy > Full Disk Access"
+            )
             print("     and add Docker to the list")
-            print("   • Check that all paths in your config file exist and are accessible")
+            print(
+                "   • Check that all paths in your config file exist and are accessible"
+            )
             print("   • Ensure Docker has permission to access the mounted directories")
-            print("   • Try running with sudo if on Linux (not recommended for production)")
+            print(
+                "   • Try running with sudo if on Linux (not recommended for production)"
+            )
         if "no such file or directory" in str(e).lower():
             print("\n🔍 Most likely cause: One or more files/directories don't exist")
             print("\n💡 Solution: Check that all paths in your config file exist")
         if "permission denied" in str(e).lower():
-            print("\n🔍 Most likely cause: Permission denied accessing files/directories")
+            print(
+                "\n🔍 Most likely cause: Permission denied accessing files/directories"
+            )
             print("\n💡 Solutions:")
             print("   • Check file permissions on the mounted directories")
             print("   • Ensure Docker has permission to access the files")
             print("   • On macOS: Check Docker's Full Disk Access permissions")
-        
+
         print(f"\n🔍 Error details: {e}")
-        
+
         print(f"\n📋 Full error output:")
         if e.stdout:
             print(f"STDOUT: {e.stdout.decode()}")
         if e.stderr:
             print(f"STDERR: {e.stderr.decode()}")
-        
+
         sys.exit(1)
     except FileNotFoundError:
         print("\n❌ Docker command not found")
@@ -338,67 +359,79 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
     """Run a single Singularity container."""
     config = CONTAINER_CONFIG[container_type]
     command_parts = get_container_command(container_type, config_path).split()
-    
+
     # Load config to get data directories
     config_data = load_config(config_path)
     mount_mappings = get_all_mount_mappings(container_type, config_path, config_data)
-    
+
     # Build singularity run command with bind mounts
     singularity_cmd = ["singularity", "run"]
-    
+
     # Add bind mounts
     for host_path, container_path in mount_mappings:
         singularity_cmd.extend(["--bind", f"{host_path}:{container_path}"])
-    
+
     # Add image and command
     singularity_cmd.extend([config["singularity_image"]] + command_parts)
-    
+
     print(f"🔗 Mounting {len(mount_mappings)} directories:")
-    
+
     # Show first few directories
     show_count = min(5, len(mount_mappings))
     for i, (host_path, container_path) in enumerate(mount_mappings[:show_count], 1):
         print(f"   {i}. {host_path} -> {container_path}")
-    
+
     if len(mount_mappings) > show_count:
         print(f"   ... and {len(mount_mappings) - show_count} more directories")
-    
+
     print(f"🔗 Running command: {singularity_cmd}")
-    
+
     try:
         subprocess.run(singularity_cmd, check=True)
     except subprocess.CalledProcessError as e:
         print(f"\n❌ Singularity command failed with exit code {e.returncode}")
-        
+
         # Check for common Singularity mount errors
         if "operation not permitted" in str(e).lower() or "mkdir" in str(e).lower():
             print("\n🔍 Most likely causes:")
-            print("   1. Singularity doesn't have permission to access the specified files/directories")
+            print(
+                "   1. Singularity doesn't have permission to access the specified files/directories"
+            )
             print("   2. The files/directories don't exist")
             print("   3. Insufficient permissions to bind mount directories")
             print("\n💡 Solutions:")
-            print("   • Check that all paths in your config file exist and are accessible")
-            print("   • Ensure Singularity has permission to access the mounted directories")
-            print("   • Check file permissions on the directories you're trying to mount")
-            print("   • Try running with sudo if on Linux (not recommended for production)")
+            print(
+                "   • Check that all paths in your config file exist and are accessible"
+            )
+            print(
+                "   • Ensure Singularity has permission to access the mounted directories"
+            )
+            print(
+                "   • Check file permissions on the directories you're trying to mount"
+            )
+            print(
+                "   • Try running with sudo if on Linux (not recommended for production)"
+            )
         elif "no such file or directory" in str(e).lower():
             print("\n🔍 Most likely cause: One or more files/directories don't exist")
             print("\n💡 Solution: Check that all paths in your config file exist")
         elif "permission denied" in str(e).lower():
-            print("\n🔍 Most likely cause: Permission denied accessing files/directories")
+            print(
+                "\n🔍 Most likely cause: Permission denied accessing files/directories"
+            )
             print("\n💡 Solutions:")
             print("   • Check file permissions on the mounted directories")
             print("   • Ensure Singularity has permission to access the files")
             print("   • Check if the .sif file exists and is accessible")
         else:
             print(f"\n🔍 Error details: {e}")
-        
+
         print(f"\n📋 Full error output:")
         if e.stdout:
             print(f"STDOUT: {e.stdout.decode()}")
         if e.stderr:
             print(f"STDERR: {e.stderr.decode()}")
-        
+
         sys.exit(1)
     except FileNotFoundError:
         print("\n❌ Singularity command not found")
@@ -461,7 +494,7 @@ def create_slurm_script(
     container_type: str,
     config_path: str,
     slurm_options: str = "",
-    dependency_job_id: Optional[str] = None
+    dependency_job_id: Optional[str] = None,
 ) -> str:
     """Create a SLURM script for a container."""
     config = CONTAINER_CONFIG[container_type]
@@ -483,19 +516,23 @@ def create_slurm_script(
         bind_args.extend(["--bind", f"{host_path}:{container_path}"])
 
     # Create the full singularity command for debugging
-    singularity_cmd = f"singularity run {' '.join(bind_args)} {config['singularity_image']} {command}"
-    
+    singularity_cmd = (
+        f"singularity run {' '.join(bind_args)} {config['singularity_image']} {command}"
+    )
+
     # Debug: print the bind_args to see if there are any issues
     print(f"🔍 Debug - bind_args: {bind_args}")
-    
+
     print(f"🔗 SLURM will execute this Singularity command:")
-    
+
     # Print the command in a readable single-line format
     bind_parts = []
     for host_path, container_path in mount_mappings:
         bind_parts.append(f"--bind {host_path}:{container_path}")
-    print(f"   singularity run {' '.join(bind_parts)} {config['singularity_image']} {command}")
-    
+    print(
+        f"   singularity run {' '.join(bind_parts)} {config['singularity_image']} {command}"
+    )
+
     print(f"🔗 With {len(mount_mappings)} bind mounts:")
     for i, (host_path, container_path) in enumerate(mount_mappings, 1):
         print(f"   {i}. {host_path} -> {container_path}")
@@ -513,7 +550,9 @@ def create_slurm_script(
     return slurm_content
 
 
-def run_singularity_with_slurm_shared_options(config_path: str, slurm_options: str = "") -> None:
+def run_singularity_with_slurm_shared_options(
+    config_path: str, slurm_options: str = ""
+) -> None:
     """Convenience function: run with same SLURM options for both containers."""
     return run_singularity_with_slurm_separate_options(
         config_path, slurm_options, slurm_options
@@ -562,7 +601,9 @@ def run_singularity_with_slurm_separate_options(
     os.remove("./containers/temp_ray.slurm")
 
 
-def run_singularity_slurm_pyspark_only(config_path: str, slurm_options: str = "") -> None:
+def run_singularity_slurm_pyspark_only(
+    config_path: str, slurm_options: str = ""
+) -> None:
     print("\n🧬 Submitting PySpark SLURM job only...")
 
     pyspark_slurm_content = create_slurm_script("pyspark", config_path, slurm_options)
@@ -595,7 +636,9 @@ def run_singularity_slurm_ray_only(config_path: str, slurm_options: str = "") ->
 # =============================================================================
 
 
-def check_and_build_sif_files(config: Dict[str, Any], pipeline_mode: str, use_slurm: bool = False) -> None:
+def check_and_build_sif_files(
+    config: Dict[str, Any], pipeline_mode: str, use_slurm: bool = False
+) -> None:
     """Check if .sif files exist and build them if they don't.
 
     Args:
@@ -613,11 +656,19 @@ def check_and_build_sif_files(config: Dict[str, Any], pipeline_mode: str, use_sl
     containers_to_check = []
     if pipeline_mode in ["pyspark-only", "full"]:
         containers_to_check.append(
-            ("eeg-pyspark-pipeline.sif", CONTAINER_CONFIG["pyspark"]["singularity_image"], "pyspark")
+            (
+                "eeg-pyspark-pipeline.sif",
+                CONTAINER_CONFIG["pyspark"]["singularity_image"],
+                "pyspark",
+            )
         )
     if pipeline_mode in ["ray-only", "full"]:
         containers_to_check.append(
-            ("eeg-ray-pipeline.sif", CONTAINER_CONFIG["ray"]["singularity_image"], "ray")
+            (
+                "eeg-ray-pipeline.sif",
+                CONTAINER_CONFIG["ray"]["singularity_image"],
+                "ray",
+            )
         )
 
     # Check and build each required container
@@ -666,7 +717,9 @@ def check_and_build_sif_files(config: Dict[str, Any], pipeline_mode: str, use_sl
             sys.exit(1)
 
 
-def build_sif_with_slurm(sif_name: str, docker_uri: str, job_prefix: str, slurm_options: str = "") -> None:
+def build_sif_with_slurm(
+    sif_name: str, docker_uri: str, job_prefix: str, slurm_options: str = ""
+) -> None:
     """Build .sif file using SLURM job."""
     print(f"🧬 Submitting SLURM job to build {sif_name}...")
 
@@ -741,7 +794,7 @@ def main() -> None:
 
     print(f"🚀 Starting pipeline with deployment method: {deployment_method}")
     print(f"🎯 Pipeline mode: {pipeline_mode}")
-    
+
     # Create required directories
     print("\n📁 Setting up required directories...")
     create_required_directories()
