@@ -723,6 +723,24 @@ def check_and_build_sif_files(
         ):
             print("❌ Timeout waiting for container builds to complete")
             print("💡 Check build logs in ./containers/ directory")
+            
+            # Show status of each container
+            print("\n📊 Build status:")
+            for sif_name, _, build_type in containers_to_check:
+                sif_path = Path(f"./containers/{sif_name}")
+                if sif_path.exists():
+                    size_mb = sif_path.stat().st_size / (1024 * 1024)
+                    print(f"   ✅ {sif_name} ({size_mb:.1f} MB)")
+                else:
+                    print(f"   ❌ {sif_name} (not found)")
+                    
+                    # Check for log files
+                    log_pattern = f"./containers/{build_type}_build_*.err"
+                    import glob
+                    error_logs = glob.glob(log_pattern)
+                    if error_logs:
+                        print(f"      📁 Error logs: {error_logs}")
+            
             sys.exit(1)
 
 
@@ -739,9 +757,34 @@ def build_sif_with_slurm(
 #SBATCH --output=./containers/{job_prefix}_%j.out
 #SBATCH --error=./containers/{job_prefix}_%j.err
 
-echo "Building {sif_name} from {docker_uri}"
-singularity build ./containers/{sif_name} {docker_uri}
-echo "Build completed for {sif_name}"
+set -e  # Exit on any error
+echo "=== Starting build of {sif_name} ==="
+echo "Source: docker://{docker_uri}"
+echo "Target: ./containers/{sif_name}"
+echo "Timestamp: $(date)"
+
+# Check if singularity is available
+if ! command -v singularity &> /dev/null; then
+    echo "ERROR: singularity command not found"
+    exit 1
+fi
+
+# Check if we can access the containers directory
+if [ ! -d "./containers" ]; then
+    echo "ERROR: ./containers directory not found"
+    exit 1
+fi
+
+echo "Building {sif_name} from docker://{docker_uri}..."
+if singularity build ./containers/{sif_name} docker://{docker_uri}; then
+    echo "=== SUCCESS: Build completed for {sif_name} ==="
+    echo "Timestamp: $(date)"
+    ls -la ./containers/{sif_name}
+else
+    echo "=== FAILED: Build failed for {sif_name} ==="
+    echo "Timestamp: $(date)"
+    exit 1
+fi
 """
 
     # Write SLURM script to containers directory
@@ -750,24 +793,51 @@ echo "Build completed for {sif_name}"
         f.write(build_slurm_content)
 
     # Submit SLURM job
-    subprocess.run(["sbatch", slurm_script_path], check=True)
-    print(f"✅ SLURM build job submitted for {sif_name}")
-    print(f"📁 Logs will be saved in ./containers/")
-    print(f"⏳ Please wait for the build to complete before running the pipeline.")
+    try:
+        result = subprocess.run(["sbatch", slurm_script_path], capture_output=True, text=True, check=True)
+        print(f"✅ SLURM build job submitted for {sif_name}")
+        print(f"📋 Job output: {result.stdout.strip()}")
+        print(f"📁 Logs will be saved in ./containers/")
+        print(f"💡 Monitor with: tail -f ./containers/{job_prefix}_*.out ./containers/{job_prefix}_*.err")
+        print(f"⏳ Please wait for the build to complete before running the pipeline.")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to submit SLURM job for {sif_name}")
+        print(f"Error: {e}")
+        if e.stdout:
+            print(f"STDOUT: {e.stdout}")
+        if e.stderr:
+            print(f"STDERR: {e.stderr}")
+        sys.exit(1)
 
 
 def build_sif_locally(sif_name: str, docker_uri: str, build_type: str) -> None:
     """Build .sif file locally."""
-    print(f"🔨 Building {sif_name} locally from {docker_uri}...")
+    print(f"🔨 Building {sif_name} locally from docker://{docker_uri}...")
 
     # Create log file
     log_file = f"./containers/{build_type}_build.log"
 
     try:
+        # Check if singularity is available
+        subprocess.run(["singularity", "--version"], check=True, capture_output=True)
+        
+        # Check if containers directory exists
+        containers_dir = Path("./containers")
+        containers_dir.mkdir(exist_ok=True)
+        
+        print(f"📁 Build log will be saved to: {log_file}")
+        print(f"🔍 Source: docker://{docker_uri}")
+        print(f"🎯 Target: ./containers/{sif_name}")
+        
         # Build the .sif file and redirect output to log
         with open(log_file, "w") as log:
+            log.write(f"=== Starting build of {sif_name} ===\n")
+            log.write(f"Source: docker://{docker_uri}\n")
+            log.write(f"Target: ./containers/{sif_name}\n")
+            log.write(f"Timestamp: {datetime.now()}\n\n")
+            
             result = subprocess.run(
-                ["singularity", "build", f"./containers/{sif_name}", docker_uri],
+                ["singularity", "build", f"./containers/{sif_name}", f"docker://{docker_uri}"],
                 stdout=log,
                 stderr=log,
                 text=True,
@@ -776,10 +846,29 @@ def build_sif_locally(sif_name: str, docker_uri: str, build_type: str) -> None:
         if result.returncode == 0:
             print(f"✅ Successfully built {sif_name}")
             print(f"📁 Build log saved to {log_file}")
+            # Show file size
+            sif_path = Path(f"./containers/{sif_name}")
+            if sif_path.exists():
+                size_mb = sif_path.stat().st_size / (1024 * 1024)
+                print(f"📏 File size: {size_mb:.1f} MB")
         else:
             print(f"❌ Failed to build {sif_name}")
             print(f"📁 Check build log at {log_file}")
+            # Show last few lines of log for debugging
+            try:
+                with open(log_file, "r") as f:
+                    lines = f.readlines()
+                    if lines:
+                        print("📋 Last 10 lines of build log:")
+                        for line in lines[-10:]:
+                            print(f"   {line.rstrip()}")
+            except Exception as log_e:
+                print(f"⚠️  Could not read log file: {log_e}")
             sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Singularity command failed: {e}")
+        print("💡 Make sure Singularity is installed and available in PATH")
+        sys.exit(1)
     except Exception as e:
         print(f"❌ Error building {sif_name}: {e}")
         sys.exit(1)
