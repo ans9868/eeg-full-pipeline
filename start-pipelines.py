@@ -12,7 +12,7 @@ import yaml
 CONTAINER_CONFIG = {
     "pyspark": {
         "docker_image": "nour333/eeg-spark-pipeline:latest",
-        "singularity_image": "./containers/eeg-pyspark.sif",
+        "singularity_image": "./containers/eeg-pyspark-pipeline.sif",
         "entrypoint": "/app/main.py",
         # "entrypoint": "/app/src/test_config_access.py",
         "command": "spark-submit",
@@ -35,7 +35,7 @@ CONTAINER_CONFIG = {
     },
     "ray": {
         "docker_image": "nour333/eeg-ray-tuner:latest",
-        "singularity_image": "./containers/eeg-ray-pipeline.sif",
+        "singularity_image": "./containers/eeg-ray-tuner.sif",
         "entrypoint": "/app/test-ray.py",
         "command": "python",
         "job_name": "ray-tuner",
@@ -667,15 +667,15 @@ def check_and_build_sif_files(
         containers_to_check.append(
             (
                 "eeg-pyspark-pipeline.sif",
-                CONTAINER_CONFIG["pyspark"]["singularity_image"],
+                CONTAINER_CONFIG["pyspark"]["docker_image"],
                 "pyspark",
             )
         )
     if pipeline_mode in ["ray-only", "full"]:
         containers_to_check.append(
             (
-                "eeg-ray-pipeline.sif",
-                CONTAINER_CONFIG["ray"]["singularity_image"],
+                "eeg-ray-tuner.sif",
+                CONTAINER_CONFIG["ray"]["docker_image"],
                 "ray",
             )
         )
