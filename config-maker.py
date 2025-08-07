@@ -18,8 +18,10 @@ def infer_target() -> str:
         return "pyspark-only"
     elif repo_name == "eeg-ray-tuner":
         return "ray-only"
-    else:
+    elif repo_name == "eeg-full-pipeline":
         return "full"
+    else:
+        raise ValueError(f"Invalid repo name: {repo_name}. Please run this script from the root of the repository who's directory name is one of the following: (eeg-full-pipeline, eeg-ray-tuner, eeg-pyspark-pipeline).")
 
 
 def validate_downsampling_rate(rate_str: Optional[str]) -> Optional[float]:
@@ -100,9 +102,9 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
     # Use user-supplied project name and timestamp for config name
     project_name = config["project"]["name"] or "project"
-    # Sanitize project name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore
+    # Sanitize project name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore/dot
     sanitized_name = re.sub(
-        r"[^a-zA-Z0-9_]", "", project_name.replace(" ", "_").lower()
+        r"[^a-zA-Z0-9_.]", "", project_name.replace(" ", "_").lower()
     )
 
     # Debug: show the sanitized name
@@ -110,6 +112,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
     timestamp = datetime.now().strftime("%d-%m-%Y_%H%M")
     config_name = f"config_{sanitized_name}_{timestamp}.yaml"
+    print(f"📝 Config name: '{config_name}'")
     config["project"]["config_name"] = config_name
 
     if target == "pyspark-only" or target == "full":
@@ -118,12 +121,11 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         config["data_input"] = {}
         config["data_input"]["groups"] = {}
         group_number = 1
-        # TODO: Check if the paths are in the correct group in [1] data inputs
         # TODO: check if there is no overlap between the groups
         while True:
             # Ask for group name first
             group_name_input = questionary.text(
-                f"What is the name for group number {group_number}? (e.g., 'alz', 'control', 'patient') (or 'done' to finish):"
+                f"1.1.{group_number} What is the name for group number {group_number}? (e.g., 'alz', 'control', 'patient') (or 'done' to finish):"
             ).ask()
             group_name = group_name_input.strip() if group_name_input else ""
 
@@ -177,7 +179,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             # Ask for paths for this group - use a separate loop for path validation
             while True:
                 group_input = questionary.text(
-                    f"Enter comma-separated EEG paths for the '{group_name}' group:"
+                    f"1.2.{group_number} Enter comma-separated EEG paths for the '{group_name}' group:"
                 ).ask()
 
                 if not group_input.strip():
@@ -203,28 +205,29 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                     # Continue the inner loop to ask for paths again
                     continue
 
-        config["data_input"]["reuse_raw"] = questionary.select(
-            "Reuse raw data processing if it exists?", choices=["Yes", "No"]
-        ).ask()
-        config["data_input"]["save_raw"] = questionary.select(
-            "Save raw data processing for reuse?", choices=["Yes", "No"]
-        ).ask()
+        # This was to expand the EEG data into spark dataframes 
+        # config["data_input"]["reuse_raw"] = questionary.select(
+        #     "Reuse raw data processing if it exists?", choices=["Yes", "No"]
+        # ).ask()
+        # config["data_input"]["save_raw"] = questionary.select(
+        #     "Save raw data processing for reuse?", choices=["Yes", "No"]
+        # ).ask()
 
         config["data_input"]["reuse_processed_subjects"] = questionary.select(
-            "Reuse processed features (bandpower, entropy etc.) if they exist?",
+            "1.3 Reuse processed features (bandpower, entropy etc.) if they exist?",
             choices=["Yes", "No"],
         ).ask()
         config["data_input"]["save_processed_subjects"] = questionary.select(
-            "Save processed features (bandpower, entropy etc.) for reuse?",
+            "1.4 Save processed features (bandpower, entropy etc.) for reuse?",
             choices=["Yes", "No"],
         ).ask()
 
         config["data_input"]["reuse_transformed"] = questionary.select(
-            "Reuse transformed data (post PCA, z-score etc.) if it exists?",
+            "1.5 Reuse transformed data (post PCA, z-score etc.) if it exists?",
             choices=["Yes", "No"],
         ).ask()
         config["data_input"]["save_transformed"] = questionary.select(
-            "Save transformed data (post PCA, z-score etc.) for reuse?",
+            "1.6 Save transformed data (post PCA, z-score etc.) for reuse? (Necessary for RayTuner to work)",
             choices=["Yes", "No"],
         ).ask()
 
@@ -242,7 +245,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         }
 
         selected_bands_display = questionary.checkbox(
-            "Select bandpass filters to apply (for more precise options edit the config file directly):",
+            "2.1 Select bandpass filters to apply (for more precise options edit the config file directly) (all recommended except Gamma):",
             choices=[key for key in band_ranges.keys()],
         ).ask()
 
@@ -255,7 +258,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         # Ask for window size
         while True:
             window_size_input = questionary.text(
-                "Enter window size in seconds (e.g., 1):"
+                "2.2 Enter window size in seconds (e.g., 3.0):"
             ).ask()
             try:
                 window_size = float(window_size_input)
@@ -270,7 +273,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         # Ask for sliding window amount (float between 0 and 0.95)
         while True:
             sliding_window_input = questionary.text(
-                "Sliding window amount as a percentage of the window size (0 for none, up to 0.95 for max):"
+                "2.3 Sliding window size as a percentage of the window size (0 for none, up to 0.95 for max):"
             ).ask()
             try:
                 sliding_window = float(sliding_window_input)
@@ -284,14 +287,14 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
         # Ask for reject by annotation setting
         config["preprocessing"]["reject_by_annotation"] = questionary.select(
-            "Reject epochs based on annotations (e.g., boundary events)?",
+            "2.4 Reject epochs based on annotations (e.g., boundary events)?",
             choices=["Yes", "No"]
         ).ask()
 
         # Handle downsampling rate with validation
         while True:
             downsampling_input = questionary.text(
-                "Downsampling rate (Hz) or 'None':"
+                "2.5 Downsampling rate (Hz) or 'None':"
             ).ask()
             downsampling_rate = validate_downsampling_rate(downsampling_input)
             if downsampling_rate is not None or downsampling_input.lower() == "none":
@@ -302,14 +305,14 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print("\n[3] Feature Extraction")
         config["feature_extraction"] = {}
         config["feature_extraction"]["method"] = questionary.select(
-            "Extraction method (welch is default and fastest, multitaper is slower but more precise):",
+            "3.1 Extraction method (welch is default and fastest, multitaper is slower but more precise):",
             choices=[
                 "welch",
                 "multitaper",
             ],
         ).ask()
         config["feature_extraction"]["features"] = questionary.checkbox(
-            "Select features to compute:",
+            "3.2 Select features to compute:",
             choices=[
                 "Band Power (averaged across all channels/bands)",
                 "Band Power (per channel, averaged across bands)",
@@ -320,15 +323,27 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         
         # Ask for PSD normalization
         config["preprocessing"]["normalize_psd"] = questionary.select(
-            "Normalize PSD values? (Highly recommended!)",
+            "3.3 Normalize PSD values? (Highly recommended, is the default on almost all EEG software)",
             choices=["Yes", "No"]
+        ).ask()
+
+        # Ask for intermediate results display
+        config["feature_extraction"]["show_intermediate_results"] = questionary.select(
+            "3.4 Show intermediate results (DataFrame previews)? (Not recommended for large datasets)",
+            choices=["No", "Yes"]
+        ).ask()
+
+        # Ask for intermediate counts display
+        config["feature_extraction"]["show_intermediate_counts"] = questionary.select(
+            "3.5 Show intermediate counts (row counts during processing)? (Not recommended for large datasets)",
+            choices=["No", "Yes"]
         ).ask()
 
         # 4. Feature Transformation
         print("\n[4] Feature Transformation")
         config["feature_transformation"] = {}
         config["feature_transformation"]["transformations"] = questionary.select(
-            "Select a transformation to apply (for more precise options edit the config file directly):",
+            "4.1 Select a transformation to apply (for more precise options edit the config file directly):",
             choices=[
                 "PCA (retain 95% variance)",
                 "PCA (manual count)",
@@ -340,7 +355,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         ).ask()
 
         config["feature_transformation"]["synthetic"] = questionary.select(
-            "Synthetic data generation method:",
+            "4.2 Synthetic data generation method:",
             choices=[
                 # "SMOTE",
                 # "Random over-sampling",
@@ -367,7 +382,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
                 # Question 1: Data leakage prevention strategy
                 config["data_leakage_prevention"]["strategy"] = questionary.select(
-                    "How would you like to handle data leakage during feature transformation?",
+                    "5.1 How would you like to handle data leakage during feature transformation?",
                     choices=[
                         "Rotate test subjects and recompute transforms for each fold (slow, very storage heavy, most reliable)",
                         "1 test/1 train split with transforms applied to training set only (faster, single split)",
@@ -382,7 +397,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 ):
                     config["data_leakage_prevention"]["test_subject_method"] = (
                         questionary.select(
-                            "How would you like to define test subjects for rotation?",
+                            "5.2.1 How would you like to define test subjects for rotation?",
                             choices=[
                                 "Manually select X test subjects per fold and provide full paths",
                                 "Automatically rotate all subjects (leave-X-out cross-validation)",
@@ -397,7 +412,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                         # Ask for number of test subjects per fold
                         while True:
                             test_subjects_count = questionary.text(
-                                "Enter the number of test subjects per fold (e.g., 2):"
+                                "5.2.2 Enter the number of test subjects per fold (e.g., 2):"
                             ).ask()
                             try:
                                 count = int(test_subjects_count)
@@ -421,7 +436,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
                         while True:
                             fold_input = questionary.text(
-                                f"Enter comma-separated paths to test subjects for fold {fold_number} (or 'done')\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
+                                f"5.2.3.{fold_number} Enter comma-separated paths to test subjects for fold {fold_number} (or 'done')\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
                             ).ask()
                             if fold_input.lower() == "done":
                                 break
@@ -495,7 +510,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                         # Ask for number of test subjects to leave out
                         while True:
                             leave_out_count = questionary.text(
-                                "Enter the number of subjects to leave out per fold (e.g., 2):"
+                                "5.2.2 Enter the number of subjects to leave out per fold (e.g., 2):"
                             ).ask()
                             try:
                                 count = int(leave_out_count)
@@ -516,7 +531,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 ):
                     config["data_leakage_prevention"]["single_split_method"] = (
                         questionary.select(
-                            "How would you like to define this 1 training/testing set?",
+                            "5.2.1 How would you like to define this 1 training/testing set?",
                             choices=[
                                 "Manually select test subjects and provide full paths",
                                 "Automatically split subjects (e.g., 5 test subjects)",
@@ -531,7 +546,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                         # Ask for number of test subjects
                         while True:
                             test_subjects_count = questionary.text(
-                                "Enter the number of test subjects (e.g., 5):"
+                                "5.2.2 Enter the number of test subjects (e.g., 5):"
                             ).ask()
                             try:
                                 count = int(test_subjects_count)
@@ -552,7 +567,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
                         while True:
                             test_subjects_input = questionary.text(
-                                f"Enter comma-separated paths to test subjects (expected {config['data_leakage_prevention']['test_subjects_count']} subjects)\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
+                                f"5.2.3 Enter comma-separated paths to test subjects (expected {config['data_leakage_prevention']['test_subjects_count']} subjects)\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
                             ).ask()
                             if not test_subjects_input.strip():
                                 print("[ERROR] Please enter valid paths.")
@@ -623,7 +638,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                         # Ask for number of test subjects
                         while True:
                             test_subjects_count = questionary.text(
-                                "Enter number of subjects for test set (e.g., 5):"
+                                "5.2.2 Enter number of subjects for test set (e.g., 4) (should evently divide with the number of subjects and the number of groups):"
                             ).ask()
                             try:
                                 count = int(test_subjects_count)
@@ -666,7 +681,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     if target == "pyspark" or target == "pyspark-only" or target == "full":
         print("\n[6.2] PySpark Resource Configuration")
         print("For example, for a 8-core CPU with 16GB memory, we can safely allocate:")
-        print("  - 4 cores for the driver (master)")
+        print("  - 6 cores for the driver (master)")
         print("  - 6GB memory for the driver")
         print("  - 6GB memory for executors")
         print("  - 2 cores per executor")
@@ -674,31 +689,31 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print("This is the default and lightweight for testing.")
 
         edit_spark_config = questionary.select(
-            "Do you want to edit the PySpark resource configuration?",
+            "6.2.1 Do you want to edit the PySpark resource configuration?",
             choices=["Yes", "No (use defaults)"],
         ).ask()
 
         if edit_spark_config == "Yes":
             config["pyspark"] = {}
             config["pyspark"]["master"] = validate_integer_input(
-                "Enter number of cores/threads to allocate (master):", default="4"
+                "6.2.2 Enter number of cores/threads to allocate (master):", default="6"
             )
             config["pyspark"]["driver_memory"] = validate_integer_input(
-                "Enter driver memory in GB (e.g., 6):", default="6"
+                "6.2.3 Enter driver memory in GB (e.g., 6):", default="6"
             )
             config["pyspark"]["executor_memory"] = validate_integer_input(
-                "Enter executor memory in GB (e.g., 6):", default="6"
+                "6.2.4 Enter executor memory in GB (e.g., 6):", default="6"
             )
             config["pyspark"]["executor_cores"] = validate_integer_input(
-                "Enter executor cores/threads:", default="2"
+                "6.2.5 Enter executor cores/threads:", default="2"
             )
             config["pyspark"]["shuffle_partitions"] = validate_integer_input(
-                "Enter shuffle partitions:", default="8"
+                "6.2.6 Enter shuffle partitions:", default="8"
             )
         else:
             # Use defaults
             config["pyspark"] = {
-                "master": "4",
+                "master": "6",
                 "driver_memory": "6",
                 "executor_memory": "6",
                 "executor_cores": "2",
@@ -713,7 +728,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print("Recommended build options (10 minutes, 8GB RAM, 2 CPUs):")
         print("  --time=00:10:00 --mem=8G --cpus-per-task=2")
         build_slurm_options = questionary.text(
-            "Enter SLURM options for building .sif containers:",
+            "6.3.1 Enter SLURM options for building .sif containers:",
             default="--time=00:10:00 --mem=8G --cpus-per-task=2",
         ).ask()
         config["project"]["slurm_options_build"] = (
@@ -723,13 +738,13 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         if target == "full":
             # Ask if user wants same or different SLURM options for PySpark and Ray
             slurm_choice = questionary.select(
-                "SLURM options for PySpark and Ray:",
+                "6.3.2 SLURM options for PySpark and Ray:",
                 choices=["Same options for both", "Different options for each"],
             ).ask()
 
             if slurm_choice == "Same options for both":
                 slurm_options = questionary.text(
-                    "Enter SLURM options for both PySpark and Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+                    "6.3.3 Enter SLURM options for both PySpark and Ray:", default="--time=24:00:00 --mem=16G --cpus-per-task=4"
                 ).ask()
                 config["project"]["slurm_options_pyspark"] = (
                     sanitize_slurm_options(slurm_options) if slurm_options else ""
@@ -739,10 +754,10 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 )
             else:  # Different options
                 pyspark_slurm = questionary.text(
-                    "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
+                    "6.3.3 Enter SLURM options for PySpark:", default="--time=12:00:00 --mem=8G --cpus-per-task=2"
                 ).ask()
                 ray_slurm = questionary.text(
-                    "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+                    "6.3.4 Enter SLURM options for Ray:", default="--time=24:00:00 --mem=16G --cpus-per-task=4"
                 ).ask()
                 config["project"]["slurm_options_pyspark"] = (
                     sanitize_slurm_options(pyspark_slurm) if pyspark_slurm else ""
@@ -753,7 +768,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
         elif target == "pyspark-only":
             slurm_options = questionary.text(
-                "Enter SLURM options for PySpark (e.g., --time=12:00:00 --mem=8G --cpus-per-task=2):"
+                "6.3.2 Enter SLURM options for PySpark:", default="--time=12:00:00 --mem=8G --cpus-per-task=2"
             ).ask()
             config["project"]["slurm_options_pyspark"] = (
                 sanitize_slurm_options(slurm_options) if slurm_options else ""
@@ -761,11 +776,59 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
         elif target == "ray-only":
             slurm_options = questionary.text(
-                "Enter SLURM options for Ray (e.g., --time=24:00:00 --mem=16G --cpus-per-task=4):"
+                "6.3.2 Enter SLURM options for Ray:", default="--time=24:00:00 --mem=16G --cpus-per-task=4"
             ).ask()
             config["project"]["slurm_options_ray"] = (
                 sanitize_slurm_options(slurm_options) if slurm_options else ""
             )
+
+    # 7. Ray Configuration (only if target is ray-only or full)
+    if target == "ray-only" or target == "full":
+        print("\n[7] Ray Configuration")
+        config["ray"] = {}
+        
+        # Machine Learning Models Selection
+        config["ray"]["models"] = questionary.checkbox(
+            "7.1 Select machine learning models to test:",
+            choices=[
+                "Random Forest",
+                "XGBoost", 
+                "MLP (Neural Network)",
+                "KNN",
+                "SVM",
+                "Linear Regression",
+                "Logistic Regression",
+                "Decision Tree",
+                "Gradient Boosting",
+                "AdaBoost"
+            ],
+        ).ask()
+        
+        config["ray"]["num_trials"] = validate_integer_input(
+            "7.2 Enter number of trials for hyperparameter optimization:", default="10"
+        )
+        
+        config["ray"]["max_concurrent"] = validate_integer_input(
+            "7.3 Enter maximum concurrent trials:", default="2"
+        )
+        
+        config["ray"]["metric"] = questionary.select(
+            "7.4 Select optimization metric:",
+            choices=["accuracy", "f1", "precision", "recall", "auc", "mse", "mae", "r2"]
+        ).ask()
+        
+        config["ray"]["mode"] = questionary.select(
+            "7.5 Select optimization mode:",
+            choices=["max", "min"]
+        ).ask()
+        
+        config["ray"]["cv_folds"] = validate_integer_input(
+            "7.6 Enter number of cross-validation folds:", default="5"
+        )
+        
+        config["ray"]["random_state"] = validate_integer_input(
+            "7.7 Enter random state for reproducibility:", default="42"
+        )
 
     return config, config_name
 

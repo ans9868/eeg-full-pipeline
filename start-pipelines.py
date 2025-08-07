@@ -8,30 +8,61 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import yaml
 
+# =============================================================================
+# EMOJI CONSTANTS - Consistent messaging
+# =============================================================================
+
+# Status emojis
+EMOJI_SUCCESS = "✅"
+EMOJI_ERROR = "❌"
+EMOJI_WARNING = "⚠️"
+EMOJI_INFO = "💡"
+EMOJI_DEBUG = "🔍"
+
+# Action emojis
+EMOJI_RUNNING = "🚀"
+EMOJI_BUILDING = "🔨"
+EMOJI_WAITING = "⏳"
+EMOJI_SUBMITTING = "🧬"
+EMOJI_MOUNTING = "🔗"
+EMOJI_CREATING = "📁"
+
+# Container emojis
+EMOJI_DOCKER = "🐳"
+EMOJI_SINGULARITY = "🔒"
+
+# UI emojis
+EMOJI_TARGET = "🎯"
+EMOJI_LIST = "📋"
+EMOJI_CHART = "📊"
+EMOJI_SIZE = "📏"
+EMOJI_WEB = "🌐"
+
+# =============================================================================
+
 # Configuration constants - edit these to change paths/commands
 CONTAINER_CONFIG = {
     "pyspark": {
         "docker_image": "nour333/eeg-spark-pipeline:latest",
         "singularity_image": "./containers/eeg-pyspark-pipeline.sif",
         "entrypoint": "/app/main.py",
-        # "entrypoint": "/app/src/test_config_access.py",
         "command": "spark-submit",
         "job_name": "pyspark-pipeline",
         # Spark-submit specific configurations (most Spark configs are in session_builder.py)
         "spark_configs": ["--conf", "spark.jars.ivy=/tmp/.ivy2"],
         "mounts": [
-            # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
             ("./config/spark", "/opt/bitnami/spark/conf"),  # Spark configs (editable)
-            ("./data", "/app/data"),  # Output / intermediate features
-            # entrypoint.sh --> export LOG_FILE_PATH="/opt/bitnami/spark/logs/spark-driver-$(date +%Y-%m-%d_%H-%M).log"
             ("./logs/spark-events", "/opt/bitnami/spark/logs/"),  # Spark event logs
-            # Future additions (e.g., user EEG data, model output, results)
-            # ("./user_data", "/app/user_data"),
-            # ("./output", "/app/output"),
+
+            # Done through config file
+            # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
+            # ("./data", "/app/data"),  
+            # and all the eeg data
         ],
         "ports": [
             "4040:4040"
         ],
+        "expose_spark_ui": True,  # Whether to expose Spark UI port for HPC access
     },
     "ray": {
         "docker_image": "nour333/eeg-ray-tuner:latest",
@@ -40,10 +71,13 @@ CONTAINER_CONFIG = {
         "command": "python",
         "job_name": "ray-tuner",
         "mounts": [
-            # Editable + persistent (bind mount everything explicitly)
-            # Add any additional mounts here if needed for Ray
-            # Example: ("./ray_config", "/app/ray_config"),
+            # TODO ray logs and ray config
+
+            # Done through config file
+            # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
+            # ("./data", "/app/data"),  
         ],
+        # "ports": [ # TODO: add ray ports if needed]
     },
 }
 
@@ -57,23 +91,23 @@ def check_config(specific_config: Optional[str] = None) -> str:
     config_dir = Path("config")
 
     if not config_dir.exists():
-        print(f"❌ Config directory not found at {config_dir}")
+        print(f"{EMOJI_ERROR} Config directory not found at {config_dir}")
         sys.exit(1)
 
     if specific_config:
         # Use the specified config file
         config_path = config_dir / specific_config
         if not config_path.exists():
-            print(f"❌ Specified config file not found: {config_path}")
+            print(f"{EMOJI_ERROR} Specified config file not found: {config_path}")
             sys.exit(1)
-        print(f"📁 Using specified config: {config_path}")
+        print(f"{EMOJI_CREATING} Using specified config: {config_path}")
         return str(config_path.resolve())
 
     # Find the most recent config file
-    # Config files are now named as config_<projectname>_<day-month-year>_<HHMM>.yaml
+    # Config files are named as config_<projectname>_<day-month-year>_<HHMM>.yaml
     config_files = list(config_dir.glob("config_*.yaml"))
     if not config_files:
-        print(f"❌ No config files found in {config_dir}")
+        print(f"{EMOJI_ERROR} No config files found in {config_dir}")
         print(
             "Run config-maker.py first to create a configuration file (format: config_<projectname>_<day-month-year>_<HHMM>.yaml)."
         )
@@ -83,10 +117,10 @@ def check_config(specific_config: Optional[str] = None) -> str:
     config_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
     most_recent = config_files[0]
 
-    print(f"📁 Using most recent config: {most_recent.name}")
+    print(f"{EMOJI_CREATING} Using most recent config: {most_recent.name}")
     if len(config_files) > 1:
         print(
-            f"📋 Available configs: {[f.name for f in config_files]} (format: config_<projectname>_<day-month-year>_<HHMM>.yaml)"
+            f"{EMOJI_LIST} Available configs: {[f.name for f in config_files]} (format: config_<projectname>_<day-month-year>_<HHMM>.yaml)"
         )
 
     return str(most_recent.resolve())
@@ -105,68 +139,65 @@ def infer_pipeline_mode() -> str:
     """Infer which pipeline mode to run based on repository name."""
     this_path = Path(
         __file__
-    )  # .resolve() # since soft link, if resolved then would get eeg-full-pipeline directory and would get incorrect parent directory
-    repo = this_path.parent.name
+    )  # no .resolve() # since soft link, if resolved then would get eeg-full-pipeline directory and would get incorrect parent directory
+    repo_name = this_path.parent.name
 
-    if repo == "eeg-pyspark-pipeline":
+    if repo_name == "eeg-pyspark-pipeline":
         return "pyspark-only"
-    elif repo == "eeg-ray-pipeline":
+    elif repo_name == "eeg-ray-tuner": # TODO: add ray-only
         return "ray-only"
-    else:
+    elif repo_name == "eeg-full-pipeline":
         return "full"
+    else:
+        raise ValueError(f"Invalid repo name: {repo_name}. Please run this script from the root of the repository who's directory name is one of the following: (eeg-full-pipeline, eeg-ray-tuner, eeg-pyspark-pipeline).")
 
 
-def create_required_directories() -> None:
+
+
+def create_required_directories(output_dir: str = "./data") -> None:
     """Create required directories for the pipeline."""
+    # Convert relative path to absolute if needed
+    if output_dir.startswith("./"):
+        output_dir = str(Path.cwd() / output_dir[2:])
+    elif output_dir.startswith("."):
+        output_dir = str(Path.cwd() / output_dir[1:])
+    
     directories = [
         "config",
         "config/spark",
+        # config/ray
         "logs",
         "logs/spark-events",
-        "data",  # we can override this with the user config , need implement logic for this
+        #logs/ray-events
+        output_dir,
     ]
 
     for directory in directories:
         Path(directory).mkdir(parents=True, exist_ok=True)
-        print(f"📁 Created/verified directory: {directory}")
+        print(f"{EMOJI_CREATING} Created/verified directory: {directory}")
 
 
-def copy_data_to_scratch(config: Dict[str, Any]) -> None:
-    """Copy data files to /scratch/ for compute node access."""
-    if "data_input" in config and "groups" in config["data_input"]:
-        scratch_dir = "/scratch/ans9868/eeg-data"
-        Path(scratch_dir).mkdir(parents=True, exist_ok=True)
-
-        print(f"📁 Copying data files to {scratch_dir}...")
-
-        for group_name, file_list in config["data_input"]["groups"].items():
-            if isinstance(file_list, list):
-                for file_path in file_list:
-                    if isinstance(file_path, str):
-                        # Get just the filename
-                        filename = Path(file_path).name
-                        dest_path = f"{scratch_dir}/{filename}"
-
-                        # Copy if not already there
-                        if not Path(dest_path).exists():
-                            print(f"   Copying {file_path} -> {dest_path}")
-                            import shutil
-
-                            shutil.copy2(file_path, dest_path)
-                        else:
-                            print(f"   Skipping {filename} (already exists)")
-
-        print(f"✅ Data files copied to {scratch_dir}")
-
-        # Update the config to use scratch paths
-        for group_name, file_list in config["data_input"]["groups"].items():
-            if isinstance(file_list, list):
-                for i, file_path in enumerate(file_list):
-                    if isinstance(file_path, str):
-                        filename = Path(file_path).name
-                        config["data_input"]["groups"][group_name][
-                            i
-                        ] = f"{scratch_dir}/{filename}"
+def print_spark_ui_instructions() -> None:
+    """Print instructions for accessing Spark UI on HPC."""
+    # TODO: NECESSARY FOR LATER - Uncomment when Spark UI access is needed
+    # print("\n" + "="*60)
+    # print("🌐 SPARK UI ACCESS INSTRUCTIONS")
+    # print("="*60)
+    # print("To access Spark UI from your local machine:")
+    # print()
+    # print("1. Find your compute node:")
+    # print("   squeue -u $USER -o '%.18i %.9P %.20j %.8u %.2t %.10M %.6D %R'")
+    # print()
+    # print("2. Create SSH tunnel from your local machine:")
+    # print("   ssh -L 4040:COMPUTE_NODE:4040 USERNAME@LOGIN_NODE")
+    # print()
+    # print("3. Access Spark UI in your browser:")
+    # print("   http://localhost:4040")
+    # print()
+    # print("4. Alternative: Use port forwarding in your SLURM script:")
+    # print("   Add '--bind 4040:4040' to singularity run command")
+    # print("="*60)
+    pass  # Placeholder for future use
 
 
 # =============================================================================
@@ -209,33 +240,13 @@ def build_user_mounts(config: Dict[str, Any]) -> List[Tuple[str, str]]:
                             seen_dirs.add(file_path)
                             # Mount the individual file to the same path inside the container
                             user_mounts.append((file_path, file_path))
-                            print(f"🔗 Adding mount: {file_path} -> {file_path}")
-
-    # Add output directory (this can override the default ./data mount)
-    if "project" in config and "output_dir" in config["project"]:
-        output_dir = config["project"]["output_dir"]
-
-        # Convert relative path to absolute path
-        if output_dir.startswith("./"):
-            output_dir = str(Path.cwd() / output_dir[2:])
-        elif output_dir.startswith("."):
-            output_dir = str(Path.cwd() / output_dir[1:])
-
-        # Create output directory if it doesn't exist
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
-
-        # Mount output directory to /app/data (overriding default ./data)
-        user_mounts.append((output_dir, "/app/data"))
-        print(
-            f"🔧 User config overrides default ./data mount with: {config['project']['output_dir']}"
-        )
+                            print(f"{EMOJI_MOUNTING} Adding mount: {file_path} -> {file_path}")
 
     return user_mounts
 
 
 def get_all_mount_mappings(
-    container_type: str, config_path: str, config_data: Dict[str, Any]
-) -> List[Tuple[str, str]]:
+    container_type: str, config_path: str, config_data: Dict[str, Any]) -> List[Tuple[str, str]]:
     """Get all mount mappings for a container type based on CONTAINER_CONFIG."""
     container_config = CONTAINER_CONFIG[container_type]
     mount_mappings = []
@@ -243,26 +254,17 @@ def get_all_mount_mappings(
     # Add specific config file mount
     mount_mappings.append((config_path, "/app/config.yaml"))
 
-    # Add static mounts from configuration (but check for user overrides)
-    static_mounts = container_config["mounts"].copy()
+    # Get output directory from config or use default
+    output_dir = config_data.get("project", {}).get("output_dir", "./data")
 
-    # Check if user config has output_dir that would override ./data
-    user_has_output_dir = (
-        "project" in config_data and "output_dir" in config_data["project"]
-    )
+    # Create required directories
+    create_required_directories(output_dir)
 
-    # If user specified output_dir, filter out the default ./data mount to avoid conflicts
-    if user_has_output_dir:
-        static_mounts = [
-            (host_path, container_path)
-            for host_path, container_path in static_mounts
-            if not (host_path == "./data" and container_path == "/app/data")
-        ]
-        print(
-            f"🔧 User config overrides default ./data mount with: {config_data['project']['output_dir']}"
-        )
+    # Add static mounts from configuration
+    mount_mappings.extend(container_config["mounts"])
 
-    mount_mappings.extend(static_mounts)
+    # Add output directory mount
+    mount_mappings.append((output_dir, "/app/data"))
 
     # Add dynamic mounts (built from user config)
     dynamic_mounts = build_user_mounts(config_data)
@@ -283,15 +285,16 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     # Build docker run command with volume mounts
     docker_cmd = ["docker", "run", "--rm"]
 
-    # All Spark and Hadoop configurations are now centralized in session_builder.py
-    # But LD_PRELOAD is still needed for nss_wrapper in Docker
-    docker_cmd.extend(["-e", "LD_PRELOAD=/opt/bitnami/common/lib/libnss_wrapper.so"])
+    # !! All Spark and Hadoop configurations are now centralized in session_builder.py
+    
+    # But LD_PRELOAD is still needed for nss_wrapper in Docker - moved to Dockerfile
+    # docker_cmd.extend(["-e", "LD_PRELOAD=/opt/bitnami/common/lib/libnss_wrapper.so"])
 
     # Add port mappings for pyspark container
-    if container_type == "pyspark":
-        ports = config.get("ports", [])
-        for port_mapping in ports:
-            docker_cmd.extend(["-p", port_mapping])
+    
+    ports = config.get("ports", [])
+    for port_mapping in ports:
+        docker_cmd.extend(["-p", port_mapping])
 
     # Add volume mounts
     for host_path, container_path in mount_mappings:
@@ -300,32 +303,24 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     # Add image and command
     docker_cmd.extend([config["docker_image"]] + command_parts)
 
-    print(f"🔗 Mounting {len(mount_mappings)} directories:")
+    print(f"{EMOJI_MOUNTING} Mounting {len(mount_mappings)} directories:")
 
-    # Show first few directories
-    show_count = min(5, len(mount_mappings))
-    for i, (host_path, container_path) in enumerate(mount_mappings[:show_count], 1):
-        print(f"   {i}. {host_path} -> {container_path}")
-
-    if len(mount_mappings) > show_count:
-        print(f"   ... and {len(mount_mappings) - show_count} more directories")
-
-    print(f"🔗 Running command: {docker_cmd}")
+    print(f"{EMOJI_MOUNTING} Running command: {docker_cmd}")
 
     try:
         subprocess.run(docker_cmd, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"\n❌ Docker command failed with exit code {e.returncode}")
+        print(f"\n{EMOJI_ERROR} Docker command failed with exit code {e.returncode}")
 
         # Check for common Docker mount errors
         if "operation not permitted" in str(e).lower() or "mkdir" in str(e).lower():
-            print("\n🔍 Most likely causes:")
+            print(f"\n{EMOJI_DEBUG} Most likely causes:")
             print("   1. Docker doesn't have full disk access")
             print(
                 "   2. Docker doesn't have permission to access the specified files/directories"
             )
             print("   3. The files/directories don't exist")
-            print("\n💡 Solutions:")
+            print(f"\n{EMOJI_INFO} Solutions:")
             print(
                 "   • On macOS: Go to System Preferences > Security & Privacy > Privacy > Full Disk Access"
             )
@@ -338,20 +333,20 @@ def run_docker_container(container_type: str, config_path: str) -> None:
                 "   • Try running with sudo if on Linux (not recommended for production)"
             )
         if "no such file or directory" in str(e).lower():
-            print("\n🔍 Most likely cause: One or more files/directories don't exist")
-            print("\n💡 Solution: Check that all paths in your config file exist")
+            print(f"\n{EMOJI_DEBUG} Most likely cause: One or more files/directories don't exist")
+            print(f"\n{EMOJI_INFO} Solution: Check that all paths in your config file exist")
         if "permission denied" in str(e).lower():
             print(
-                "\n🔍 Most likely cause: Permission denied accessing files/directories"
+                f"\n{EMOJI_DEBUG} Most likely cause: Permission denied accessing files/directories"
             )
-            print("\n💡 Solutions:")
+            print(f"\n{EMOJI_INFO} Solutions:")
             print("   • Check file permissions on the mounted directories")
             print("   • Ensure Docker has permission to access the files")
             print("   • On macOS: Check Docker's Full Disk Access permissions")
 
-        print(f"\n🔍 Error details: {e}")
+        print(f"\n{EMOJI_DEBUG} Error details: {e}")
 
-        print(f"\n📋 Full error output:")
+        print(f"\n{EMOJI_LIST} Full error output:")
         if e.stdout:
             print(f"STDOUT: {e.stdout.decode()}")
         if e.stderr:
@@ -359,8 +354,8 @@ def run_docker_container(container_type: str, config_path: str) -> None:
 
         sys.exit(1)
     except FileNotFoundError:
-        print("\n❌ Docker command not found")
-        print("💡 Please ensure Docker is installed and available in your PATH")
+        print(f"\n{EMOJI_ERROR} Docker command not found")
+        print(f"{EMOJI_INFO} Please ensure Docker is installed and available in your PATH")
         sys.exit(1)
 
 
@@ -380,18 +375,16 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
     for host_path, container_path in mount_mappings:
         singularity_cmd.extend(["--bind", f"{host_path}:{container_path}"])
 
+    # Add port mappings - not needed for singularity as done automatically - https://stackoverflow.com/questions/47297645/binding-ports-when-running-docker-images-in-singularity - 
+    # ports = config.get("ports", [])
+    # for port_mapping in ports:
+    #     singularity_cmd.extend(["--bind", f"0.0.0.0:{port_mapping.split(':')[0]}:{port_mapping.split(':')[1]}"])
+
     # Add image and command
     singularity_cmd.extend([config["singularity_image"]] + command_parts)
 
     print(f"🔗 Mounting {len(mount_mappings)} directories:")
 
-    # Show first few directories
-    show_count = min(5, len(mount_mappings))
-    for i, (host_path, container_path) in enumerate(mount_mappings[:show_count], 1):
-        print(f"   {i}. {host_path} -> {container_path}")
-
-    if len(mount_mappings) > show_count:
-        print(f"   ... and {len(mount_mappings) - show_count} more directories")
 
     print(f"🔗 Running command: {singularity_cmd}")
 
@@ -454,20 +447,20 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
 
 
 def run_docker_pyspark_only(config_path: str) -> None:
-    print("\n🐳 Running PySpark container only...")
+    print(f"\n{EMOJI_DOCKER} Running PySpark container only...")
     run_docker_container("pyspark", config_path)
 
 
 def run_docker_ray_only(config_path: str) -> None:
-    print("\n🐳 Running Ray pipeline container only...")
+    print(f"\n{EMOJI_DOCKER} Running Ray pipeline container only...")
     run_docker_container("ray", config_path)
 
 
 def run_docker(config_path: str) -> None:
-    print("\n🐳 Running PySpark container...")
+    print(f"\n{EMOJI_DOCKER} Running PySpark container...")
     run_docker_container("pyspark", config_path)
 
-    print("\n🐳 Running Ray pipeline container...")
+    print(f"\n{EMOJI_DOCKER} Running Ray pipeline container...")
     run_docker_container("ray", config_path)
 
 
@@ -477,20 +470,20 @@ def run_docker(config_path: str) -> None:
 
 
 def run_singularity_pyspark_only(config_path: str) -> None:
-    print("\n🔒 Running PySpark Singularity container only...")
+    print(f"\n{EMOJI_SINGULARITY} Running PySpark Singularity container only...")
     run_singularity_container("pyspark", config_path)
 
 
 def run_singularity_ray_only(config_path: str) -> None:
-    print("\n🔒 Running Ray pipeline Singularity container only...")
+    print(f"\n{EMOJI_SINGULARITY} Running Ray pipeline Singularity container only...")
     run_singularity_container("ray", config_path)
 
 
 def run_singularity_without_slurm(config_path: str) -> None:
-    print("\n🔒 Running PySpark Singularity container...")
+    print(f"\n{EMOJI_SINGULARITY} Running PySpark Singularity container...")
     run_singularity_container("pyspark", config_path)
 
-    print("\n🔒 Running Ray pipeline Singularity container...")
+    print(f"\n{EMOJI_SINGULARITY} Running Ray pipeline Singularity container...")
     run_singularity_container("ray", config_path)
 
 
@@ -572,7 +565,7 @@ def run_singularity_with_slurm_separate_options(
     config_path: str, pyspark_slurm_options: str = "", ray_slurm_options: str = ""
 ) -> None:
     """Run full pipeline with separate SLURM options for each container."""
-    print("\n🧬 Submitting PySpark SLURM job...")
+    print(f"\n{EMOJI_SUBMITTING} Submitting PySpark SLURM job...")
 
     # Create temporary SLURM script for PySpark
     pyspark_slurm_content = create_slurm_script(
@@ -591,7 +584,7 @@ def run_singularity_with_slurm_separate_options(
     try:
         job_id = pyspark_submit.stdout.strip().split()[-1]
     except IndexError:
-        print("❌ Failed to get job ID from sbatch output.")
+        print(f"{EMOJI_ERROR} Failed to get job ID from sbatch output.")
         sys.exit(1)
 
     # Create temporary SLURM script for Ray with dependency
@@ -602,7 +595,7 @@ def run_singularity_with_slurm_separate_options(
     with open("./containers/temp_ray.slurm", "w") as f:
         f.write(ray_slurm_content)
 
-    print(f"\n🧬 Submitting Ray pipeline SLURM job (after PySpark job {job_id})...")
+    print(f"\n{EMOJI_SUBMITTING} Submitting Ray pipeline SLURM job (after PySpark job {job_id})...")
     subprocess.run(["sbatch", "./containers/temp_ray.slurm"], check=True)
 
     # Clean up temporary files
@@ -610,10 +603,8 @@ def run_singularity_with_slurm_separate_options(
     os.remove("./containers/temp_ray.slurm")
 
 
-def run_singularity_slurm_pyspark_only(
-    config_path: str, slurm_options: str = ""
-) -> None:
-    print("\n🧬 Submitting PySpark SLURM job only...")
+def run_singularity_slurm_pyspark_only(config_path: str, slurm_options: str = "") -> None:
+    print(f"\n{EMOJI_SUBMITTING} Submitting PySpark SLURM job only...")
 
     pyspark_slurm_content = create_slurm_script("pyspark", config_path, slurm_options)
 
@@ -627,7 +618,7 @@ def run_singularity_slurm_pyspark_only(
 
 
 def run_singularity_slurm_ray_only(config_path: str, slurm_options: str = "") -> None:
-    print("\n�� Submitting Ray pipeline SLURM job only...")
+    print(f"\n{EMOJI_SUBMITTING} Submitting Ray pipeline SLURM job only...")
 
     ray_slurm_content = create_slurm_script("ray", config_path, slurm_options)
 
@@ -645,9 +636,7 @@ def run_singularity_slurm_ray_only(config_path: str, slurm_options: str = "") ->
 # =============================================================================
 
 
-def check_and_build_sif_files(
-    config: Dict[str, Any], pipeline_mode: str, use_slurm: bool = False
-) -> None:
+def check_and_build_sif_files(config: Dict[str, Any], pipeline_mode: str, use_slurm: bool = False) -> None:
     """Check if .sif files exist and build them if they don't.
 
     Args:
@@ -663,20 +652,25 @@ def check_and_build_sif_files(
 
     # Determine which containers to check based on pipeline mode
     containers_to_check = []
-    if pipeline_mode in ["pyspark-only", "full"]:
+    
+    # Define which containers are needed for each pipeline mode
+    pipeline_containers = {
+        "pyspark-only": ["pyspark"],
+        "ray-only": ["ray"], 
+        "full": ["pyspark", "ray"]
+    }
+    
+    # Get containers needed for this pipeline mode
+    needed_containers = pipeline_containers.get(pipeline_mode, [])
+    
+    # Build container list
+    for container_type in needed_containers:
+        sif_name = f"eeg-{container_type}-{'pipeline' if container_type == 'pyspark' else 'tuner'}.sif"
         containers_to_check.append(
             (
-                "eeg-pyspark-pipeline.sif",
-                CONTAINER_CONFIG["pyspark"]["docker_image"],
-                "pyspark",
-            )
-        )
-    if pipeline_mode in ["ray-only", "full"]:
-        containers_to_check.append(
-            (
-                "eeg-ray-tuner.sif",
-                CONTAINER_CONFIG["ray"]["docker_image"],
-                "ray",
+                sif_name,
+                CONTAINER_CONFIG[container_type]["docker_image"],
+                container_type,
             )
         )
 
@@ -684,7 +678,7 @@ def check_and_build_sif_files(
     for sif_name, docker_uri, build_type in containers_to_check:
         sif_path = Path(f"./containers/{sif_name}")
         if not sif_path.exists():
-            print(f"🔨 {build_type.capitalize()} .sif file not found: {sif_name}")
+            print(f"{EMOJI_BUILDING} {build_type.capitalize()} .sif file not found: {sif_name}")
             if use_slurm:
                 slurm_options = config.get("project", {}).get("slurm_options_build", "")
                 build_sif_with_slurm(
@@ -696,13 +690,13 @@ def check_and_build_sif_files(
 
     # If builds were submitted via SLURM, wait for them to complete
     if builds_submitted:
-        print("\n⏳ Waiting for container builds to complete...")
-        print("💡 You can check build status with: squeue -u $USER")
-        print("💡 Build logs are in ./containers/ directory")
+        print(f"\n{EMOJI_WAITING} Waiting for container builds to complete...")
+        print(f"{EMOJI_INFO} You can check build status with: squeue -u $USER")
+        print(f"{EMOJI_INFO} Build logs are in ./containers/ directory")
 
         # Wait for .sif files to appear
         max_wait_time = 1800  # 30 minutes
-        wait_interval = 10  # 30 seconds
+        wait_interval = 10  # 10 seconds
         waited_time = 0
 
         while waited_time < max_wait_time:
@@ -711,35 +705,35 @@ def check_and_build_sif_files(
                 for sif_name, _, _ in containers_to_check
             )
             if all_built:
-                print("✅ All container builds completed!")
+                print(f"{EMOJI_SUCCESS} All container builds completed!")
                 break
             time.sleep(wait_interval)
             waited_time += wait_interval
-            print(f"⏳ Still waiting for builds... ({waited_time}s elapsed)")
+            print(f"{EMOJI_WAITING} Still waiting for builds... ({waited_time}s elapsed)")
 
         if not all(
             Path(f"./containers/{sif_name}").exists()
             for sif_name, _, _ in containers_to_check
         ):
-            print("❌ Timeout waiting for container builds to complete")
-            print("💡 Check build logs in ./containers/ directory")
+            print(f"{EMOJI_ERROR} Timeout waiting for container builds to complete")
+            print(f"{EMOJI_INFO} Check build logs in ./containers/ directory")
             
             # Show status of each container
-            print("\n📊 Build status:")
+            print(f"\n{EMOJI_CHART} Build status:")
             for sif_name, _, build_type in containers_to_check:
                 sif_path = Path(f"./containers/{sif_name}")
                 if sif_path.exists():
                     size_mb = sif_path.stat().st_size / (1024 * 1024)
-                    print(f"   ✅ {sif_name} ({size_mb:.1f} MB)")
+                    print(f"   {EMOJI_SUCCESS} {sif_name} ({size_mb:.1f} MB)")
                 else:
-                    print(f"   ❌ {sif_name} (not found)")
+                    print(f"   {EMOJI_ERROR} {sif_name} (not found)")
                     
                     # Check for log files
                     log_pattern = f"./containers/{build_type}_build_*.err"
                     import glob
                     error_logs = glob.glob(log_pattern)
                     if error_logs:
-                        print(f"      📁 Error logs: {error_logs}")
+                        print(f"      {EMOJI_CREATING} Error logs: {error_logs}")
             
             sys.exit(1)
 
@@ -748,7 +742,7 @@ def build_sif_with_slurm(
     sif_name: str, docker_uri: str, job_prefix: str, slurm_options: str = ""
 ) -> None:
     """Build .sif file using SLURM job."""
-    print(f"🧬 Submitting SLURM job to build {sif_name}...")
+    print(f"{EMOJI_SUBMITTING} Submitting SLURM job to build {sif_name}...")
 
     # Create SLURM script for building
     build_slurm_content = f"""#!/bin/bash
@@ -795,13 +789,13 @@ fi
     # Submit SLURM job
     try:
         result = subprocess.run(["sbatch", slurm_script_path], capture_output=True, text=True, check=True)
-        print(f"✅ SLURM build job submitted for {sif_name}")
-        print(f"📋 Job output: {result.stdout.strip()}")
-        print(f"📁 Logs will be saved in ./containers/")
-        print(f"💡 Monitor with: tail -f ./containers/{job_prefix}_*.out ./containers/{job_prefix}_*.err")
-        print(f"⏳ Please wait for the build to complete before running the pipeline.")
+        print(f"{EMOJI_SUCCESS} SLURM build job submitted for {sif_name}")
+        print(f"{EMOJI_LIST} Job output: {result.stdout.strip()}")
+        print(f"{EMOJI_CREATING} Logs will be saved in ./containers/")
+        print(f"{EMOJI_INFO} Monitor with: tail -f ./containers/{job_prefix}_*.out ./containers/{job_prefix}_*.err")
+        print(f"{EMOJI_WAITING} Please wait for the build to complete before running the pipeline.")
     except subprocess.CalledProcessError as e:
-        print(f"❌ Failed to submit SLURM job for {sif_name}")
+        print(f"{EMOJI_ERROR} Failed to submit SLURM job for {sif_name}")
         print(f"Error: {e}")
         if e.stdout:
             print(f"STDOUT: {e.stdout}")
@@ -812,7 +806,7 @@ fi
 
 def build_sif_locally(sif_name: str, docker_uri: str, build_type: str) -> None:
     """Build .sif file locally."""
-    print(f"🔨 Building {sif_name} locally from docker://{docker_uri}...")
+    print(f"{EMOJI_BUILDING} Building {sif_name} locally from docker://{docker_uri}...")
 
     # Create log file
     log_file = f"./containers/{build_type}_build.log"
@@ -825,9 +819,9 @@ def build_sif_locally(sif_name: str, docker_uri: str, build_type: str) -> None:
         containers_dir = Path("./containers")
         containers_dir.mkdir(exist_ok=True)
         
-        print(f"📁 Build log will be saved to: {log_file}")
-        print(f"🔍 Source: docker://{docker_uri}")
-        print(f"🎯 Target: ./containers/{sif_name}")
+        print(f"{EMOJI_CREATING} Build log will be saved to: {log_file}")
+        print(f"{EMOJI_DEBUG} Source: docker://{docker_uri}")
+        print(f"{EMOJI_TARGET} Target: ./containers/{sif_name}")
         
         # Build the .sif file and redirect output to log
         with open(log_file, "w") as log:
@@ -844,33 +838,33 @@ def build_sif_locally(sif_name: str, docker_uri: str, build_type: str) -> None:
             )
 
         if result.returncode == 0:
-            print(f"✅ Successfully built {sif_name}")
-            print(f"📁 Build log saved to {log_file}")
+            print(f"{EMOJI_SUCCESS} Successfully built {sif_name}")
+            print(f"{EMOJI_CREATING} Build log saved to {log_file}")
             # Show file size
             sif_path = Path(f"./containers/{sif_name}")
             if sif_path.exists():
                 size_mb = sif_path.stat().st_size / (1024 * 1024)
-                print(f"📏 File size: {size_mb:.1f} MB")
+                print(f"{EMOJI_SIZE} File size: {size_mb:.1f} MB")
         else:
-            print(f"❌ Failed to build {sif_name}")
-            print(f"📁 Check build log at {log_file}")
+            print(f"{EMOJI_ERROR} Failed to build {sif_name}")
+            print(f"{EMOJI_CREATING} Check build log at {log_file}")
             # Show last few lines of log for debugging
             try:
                 with open(log_file, "r") as f:
                     lines = f.readlines()
                     if lines:
-                        print("📋 Last 10 lines of build log:")
+                        print(f"{EMOJI_LIST} Last 10 lines of build log:")
                         for line in lines[-10:]:
                             print(f"   {line.rstrip()}")
             except Exception as log_e:
-                print(f"⚠️  Could not read log file: {log_e}")
+                print(f"{EMOJI_WARNING} Could not read log file: {log_e}")
             sys.exit(1)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Singularity command failed: {e}")
-        print("💡 Make sure Singularity is installed and available in PATH")
+        print(f"{EMOJI_ERROR} Singularity command failed: {e}")
+        print(f"{EMOJI_INFO} Make sure Singularity is installed and available in PATH")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error building {sif_name}: {e}")
+        print(f"{EMOJI_ERROR} Error building {sif_name}: {e}")
         sys.exit(1)
 
 
@@ -890,18 +884,10 @@ def main() -> None:
     deployment_method = config.get("project", {}).get("deployment_method", "Docker")
     pipeline_mode = infer_pipeline_mode()
 
-    print(f"🚀 Starting pipeline with deployment method: {deployment_method}")
-    print(f"🎯 Pipeline mode: {pipeline_mode}")
+    print(f"{EMOJI_RUNNING} Starting pipeline with deployment method: {deployment_method}")
+    print(f"{EMOJI_TARGET} Pipeline mode: {pipeline_mode}")
 
-    # Create required directories
-    print("\n📁 Setting up required directories...")
-    create_required_directories()
-
-    # Copy data to scratch if using SLURM (for compute node access)
-    if deployment_method == "Singularity with Slurm":
-        print("\n📁 Copying data files to /scratch/ for compute node access...")
-        copy_data_to_scratch(config)
-
+   
     if deployment_method == "Docker":
         if pipeline_mode == "pyspark-only":
             run_docker_pyspark_only(config_path)
@@ -922,6 +908,8 @@ def main() -> None:
         if pipeline_mode == "pyspark-only":
             slurm_options = config.get("project", {}).get("slurm_options_pyspark", "")
             run_singularity_slurm_pyspark_only(config_path, slurm_options)
+            # TODO: NECESSARY FOR LATER - Uncomment when Spark UI access is needed
+            # print_spark_ui_instructions()
         elif pipeline_mode == "ray-only":
             slurm_options = config.get("project", {}).get("slurm_options_ray", "")
             run_singularity_slurm_ray_only(config_path, slurm_options)
@@ -931,8 +919,10 @@ def main() -> None:
             run_singularity_with_slurm_separate_options(
                 config_path, pyspark_slurm, ray_slurm
             )
+            # TODO: NECESSARY FOR LATER - Uncomment when Spark UI access is needed
+            # print_spark_ui_instructions()
     else:
-        print(f"❌ Unknown deployment method: {deployment_method}")
+        print(f"{EMOJI_ERROR} Unknown deployment method: {deployment_method}")
         print(
             "Supported methods: Docker, Singularity with Slurm, Singularity without Slurm"
         )

@@ -171,7 +171,7 @@ def process_subject(subject_id: str, spark: SparkSession) -> DataFrame:
 ### Example 2: Schema-Based Feature Processing
 
 ```python
-from eeg_spark_etl.core.shema_definition import get_feature_schema
+from eeg_spark_etl.core.schema_definition import get_feature_schema
 
 # process_epoch.py - generates features matching schema
 def process_epoch(epoch_id: int, subject_id: str) -> List[Row]:
