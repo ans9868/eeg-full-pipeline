@@ -51,7 +51,7 @@ CONTAINER_CONFIG = {
         # Spark-submit specific configurations (most Spark configs are in session_builder.py)
         "spark_configs": ["--conf", "spark.jars.ivy=/tmp/.ivy2"],
         "mounts": [
-            ("./config/spark", "/opt/bitnami/spark/conf"),  # Spark configs (editable)
+            # ("./config/spark", "/opt/bitnami/spark/conf"),  # Spark configs (editable) - DISABLED: may override authentication settings
             ("./logs/spark-events", "/opt/bitnami/spark/logs/"),  # Spark event logs
 
             # Done through config file
