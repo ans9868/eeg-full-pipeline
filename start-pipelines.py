@@ -370,6 +370,18 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
 
     # Build singularity run command with bind mounts
     singularity_cmd = ["singularity", "run"]
+    
+    # Add Singularity-specific environment variables to fix authentication issues
+    # These are needed because Singularity preserves more host context than Docker
+    singularity_cmd.extend([
+        "--env", "HADOOP_USER_NAME=spark",
+        "--env", "USER=spark", 
+        "--env", "LOGNAME=spark",
+        "--env", "USERNAME=spark",
+        "--env", "HADOOP_CONF_DIR=/tmp",
+        "--env", "HADOOP_HOME=/tmp",
+        "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Djava.security.manager= -Dhadoop.security.authentication=simple -Duser.name=spark"
+    ])
 
     # Add bind mounts
     for host_path, container_path in mount_mappings:
