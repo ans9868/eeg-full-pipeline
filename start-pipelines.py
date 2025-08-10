@@ -675,10 +675,15 @@ def check_and_build_sif_files(config: Dict[str, Any], pipeline_mode: str, use_sl
         )
 
     # Check and build each required container
+    print(f"{EMOJI_INFO} Checking for required container images...")
     for sif_name, docker_uri, build_type in containers_to_check:
         sif_path = Path(f"./containers/{sif_name}")
-        if not sif_path.exists():
+        if sif_path.exists():
+            size_mb = sif_path.stat().st_size / (1024 * 1024)
+            print(f"{EMOJI_SUCCESS} Found {build_type} container: {sif_name} ({size_mb:.1f} MB)")
+        else:
             print(f"{EMOJI_BUILDING} {build_type.capitalize()} .sif file not found: {sif_name}")
+            print(f"{EMOJI_INFO} Will build from: docker://{docker_uri}")
             if use_slurm:
                 slurm_options = config.get("project", {}).get("slurm_options_build", "")
                 build_sif_with_slurm(
@@ -743,6 +748,9 @@ def build_sif_with_slurm(
 ) -> None:
     """Build .sif file using SLURM job."""
     print(f"{EMOJI_SUBMITTING} Submitting SLURM job to build {sif_name}...")
+    print(f"{EMOJI_DEBUG} Source: docker://{docker_uri}")
+    print(f"{EMOJI_TARGET} Target: ./containers/{sif_name}")
+    print(f"{EMOJI_INFO} SLURM options: {slurm_options if slurm_options else 'default'}")
 
     # Create SLURM script for building
     build_slurm_content = f"""#!/bin/bash
@@ -822,20 +830,77 @@ def build_sif_locally(sif_name: str, docker_uri: str, build_type: str) -> None:
         print(f"{EMOJI_CREATING} Build log will be saved to: {log_file}")
         print(f"{EMOJI_DEBUG} Source: docker://{docker_uri}")
         print(f"{EMOJI_TARGET} Target: ./containers/{sif_name}")
+        print(f"{EMOJI_BUILDING} Starting build process... (this may take several minutes)")
         
-        # Build the .sif file and redirect output to log
+        # Build the .sif file with real-time output to both console and log
+        import threading
+        import queue
+        from io import StringIO
+        
+        # Create a queue for capturing output
+        output_queue = queue.Queue()
+        
+        def capture_output(pipe, queue_obj, prefix=""):
+            """Capture output from subprocess and put it in queue"""
+            for line in iter(pipe.readline, ''):
+                if line:
+                    queue_obj.put(f"{prefix}{line}")
+            pipe.close()
+        
+        # Start the subprocess
+        process = subprocess.Popen(
+            ["singularity", "build", f"./containers/{sif_name}", f"docker://{docker_uri}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+        
+        # Start threads to capture stdout and stderr
+        stdout_thread = threading.Thread(target=capture_output, args=(process.stdout, output_queue, ""))
+        stderr_thread = threading.Thread(target=capture_output, args=(process.stderr, output_queue, ""))
+        
+        stdout_thread.daemon = True
+        stderr_thread.daemon = True
+        stdout_thread.start()
+        stderr_thread.start()
+        
+        # Open log file for writing
         with open(log_file, "w") as log:
             log.write(f"=== Starting build of {sif_name} ===\n")
             log.write(f"Source: docker://{docker_uri}\n")
             log.write(f"Target: ./containers/{sif_name}\n")
             log.write(f"Timestamp: {datetime.now()}\n\n")
+            log.flush()
             
-            result = subprocess.run(
-                ["singularity", "build", f"./containers/{sif_name}", f"docker://{docker_uri}"],
-                stdout=log,
-                stderr=log,
-                text=True,
-            )
+            # Process output in real-time
+            while process.poll() is None or not output_queue.empty():
+                try:
+                    line = output_queue.get(timeout=0.1)
+                    # Print to console with emoji indicators
+                    if "INFO:" in line or "Writing" in line:
+                        print(f"{EMOJI_INFO} {line.strip()}")
+                    elif "ERROR:" in line or "FATAL:" in line:
+                        print(f"{EMOJI_ERROR} {line.strip()}")
+                    elif "WARNING:" in line:
+                        print(f"{EMOJI_WARNING} {line.strip()}")
+                    elif line.strip():
+                        print(f"{EMOJI_BUILDING} {line.strip()}")
+                    
+                    # Also write to log file
+                    log.write(line)
+                    log.flush()
+                    
+                except queue.Empty:
+                    continue
+            
+            # Wait for threads to finish
+            stdout_thread.join(timeout=1)
+            stderr_thread.join(timeout=1)
+            
+            # Get the final return code
+            result = process
 
         if result.returncode == 0:
             print(f"{EMOJI_SUCCESS} Successfully built {sif_name}")
