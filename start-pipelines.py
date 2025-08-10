@@ -380,7 +380,8 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
         "--env", "USERNAME=spark",
         "--env", "HADOOP_CONF_DIR=/tmp",
         "--env", "HADOOP_HOME=/tmp",
-        "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Djava.security.manager= -Dhadoop.security.authentication=simple -Duser.name=spark"
+        # Note: We REMOVE -Djava.security.manager= as it enables security manager instead of disabling it
+        "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Dhadoop.security.authentication=simple -Duser.name=spark"
     ])
 
     # Add bind mounts
