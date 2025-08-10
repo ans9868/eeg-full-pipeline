@@ -369,7 +369,9 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
     mount_mappings = get_all_mount_mappings(container_type, config_path, config_data)
 
     # Build singularity run command with bind mounts
-    singularity_cmd = ["singularity", "run"]
+    # Use --fakeroot to simulate root privileges inside container (like Docker)
+    # This bypasses Unix user resolution issues that cause Kerberos auth failures
+    singularity_cmd = ["singularity", "run", "--fakeroot"]
     
     # Add Singularity-specific environment variables to fix authentication issues
     # These are needed because Singularity preserves more host context than Docker
@@ -381,7 +383,7 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
         "--env", "HADOOP_CONF_DIR=/tmp",
         "--env", "HADOOP_HOME=/tmp",
         # Note: We REMOVE -Djava.security.manager= as it enables security manager instead of disabling it
-        "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Dhadoop.security.authentication=simple -Duser.name=spark"
+        "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Dhadoop.security.authentication=simple -Duser.name=spark -Dhadoop.security.authorization=false"
     ])
 
     # Add bind mounts
