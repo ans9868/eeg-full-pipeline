@@ -385,11 +385,72 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
 
     print(f"🔗 Mounting {len(mount_mappings)} directories:")
 
-
     print(f"🔗 Running command: {singularity_cmd}")
+    print(f"{EMOJI_RUNNING} Starting {container_type} container... (this may take a while)")
 
     try:
-        subprocess.run(singularity_cmd, check=True)
+        # Use real-time output instead of silent execution
+        import threading
+        import queue
+        
+        # Create a queue for capturing output
+        output_queue = queue.Queue()
+        
+        def capture_output(pipe, queue_obj, prefix=""):
+            """Capture output from subprocess and put it in queue"""
+            for line in iter(pipe.readline, ''):
+                if line:
+                    queue_obj.put(f"{prefix}{line}")
+            pipe.close()
+        
+        # Start the subprocess with real-time output
+        process = subprocess.Popen(
+            singularity_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            universal_newlines=True
+        )
+        
+        # Start threads to capture stdout and stderr
+        stdout_thread = threading.Thread(target=capture_output, args=(process.stdout, output_queue, ""))
+        stderr_thread = threading.Thread(target=capture_output, args=(process.stderr, output_queue, ""))
+        
+        stdout_thread.daemon = True
+        stderr_thread.daemon = True
+        stdout_thread.start()
+        stderr_thread.start()
+        
+        # Process output in real-time
+        while process.poll() is None or not output_queue.empty():
+            try:
+                line = output_queue.get(timeout=0.1)
+                # Print with appropriate emoji indicators
+                if "INFO:" in line:
+                    print(f"{EMOJI_INFO} {line.strip()}")
+                elif "WARNING:" in line:
+                    print(f"{EMOJI_WARNING} {line.strip()}")
+                elif "ERROR:" in line or "FATAL:" in line:
+                    print(f"{EMOJI_ERROR} {line.strip()}")
+                elif "Converting SIF" in line or "Mounting" in line:
+                    print(f"{EMOJI_MOUNTING} {line.strip()}")
+                elif line.strip():
+                    print(f"{EMOJI_RUNNING} {line.strip()}")
+                    
+            except queue.Empty:
+                continue
+        
+        # Wait for threads to finish
+        stdout_thread.join(timeout=1)
+        stderr_thread.join(timeout=1)
+        
+        # Check return code
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, singularity_cmd)
+        else:
+            print(f"\n{EMOJI_SUCCESS} {container_type.capitalize()} container completed successfully!")
+            
     except subprocess.CalledProcessError as e:
         print(f"\n❌ Singularity command failed with exit code {e.returncode}")
 
