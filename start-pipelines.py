@@ -173,7 +173,10 @@ def create_required_directories(output_dir: str = "./data") -> None:
     ]
 
     for directory in directories:
-        Path(directory).mkdir(parents=True, exist_ok=True)
+        dir_path = Path(directory)
+        dir_path.mkdir(parents=True, exist_ok=True)
+        # Ensure the directory is writable for container operations
+        dir_path.chmod(0o755)  # rwxr-xr-x permissions
         print(f"{EMOJI_CREATING} Created/verified directory: {directory}")
 
 
@@ -263,7 +266,7 @@ def get_all_mount_mappings(
     # Add static mounts from configuration
     mount_mappings.extend(container_config["mounts"])
 
-    # Add output directory mount
+    # Add output directory mount with write permissions
     mount_mappings.append((output_dir, "/app/data"))
 
     # Add dynamic mounts (built from user config)
@@ -369,10 +372,13 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
     mount_mappings = get_all_mount_mappings(container_type, config_path, config_data)
 
     # Build singularity run command with bind mounts
-    # Use --fakeroot to simulate root privileges inside container (like Docker)
-    # This bypasses Unix user resolution issues that cause Kerberos auth failures
-    singularity_cmd = ["singularity", "run", "--fakeroot"]
-    
+    # Fix Singularity auto-mount issues that can hide container files and cause authentication problems
+    # --no-mount tmp: prevents host /tmp from hiding container /tmp contents
+    # --cleanenv: provides clean environment to avoid host OS conflicts  
+    # --writable-tmpfs: ensures writable temp space for Spark/Hadoop operations
+    # Note: --net disabled because iptables not available on this system
+    # Note: --fakeroot not available on this HPC system due to missing /etc/subuid configuration
+    singularity_cmd = ["singularity", "run", "--no-mount", "tmp", "--cleanenv", "--writable-tmpfs"] 
     # Add Singularity-specific environment variables to fix authentication issues
     # These are needed because Singularity preserves more host context than Docker
     singularity_cmd.extend([
@@ -386,8 +392,8 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
         "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Dhadoop.security.authentication=simple -Duser.name=spark -Dhadoop.security.authorization=false"
     ])
 
-    # Add user database bind mounts to resolve Unix user resolution issues
-    # This allows the container to resolve the current user properly
+    # Add user database bind mounts to help resolve Unix user resolution issues
+    # Even with --cleanenv, we need the container to know about the current user
     singularity_cmd.extend([
         "--bind", "/etc/passwd:/etc/passwd:ro",
         "--bind", "/etc/group:/etc/group:ro"
