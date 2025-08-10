@@ -379,17 +379,13 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
     # Note: --net disabled because iptables not available on this system
     # Note: --fakeroot not available on this HPC system due to missing /etc/subuid configuration
     singularity_cmd = ["singularity", "run", "--no-mount", "tmp", "--cleanenv", "--writable-tmpfs"] 
-    # Add Singularity-specific environment variables to fix authentication issues
-    # These are needed because Singularity preserves more host context than Docker
+    # Let the container's entrypoint.sh and session_builder.py handle user detection dynamically
+    # Only set essential environment variables that don't conflict with dynamic logic
     singularity_cmd.extend([
-        "--env", "HADOOP_USER_NAME=spark",
-        "--env", "USER=spark", 
-        "--env", "LOGNAME=spark",
-        "--env", "USERNAME=spark",
         "--env", "HADOOP_CONF_DIR=/tmp",
         "--env", "HADOOP_HOME=/tmp",
         # Note: We REMOVE -Djava.security.manager= as it enables security manager instead of disabling it
-        "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Dhadoop.security.authentication=simple -Duser.name=spark -Dhadoop.security.authorization=false"
+        "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Dhadoop.security.authentication=simple -Dhadoop.security.authorization=false"
     ])
 
     # Add user database bind mounts to help resolve Unix user resolution issues
