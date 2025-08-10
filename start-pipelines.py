@@ -386,6 +386,13 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
         "--env", "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Dhadoop.security.authentication=simple -Duser.name=spark -Dhadoop.security.authorization=false"
     ])
 
+    # Add user database bind mounts to resolve Unix user resolution issues
+    # This allows the container to resolve the current user properly
+    singularity_cmd.extend([
+        "--bind", "/etc/passwd:/etc/passwd:ro",
+        "--bind", "/etc/group:/etc/group:ro"
+    ])
+    
     # Add bind mounts
     for host_path, container_path in mount_mappings:
         singularity_cmd.extend(["--bind", f"{host_path}:{container_path}"])
