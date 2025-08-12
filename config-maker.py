@@ -71,9 +71,24 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
     output_dir = questionary.text("0.2 Output directory (default is ./data):").ask()
     config["project"]["output_dir"] = output_dir.strip() if output_dir else "./data"
-    config["project"]["experiment_type"] = questionary.select(
-        "0.3 Experiment Type:", choices=["Classification", "Clustering"]  # "Regression"
+    experiment_type_choice = questionary.select(
+        "0.3 Experiment Type:", 
+        choices=[
+            "ML (Classification) - Predict categories (e.g., patient vs control, disease stages)",
+            "ML (Clustering) - Find patterns/groups in data without labels", 
+            "Analysis (No Ray ML) - Process data for manual analysis, no automated ML"
+        ]
     ).ask()
+    
+    # Extract simplified experiment type from the choice
+    if "ML (Classification)" in experiment_type_choice:
+        config["project"]["experiment_type"] = "ML (Classification)"
+    elif "ML (Clustering)" in experiment_type_choice:
+        config["project"]["experiment_type"] = "ML (Clustering)"
+    elif "Analysis (No Ray ML)" in experiment_type_choice:
+        config["project"]["experiment_type"] = "Analysis (No Ray ML)"
+    else:
+        config["project"]["experiment_type"] = "ML (Classification)"  # Default fallback
 
     config["project"]["subjects_or_events"] = questionary.select(
         "0.4 Are we analyzing subjects or events:", choices=["subjects", "events"]
@@ -311,16 +326,139 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 "multitaper",
             ],
         ).ask()
-        config["feature_extraction"]["features"] = questionary.checkbox(
-            "3.2 Select features to compute:",
-            choices=[
-                "Band Power (averaged across all channels/bands)",
-                "Band Power (per channel, averaged across bands)",
-                "Band Power (averaged across channels, per band) *(not usually used)",
-                "Band Power (per channel per band) *recommended",
-            ],
-        ).ask()
+
+        print("3.2 Select features to compute:\n*My personal recomendation is to do only select per channel per band features in 3.2.4*")
+        print("\n📊 Computational Difficulty Guide:")
+        print("band_power: 1/5 - Fastest, most commonly used")
+        print("energy: 1/5 - Very fast")
+        print("mean/std/variance: 1/5 - Standard statistics, optimized in numpy")
+        print("rms: 1/5 - Simple calculation")
+        print("\nModerate Complexity (Good Balance):")
+        print("hjorth_mobility: 2/5 - Good feature, reasonable computation")
+        print("spectral_entropy: 2/5 - Informative, moderate cost")
+        print("\nComputationally Expensive (Use Sparingly):")
+        print("hjorth_complexity: 3/5 - More complex but valuable")
+        print("skewness: 4/5 - Very expensive, consider carefully")
+        print("kurtosis: 4/5 - Very expensive, use only if needed")
+        print("spectral_entropy: 4/5 - Most expensive, use only if needed")
+        print()
         
+        # Initialize the features dictionary
+        config["feature_extraction"]["features"] = {}
+        
+        # Function to validate feature selections
+        def validate_feature_selection(selected_features):
+            if "none" in selected_features and len(selected_features) > 1:
+                return False, "❌ You cannot select 'none' along with other features. Please choose either 'none' or specific features, not both."
+            return True, ""
+
+        # Function to get feature selection with validation
+        def get_feature_selection(prompt: str, psd_choices: List[str], time_domain_choices: List[str], config_key: str):
+            print(f"\n📊 {prompt}")
+            print("   ┌─ This feature type supports both PSD (spectral) and Time Domain features")
+            
+            # Ask for PSD features first
+            psd_features = questionary.checkbox(
+                f"   ├─ PSD Features (spectral):\n   │  💡 Tip: Select 'none' for no features, or select specific features (not both)",
+                choices=psd_choices,
+            ).ask()
+            
+            # Validate PSD features
+            is_valid, error_message = validate_feature_selection(psd_features)
+            if not is_valid:
+                print(error_message)
+                print("Please try again.\n")
+                return get_feature_selection(prompt, psd_choices, time_domain_choices, config_key)
+            
+            # Ask for time domain features
+            time_domain_features = questionary.checkbox(
+                f"   └─ Time Domain Features:\n      💡 Tip: Select 'none' for no features, or select specific features (not both)",
+                choices=time_domain_choices,
+            ).ask()
+            
+            # Validate time domain features
+            is_valid, error_message = validate_feature_selection(time_domain_features)
+            if not is_valid:
+                print(error_message)
+                print("Please try again.\n")
+                return get_feature_selection(prompt, psd_choices, time_domain_choices, config_key)
+            
+            # Combine and save features
+            all_features = psd_features + time_domain_features
+            # Remove duplicates if any
+            all_features = list(set(all_features))
+            config["feature_extraction"]["features"][config_key] = all_features
+
+        # Define feature choices
+        # My thinking is that if we do a band pass such as per channel per band , we can't do time domain features as how are we going to bandpass time domain features? right ! They have to be psd features 
+        psd_feature_choices = [ # for per channel_per_band
+            "none",
+            "band_power",
+            "spectral_entropy",
+        ]
+        time_domain_feature_choices = [ # for per channel_per_band and per_channel_across_bands
+            "none",
+            "energy",
+            "mean",
+            "std",
+            "variance",
+            "rms",
+            "hjorth_mobility",
+            "hjorth_complexity",
+            "skewness",
+            "kurtosis",
+        ]
+        
+        # Keep for the future, not used yet
+        # Get feature selections using the reusable function
+        # get_feature_selection(
+        #     "3.2.1 Which features to compute (Average across all channels and bands)?",
+        #     all_feature_choices,
+        #     "avg_all_channels_all_bands"
+        # )
+
+        # Keep for the future, not used yet
+        # get_feature_selection(
+        #     "3.2.2 Which features to compute (Average across all channels per band)?",
+        #     all_feature_choices,
+        #     "avg_all_channels_per_band"
+        # )
+        print("3.2.1 and 3.2.2 are not created yet, but will be in the future")
+
+        get_feature_selection(
+            "3.2.3 Which features to compute (per channel across bands)?",
+            psd_feature_choices,
+            time_domain_feature_choices,
+            "per_channel_across_bands"
+        )
+
+        # For per_channel_per_band, we only need PSD features (no time domain features)
+        def get_psd_only_feature_selection(prompt: str, psd_choices: List[str], config_key: str):
+            print(f"\n📊 {prompt}")
+            print("   └─ PSD Features only (spectral):")
+            print("      💡 Note: Time domain features not available for per-channel-per-band analysis")
+            
+            while True:
+                selected_features = questionary.checkbox(
+                    f"      💡 Tip: Select 'none' for no features, or select specific features (not both)",
+                    choices=psd_choices,
+                ).ask()
+                
+                is_valid, error_message = validate_feature_selection(selected_features)
+                if is_valid:
+                    config["feature_extraction"]["features"][config_key] = selected_features
+                    break
+                else:
+                    print(error_message)
+                    print("Please try again.\n")
+
+        get_psd_only_feature_selection(
+            "3.2.4 Which features to compute (per channel per band)? *recommended",
+            psd_feature_choices,
+            "per_channel_per_band"
+        )
+              
+                
         # Ask for PSD normalization
         config["preprocessing"]["normalize_psd"] = questionary.select(
             "3.3 Normalize PSD values? (Highly recommended, is the default on almost all EEG software)",
@@ -338,6 +476,18 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             "3.5 Show intermediate counts (row counts during processing)? (Not recommended for large datasets)",
             choices=["No", "Yes"]
         ).ask()
+
+        # Automatically set output format based on experiment type
+        if "ML" in config["project"]["experiment_type"]:
+            config["feature_extraction"]["output_format"] = "ml"
+            print("   ✅ Auto-selected: ml format (one row per epoch, optimized for machine learning)")
+            print("      📊 Each row contains all features for one time window")
+            print("      🤖 Perfect for training ML models")
+        else:
+            config["feature_extraction"]["output_format"] = "analysis"
+            print("   ✅ Auto-selected: analysis format (one row per channel-band, good for data analysis)")
+            print("      📊 Each row contains one feature for one channel/band combination")
+            print("      🔍 Perfect for exploratory data analysis")
 
         # 4. Feature Transformation
         print("\n[4] Feature Transformation")
@@ -364,10 +514,10 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             ],
         ).ask()
 
-        # 5. Data Leakage Prevention (only if Classification and Feature Transformation are enabled)
+        # 5. Data Leakage Prevention (only if ML Classification and Feature Transformation are enabled)
         if target == "pyspark-only" or target == "full":
             if (
-                config["project"]["experiment_type"] == "Classification"
+                config["project"]["experiment_type"] == "ML (Classification)"
                 and config["feature_transformation"]["transformations"] != "None"
             ):
                 print("\n[5] Data Leakage Prevention")
@@ -782,8 +932,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 sanitize_slurm_options(slurm_options) if slurm_options else ""
             )
 
-    # 7. Ray Configuration (only if target is ray-only or full)
-    if target == "ray-only" or target == "full":
+    # 7. Ray Configuration (only if target is ray-only or full AND experiment type is ML)
+    if (target == "ray-only" or target == "full") and config["project"]["experiment_type"] in ["ML (Classification)", "ML (Clustering)"]:
         print("\n[7] Ray Configuration")
         config["ray"] = {}
         
@@ -829,6 +979,29 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         config["ray"]["random_state"] = validate_integer_input(
             "7.7 Enter random state for reproducibility:", default="42"
         )
+    else:
+        # Skip Ray configuration for Analysis mode
+        if target == "ray-only" or target == "full":
+            print("\n[7] Ray Configuration - SKIPPED")
+            print("   ℹ️  Ray ML configuration skipped because you selected 'Analysis (No Ray ML)'")
+            print("   📊 Your data will be processed and saved for manual analysis")
+            print("   🔧 You can run your own ML analysis on the processed data")
+            print("   📁 Output: Parquet files ready for pandas, R, or other analysis tools")
+
+    # Configuration summary
+    print("\n" + "="*60)
+    print("📋 CONFIGURATION SUMMARY")
+    print("="*60)
+    print(f"🎯 Experiment Type: {config['project']['experiment_type']}")
+    print(f"📊 Output Format: {config.get('feature_extraction', {}).get('output_format', 'N/A')}")
+    print(f"🔧 Deployment: {config['project']['deployment_method']}")
+    
+    if "ML" in config['project']['experiment_type']:
+        print(f"🤖 ML Pipeline: PySpark + Ray (automated)")
+    else:
+        print(f"📈 Analysis Pipeline: PySpark only (manual ML)")
+    
+    print("="*60)
 
     return config, config_name
 
