@@ -6,6 +6,28 @@ from typing import Any, Dict, List, Optional, Tuple
 import questionary
 import yaml
 
+"""
+max push for m4 mini 24gb
+should allow for this here type of setup ... more things to setup
+spark.master                          spark://localhost:7077
+spark.dynamicAllocation.enabled       false
+
+spark.driver.cores                    2
+spark.driver.memory                   6g
+spark.driver.maxResultSize            4g
+
+spark.executor.instances              1
+spark.executor.cores                  8
+spark.executor.memory                 14g
+spark.executor.memoryOverhead         3g
+
+spark.sql.shuffle.partitions          96
+spark.serializer                      org.apache.spark.serializer.KryoSerializer
+spark.sql.execution.arrow.pyspark.enabled true
+
+
+"""
+
 
 def infer_target() -> str:
     this_file = Path(
@@ -21,7 +43,9 @@ def infer_target() -> str:
     elif repo_name == "eeg-full-pipeline":
         return "full"
     else:
-        raise ValueError(f"Invalid repo name: {repo_name}. Please run this script from the root of the repository who's directory name is one of the following: (eeg-full-pipeline, eeg-ray-tuner, eeg-pyspark-pipeline).")
+        raise ValueError(
+            f"Invalid repo name: {repo_name}. Please run this script from the root of the repository who's directory name is one of the following: (eeg-full-pipeline, eeg-ray-tuner, eeg-pyspark-pipeline)."
+        )
 
 
 def validate_downsampling_rate(rate_str: Optional[str]) -> Optional[float]:
@@ -72,14 +96,14 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     output_dir = questionary.text("0.2 Output directory (default is ./data):").ask()
     config["project"]["output_dir"] = output_dir.strip() if output_dir else "./data"
     experiment_type_choice = questionary.select(
-        "0.3 Experiment Type:", 
+        "0.3 Experiment Type:",
         choices=[
             "ML (Classification) - Predict categories (e.g., patient vs control, disease stages)",
-            "ML (Clustering) - Find patterns/groups in data without labels", 
-            "Analysis (No Ray ML) - Process data for manual analysis, no automated ML"
-        ]
+            "ML (Clustering) - Find patterns/groups in data without labels",
+            "Analysis (No Ray ML) - Process data for manual analysis, no automated ML",
+        ],
     ).ask()
-    
+
     # Extract simplified experiment type from the choice
     if "ML (Classification)" in experiment_type_choice:
         config["project"]["experiment_type"] = "ML (Classification)"
@@ -220,7 +244,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                     # Continue the inner loop to ask for paths again
                     continue
 
-        # This was to expand the EEG data into spark dataframes 
+        # This was to expand the EEG data into spark dataframes
         # config["data_input"]["reuse_raw"] = questionary.select(
         #     "Reuse raw data processing if it exists?", choices=["Yes", "No"]
         # ).ask()
@@ -303,7 +327,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         # Ask for reject by annotation setting
         config["preprocessing"]["reject_by_annotation"] = questionary.select(
             "2.4 Reject epochs based on annotations (e.g., boundary events)?",
-            choices=["Yes", "No"]
+            choices=["Yes", "No"],
         ).ask()
 
         # Handle downsampling rate with validation
@@ -327,7 +351,9 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             ],
         ).ask()
 
-        print("3.2 Select features to compute:\n*My personal recomendation is to do only select per channel per band features in 3.2.4*")
+        print(
+            "3.2 Select features to compute:\n*My personal recomendation is to do only select per channel per band features in 3.2.4*"
+        )
         print("\n📊 Computational Difficulty Guide:")
         print("band_power: 1/5 - Fastest, most commonly used")
         print("energy: 1/5 - Very fast")
@@ -342,47 +368,61 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print("kurtosis: 4/5 - Very expensive, use only if needed")
         print("spectral_entropy: 4/5 - Most expensive, use only if needed")
         print()
-        
+
         # Initialize the features dictionary
         config["feature_extraction"]["features"] = {}
-        
+
         # Function to validate feature selections
         def validate_feature_selection(selected_features):
             if "none" in selected_features and len(selected_features) > 1:
-                return False, "❌ You cannot select 'none' along with other features. Please choose either 'none' or specific features, not both."
+                return (
+                    False,
+                    "❌ You cannot select 'none' along with other features. Please choose either 'none' or specific features, not both.",
+                )
             return True, ""
 
         # Function to get feature selection with validation
-        def get_feature_selection(prompt: str, psd_choices: List[str], time_domain_choices: List[str], config_key: str):
+        def get_feature_selection(
+            prompt: str,
+            psd_choices: List[str],
+            time_domain_choices: List[str],
+            config_key: str,
+        ):
             print(f"\n📊 {prompt}")
-            print("   ┌─ This feature type supports both PSD (spectral) and Time Domain features")
-            
+            print(
+                "   ┌─ This feature type supports both PSD (spectral) and Time Domain features"
+            )
+
             # Ask for PSD features first
             psd_features = questionary.checkbox(
                 f"   ├─ PSD Features (spectral):\n   │  💡 Tip: Select 'none' for no features, or select specific features (not both)",
                 choices=psd_choices,
             ).ask()
-            
+
             # Validate PSD features
             is_valid, error_message = validate_feature_selection(psd_features)
             if not is_valid:
                 print(error_message)
                 print("Please try again.\n")
-                return get_feature_selection(prompt, psd_choices, time_domain_choices, config_key)
-            
+                return get_feature_selection(
+                    prompt, psd_choices, time_domain_choices, config_key
+                )
+
             # Ask for time domain features
             time_domain_features = questionary.checkbox(
                 f"   └─ Time Domain Features:\n      💡 Tip: Select 'none' for no features, or select specific features (not both)",
                 choices=time_domain_choices,
             ).ask()
-            
+
             # Validate time domain features
             is_valid, error_message = validate_feature_selection(time_domain_features)
             if not is_valid:
                 print(error_message)
                 print("Please try again.\n")
-                return get_feature_selection(prompt, psd_choices, time_domain_choices, config_key)
-            
+                return get_feature_selection(
+                    prompt, psd_choices, time_domain_choices, config_key
+                )
+
             # Combine and save features
             all_features = psd_features + time_domain_features
             # Remove duplicates if any
@@ -390,25 +430,27 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             config["feature_extraction"]["features"][config_key] = all_features
 
         # Define feature choices
-        # My thinking is that if we do a band pass such as per channel per band , we can't do time domain features as how are we going to bandpass time domain features? right ! They have to be psd features 
-        psd_feature_choices = [ # for per channel_per_band
+        # My thinking is that if we do a band pass such as per channel per band , we can't do time domain features as how are we going to bandpass time domain features? right ! They have to be psd features
+        psd_feature_choices = [  # for per channel_per_band
             "none",
             "band_power",
             "spectral_entropy",
         ]
-        time_domain_feature_choices = [ # for per channel_per_band and per_channel_across_bands
-            "none",
-            "energy",
-            "mean",
-            "std",
-            "variance",
-            "rms",
-            "hjorth_mobility",
-            "hjorth_complexity",
-            "skewness",
-            "kurtosis",
-        ]
-        
+        time_domain_feature_choices = (
+            [  # for per channel_per_band and per_channel_across_bands
+                "none",
+                "energy",
+                "mean",
+                "std",
+                "variance",
+                "rms",
+                "hjorth_mobility",
+                "hjorth_complexity",
+                "skewness",
+                "kurtosis",
+            ]
+        )
+
         # Keep for the future, not used yet
         # Get feature selections using the reusable function
         # get_feature_selection(
@@ -429,24 +471,30 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             "3.2.3 Which features to compute (per channel across bands)?",
             psd_feature_choices,
             time_domain_feature_choices,
-            "per_channel_across_bands"
+            "per_channel_across_bands",
         )
 
         # For per_channel_per_band, we only need PSD features (no time domain features)
-        def get_psd_only_feature_selection(prompt: str, psd_choices: List[str], config_key: str):
+        def get_psd_only_feature_selection(
+            prompt: str, psd_choices: List[str], config_key: str
+        ):
             print(f"\n📊 {prompt}")
             print("   └─ PSD Features only (spectral):")
-            print("      💡 Note: Time domain features not available for per-channel-per-band analysis")
-            
+            print(
+                "      💡 Note: Time domain features not available for per-channel-per-band analysis"
+            )
+
             while True:
                 selected_features = questionary.checkbox(
                     f"      💡 Tip: Select 'none' for no features, or select specific features (not both)",
                     choices=psd_choices,
                 ).ask()
-                
+
                 is_valid, error_message = validate_feature_selection(selected_features)
                 if is_valid:
-                    config["feature_extraction"]["features"][config_key] = selected_features
+                    config["feature_extraction"]["features"][
+                        config_key
+                    ] = selected_features
                     break
                 else:
                     print(error_message)
@@ -455,37 +503,43 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         get_psd_only_feature_selection(
             "3.2.4 Which features to compute (per channel per band)? *recommended",
             psd_feature_choices,
-            "per_channel_per_band"
+            "per_channel_per_band",
         )
-                
+
         # Ask for PSD normalization
         config["preprocessing"]["normalize_psd"] = questionary.select(
             "3.3 Normalize PSD values? (Highly recommended, is the default on almost all EEG software)",
-            choices=["Yes", "No"]
+            choices=["Yes", "No"],
         ).ask()
 
         # Ask for intermediate results display
         config["feature_extraction"]["show_intermediate_results"] = questionary.select(
             "3.4 Show intermediate results (DataFrame previews)? (Not recommended for large datasets)",
-            choices=["No", "Yes"]
+            choices=["No", "Yes"],
         ).ask()
 
         # Ask for intermediate counts display
         config["feature_extraction"]["show_intermediate_counts"] = questionary.select(
             "3.5 Show intermediate counts (row counts during processing)? (Not recommended for large datasets)",
-            choices=["No", "Yes"]
+            choices=["No", "Yes"],
         ).ask()
 
         # Automatically set output format based on experiment type
         if "ML" in config["project"]["experiment_type"]:
             config["feature_extraction"]["output_format"] = "ml"
-            print("   ✅ Auto-selected: ml format (one row per epoch, optimized for machine learning)")
+            print(
+                "   ✅ Auto-selected: ml format (one row per epoch, optimized for machine learning)"
+            )
             print("      📊 Each row contains all features for one time window")
             print("      🤖 Perfect for training ML models")
         else:
             config["feature_extraction"]["output_format"] = "analysis"
-            print("   ✅ Auto-selected: analysis format (one row per channel-band, good for data analysis)")
-            print("      📊 Each row contains one feature for one channel/band combination")
+            print(
+                "   ✅ Auto-selected: analysis format (one row per channel-band, good for data analysis)"
+            )
+            print(
+                "      📊 Each row contains one feature for one channel/band combination"
+            )
             print("      🔍 Perfect for exploratory data analysis")
 
         # 4. Feature Transformation
@@ -893,7 +947,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
             if slurm_choice == "Same options for both":
                 slurm_options = questionary.text(
-                    "6.3.3 Enter SLURM options for both PySpark and Ray:", default="--time=24:00:00 --mem=16G --cpus-per-task=4"
+                    "6.3.3 Enter SLURM options for both PySpark and Ray:",
+                    default="--time=24:00:00 --mem=16G --cpus-per-task=4",
                 ).ask()
                 config["project"]["slurm_options_pyspark"] = (
                     sanitize_slurm_options(slurm_options) if slurm_options else ""
@@ -903,10 +958,12 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 )
             else:  # Different options
                 pyspark_slurm = questionary.text(
-                    "6.3.3 Enter SLURM options for PySpark:", default="--time=12:00:00 --mem=8G --cpus-per-task=2"
+                    "6.3.3 Enter SLURM options for PySpark:",
+                    default="--time=12:00:00 --mem=8G --cpus-per-task=2",
                 ).ask()
                 ray_slurm = questionary.text(
-                    "6.3.4 Enter SLURM options for Ray:", default="--time=24:00:00 --mem=16G --cpus-per-task=4"
+                    "6.3.4 Enter SLURM options for Ray:",
+                    default="--time=24:00:00 --mem=16G --cpus-per-task=4",
                 ).ask()
                 config["project"]["slurm_options_pyspark"] = (
                     sanitize_slurm_options(pyspark_slurm) if pyspark_slurm else ""
@@ -917,7 +974,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
         elif target == "pyspark-only":
             slurm_options = questionary.text(
-                "6.3.2 Enter SLURM options for PySpark:", default="--time=12:00:00 --mem=8G --cpus-per-task=2"
+                "6.3.2 Enter SLURM options for PySpark:",
+                default="--time=12:00:00 --mem=8G --cpus-per-task=2",
             ).ask()
             config["project"]["slurm_options_pyspark"] = (
                 sanitize_slurm_options(slurm_options) if slurm_options else ""
@@ -925,23 +983,26 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
         elif target == "ray-only":
             slurm_options = questionary.text(
-                "6.3.2 Enter SLURM options for Ray:", default="--time=24:00:00 --mem=16G --cpus-per-task=4"
+                "6.3.2 Enter SLURM options for Ray:",
+                default="--time=24:00:00 --mem=16G --cpus-per-task=4",
             ).ask()
             config["project"]["slurm_options_ray"] = (
                 sanitize_slurm_options(slurm_options) if slurm_options else ""
             )
 
     # 7. Ray Configuration (only if target is ray-only or full AND experiment type is ML)
-    if (target == "ray-only" or target == "full") and config["project"]["experiment_type"] in ["ML (Classification)", "ML (Clustering)"]:
+    if (target == "ray-only" or target == "full") and config["project"][
+        "experiment_type"
+    ] in ["ML (Classification)", "ML (Clustering)"]:
         print("\n[7] Ray Configuration")
         config["ray"] = {}
-        
+
         # Machine Learning Models Selection
         config["ray"]["models"] = questionary.checkbox(
             "7.1 Select machine learning models to test:",
             choices=[
                 "Random Forest",
-                "XGBoost", 
+                "XGBoost",
                 "MLP (Neural Network)",
                 "KNN",
                 "SVM",
@@ -949,32 +1010,40 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 "Logistic Regression",
                 "Decision Tree",
                 "Gradient Boosting",
-                "AdaBoost"
+                "AdaBoost",
             ],
         ).ask()
-        
+
         config["ray"]["num_trials"] = validate_integer_input(
             "7.2 Enter number of trials for hyperparameter optimization:", default="10"
         )
-        
+
         config["ray"]["max_concurrent"] = validate_integer_input(
             "7.3 Enter maximum concurrent trials:", default="2"
         )
-        
+
         config["ray"]["metric"] = questionary.select(
             "7.4 Select optimization metric:",
-            choices=["accuracy", "f1", "precision", "recall", "auc", "mse", "mae", "r2"]
+            choices=[
+                "accuracy",
+                "f1",
+                "precision",
+                "recall",
+                "auc",
+                "mse",
+                "mae",
+                "r2",
+            ],
         ).ask()
-        
+
         config["ray"]["mode"] = questionary.select(
-            "7.5 Select optimization mode:",
-            choices=["max", "min"]
+            "7.5 Select optimization mode:", choices=["max", "min"]
         ).ask()
-        
+
         config["ray"]["cv_folds"] = validate_integer_input(
             "7.6 Enter number of cross-validation folds:", default="5"
         )
-        
+
         config["ray"]["random_state"] = validate_integer_input(
             "7.7 Enter random state for reproducibility:", default="42"
         )
@@ -982,25 +1051,31 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         # Skip Ray configuration for Analysis mode
         if target == "ray-only" or target == "full":
             print("\n[7] Ray Configuration - SKIPPED")
-            print("   ℹ️  Ray ML configuration skipped because you selected 'Analysis (No Ray ML)'")
+            print(
+                "   ℹ️  Ray ML configuration skipped because you selected 'Analysis (No Ray ML)'"
+            )
             print("   📊 Your data will be processed and saved for manual analysis")
             print("   🔧 You can run your own ML analysis on the processed data")
-            print("   📁 Output: Parquet files ready for pandas, R, or other analysis tools")
+            print(
+                "   📁 Output: Parquet files ready for pandas, R, or other analysis tools"
+            )
 
     # Configuration summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("📋 CONFIGURATION SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"🎯 Experiment Type: {config['project']['experiment_type']}")
-    print(f"📊 Output Format: {config.get('feature_extraction', {}).get('output_format', 'N/A')}")
+    print(
+        f"📊 Output Format: {config.get('feature_extraction', {}).get('output_format', 'N/A')}"
+    )
     print(f"🔧 Deployment: {config['project']['deployment_method']}")
-    
-    if "ML" in config['project']['experiment_type']:
+
+    if "ML" in config["project"]["experiment_type"]:
         print(f"🤖 ML Pipeline: PySpark + Ray (automated)")
     else:
         print(f"📈 Analysis Pipeline: PySpark only (manual ML)")
-    
-    print("="*60)
+
+    print("=" * 60)
 
     return config, config_name
 
@@ -1082,4 +1157,3 @@ if __name__ == "__main__":
     print(f"Generating config for target: {target}")
     config, config_name = build_config(target=target)
     save_config(config, config_name)
-
