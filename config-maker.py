@@ -457,7 +457,6 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             psd_feature_choices,
             "per_channel_per_band"
         )
-              
                 
         # Ask for PSD normalization
         config["preprocessing"]["normalize_psd"] = questionary.select(
