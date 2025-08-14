@@ -587,7 +587,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 config["data_leakage_prevention"]["strategy"] = questionary.select(
                     "5.1 How would you like to handle data leakage during feature transformation?",
                     choices=[
-                        "Rotate test subjects and recompute transforms for each fold (slow, very storage heavy, most reliable)",
+                        # "Rotate test subjects and recompute transforms for each fold (slow, very storage heavy, most reliable ml results)",
                         "1 test/1 train split with transforms applied to training set only (faster, single split)",
                         "Transform all data together (no split - fastest, and potential data leakage)",
                     ],
