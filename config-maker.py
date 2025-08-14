@@ -134,7 +134,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     config["project"]["artifact_removal"] = questionary.select(
         "0.4.2 Artifact removal method (defines how data was processed):",
         choices=[
-            "ICA",
+            # "ICA",
             "None",
         ],  # costum list of events to remove
     ).ask()
@@ -330,15 +330,16 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             choices=["Yes", "No"],
         ).ask()
 
-        # Handle downsampling rate with validation
-        while True:
-            downsampling_input = questionary.text(
-                "2.5 Downsampling rate (Hz) or 'None':"
-            ).ask()
-            downsampling_rate = validate_downsampling_rate(downsampling_input)
-            if downsampling_rate is not None or downsampling_input.lower() == "none":
-                break
-        config["preprocessing"]["downsampling"] = downsampling_rate
+        # # Handle downsampling rate with validation
+        # # https://mne.tools/stable/auto_tutorials/preprocessing/30_filtering_resampling.html
+        # while True:
+        #     downsampling_input = questionary.text(
+        #         "2.5 Downsampling rate (Hz) or 'None': (not yet implemented)"
+        #     ).ask()
+        #     downsampling_rate = validate_downsampling_rate(downsampling_input)
+        #     if downsampling_rate is not None or downsampling_input.lower() == "none":
+        #         break
+        # config["preprocessing"]["downsampling"] = downsampling_rate
 
         # 3. Feature Extraction
         print("\n[3] Feature Extraction")
@@ -548,9 +549,10 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         config["feature_transformation"]["transformations"] = questionary.select(
             "4.1 Select a transformation to apply (for more precise options edit the config file directly):",
             choices=[
+                "Dummy (+1)",
                 "PCA (retain 95% variance)",
                 "PCA (manual count)",
-                # "SPCA (manual count)",
+                "SPCA (manual count)",
                 "MinMax scaler",
                 "Z-score standardization",
                 "None",
