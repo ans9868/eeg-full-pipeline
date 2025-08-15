@@ -330,11 +330,125 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             choices=["Yes", "No"],
         ).ask()
 
+        # Ask for epoch rejection settings
+        print("\n📊 Epoch Rejection Settings")
+        print("   This will reject individual epochs based on peak-to-peak amplitude thresholds.")
+        print("   - Reject threshold: Maximum acceptable peak-to-peak amplitude per epoch")
+        print("   - Flat threshold: Minimum acceptable peak-to-peak amplitude per epoch")
+        print("   - Applied during epoch creation (more efficient than annotation)")
+        print("   - Note: Values are entered in μV but automatically converted to V for MNE")
+        
+        # Enable/disable epoch rejection
+        config["preprocessing"]["use_epoch_rejection"] = questionary.select(
+            "2.5 Enable epoch rejection based on amplitude?",
+            choices=["Yes", "No"],
+        ).ask()
+
+        if config["preprocessing"]["use_epoch_rejection"] == "Yes":
+            # Ask for reject threshold (maximum acceptable peak-to-peak amplitude)
+            while True:
+                reject_input = questionary.text(
+                    "2.5.1 Reject threshold (microvolts):\n   Maximum acceptable peak-to-peak amplitude per epoch.\n   Default is 800 (typical for EEG):"
+                ).ask()
+                try:
+                    reject = float(reject_input)
+                    if reject > 0:
+                        break
+                    else:
+                        print("[ERROR] Please enter a positive number.")
+                except (ValueError, TypeError):
+                    print("[ERROR] Please enter a valid number.")
+            
+            # Ask for flat threshold (minimum acceptable peak-to-peak amplitude)
+            while True:
+                flat_input = questionary.text(
+                    "2.5.2 Flat threshold (microvolts):\n   Minimum acceptable peak-to-peak amplitude per epoch.\n   Default is 0.1 (detects flat epochs):"
+                ).ask()
+                try:
+                    flat = float(flat_input)
+                    if flat >= 0:
+                        break
+                    else:
+                        print("[ERROR] Please enter a non-negative number.")
+                except (ValueError, TypeError):
+                    print("[ERROR] Please enter a valid number.")
+            
+            config["preprocessing"]["epoch_rejection"] = {
+                "reject": reject,
+                "flat": flat,
+            }
+            
+            print(f"✅ Epoch rejection enabled with {reject}μV reject, {flat}μV flat")
+            print(f"   🔄 Will be converted to {reject*1e-6:.6f}V and {flat*1e-6:.6f}V for MNE processing")
+        else:
+            config["preprocessing"]["epoch_rejection"] = None
+            print("ℹ️  Epoch rejection disabled")
+
+        # Ask for extreme datapoint removal settings
+        print("\n📊 Extreme Datapoint Removal Settings")
+        print("   This will remove extreme values (outliers) from the processed features.")
+        print("   - Percentile-based removal: Remove data points above/below specified percentiles")
+        print("   - Applied to processed features before transformation")
+        
+        # Enable/disable extreme datapoint removal
+        config["preprocessing"]["remove_extreme_datapoints"] = questionary.select(
+            "2.6 Enable extreme datapoint removal?",
+            choices=["Yes", "No"],
+        ).ask()
+
+        if config["preprocessing"]["remove_extreme_datapoints"] == "Yes":
+            # Ask for lower percentile threshold
+            while True:
+                lower_percentile_input = questionary.text(
+                    "2.6.1 Lower percentile threshold (decimal):\n   Data points below this percentile will be removed.\n   Default is 0.01 (1% - very conservative):"
+                ).ask()
+                try:
+                    lower_percentile = float(lower_percentile_input)
+                    if 0 <= lower_percentile <= 0.5:
+                        break
+                    else:
+                        print("[ERROR] Please enter a decimal between 0 and 0.5 (e.g., 0.01 for 1%).")
+                except (ValueError, TypeError):
+                    print("[ERROR] Please enter a valid decimal number.")
+            
+            # Ask for upper percentile threshold
+            while True:
+                upper_percentile_input = questionary.text(
+                    "2.6.2 Upper percentile threshold (decimal):\n   Data points above this percentile will be removed.\n   Default is 0.99 (99% - very conservative):"
+                ).ask()
+                try:
+                    upper_percentile = float(upper_percentile_input)
+                    if 0.5 <= upper_percentile <= 1:
+                        break
+                    else:
+                        print("[ERROR] Please enter a decimal between 0.5 and 1 (e.g., 0.99 for 99%).")
+                except (ValueError, TypeError):
+                    print("[ERROR] Please enter a valid decimal number.")
+            
+            # Validate that lower < upper
+            if lower_percentile >= upper_percentile:
+                print("[ERROR] Lower percentile must be less than upper percentile.")
+                print(f"   Lower: {lower_percentile}, Upper: {upper_percentile}")
+                print("   Using default values: Lower 0.01, Upper 0.99")
+                lower_percentile = 0.01
+                upper_percentile = 0.99
+            
+            config["preprocessing"]["extreme_datapoint_removal"] = {
+                "lower_percentile": lower_percentile,
+                "upper_percentile": upper_percentile,
+                "method": "percentile"  # Can be extended to other methods later
+            }
+            
+            print(f"✅ Extreme datapoint removal enabled: {lower_percentile} - {upper_percentile}")
+        else:
+            config["preprocessing"]["extreme_datapoint_removal"] = None
+            print("ℹ️  Extreme datapoint removal disabled")
+
         # # Handle downsampling rate with validation
         # # https://mne.tools/stable/auto_tutorials/preprocessing/30_filtering_resampling.html
         # while True:
         #     downsampling_input = questionary.text(
-        #         "2.5 Downsampling rate (Hz) or 'None': (not yet implemented)"
+        #         "2.7 Downsampling rate (Hz) or 'None': (not yet implemented)"
         #     ).ask()
         #     downsampling_rate = validate_downsampling_rate(downsampling_input)
         #     if downsampling_rate is not None or downsampling_input.lower() == "none":
@@ -351,6 +465,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 "multitaper",
             ],
         ).ask()
+
+        # config[ask]
 
         print(
             "3.2 Select features to compute:\n*My personal recomendation is to do only select per channel per band features in 3.2.4*"
@@ -555,6 +671,10 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 "SPCA (manual count)",
                 "MinMax scaler",
                 "Z-score standardization",
+                "ICA",
+                "ICA (manual count)",
+                "Cohen test (manual count)",
+                "Cohen test (limit to % for example 0.05)",
                 "None",
             ],
         ).ask()
