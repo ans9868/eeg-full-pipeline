@@ -99,7 +99,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         "0.3 Experiment Type:",
         choices=[
             "ML (Classification) - Predict categories (e.g., patient vs control, disease stages)",
-            "ML (Clustering) - Find patterns/groups in data without labels",
+            "ML (Clustering) - Find patterns/groups in data with labels",
             "Analysis (No Ray ML) - Process data for manual analysis, no automated ML",
         ],
     ).ask()
@@ -1119,6 +1119,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print("\n[7] Ray Configuration")
         config["ray"] = {}
 
+        # TODO: make it such that we can choose distributed or sklearn (where distributed is ray and pyspark with raydp)
         # Machine Learning Models Selection
         config["ray"]["models"] = questionary.checkbox(
             "7.1 Select machine learning models to test:",
