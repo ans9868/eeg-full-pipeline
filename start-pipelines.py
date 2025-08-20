@@ -173,10 +173,7 @@ def create_required_directories(output_dir: str = "./data") -> None:
     ]
 
     for directory in directories:
-        dir_path = Path(directory)
-        dir_path.mkdir(parents=True, exist_ok=True)
-        # Ensure the directory is writable for container operations
-        dir_path.chmod(0o755)  # rwxr-xr-x permissions
+        Path(directory).mkdir(parents=True, exist_ok=True)
         print(f"{EMOJI_CREATING} Created/verified directory: {directory}")
 
 

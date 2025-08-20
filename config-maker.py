@@ -1,4 +1,5 @@
 import re
+import random
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -966,8 +967,9 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                     ):
                         # Ask for number of test subjects
                         while True:
+                            num_groups = len(config["data_input"]["groups"])
                             test_subjects_count = questionary.text(
-                                "5.2.2 Enter number of subjects for test set (e.g., 4) (should evently divide with the number of subjects and the number of groups):"
+                                f"5.2.2 Enter number of subjects for test set (e.g., 4) (recommended: at least {num_groups} for balanced group representation):"
                             ).ask()
                             try:
                                 count = int(test_subjects_count)
@@ -980,6 +982,73 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                                     print("[ERROR] Please enter a positive number.")
                             except ValueError:
                                 print("[ERROR] Please enter a valid integer.")
+                        
+                        # Automatically select test subjects and add them to config for reproducibility
+                        # This makes the split reproducible and explicit, avoiding the need for the Ray container
+                        # to re-implement the same random selection logic
+                        test_count = config["data_leakage_prevention"]["test_subjects_count"]
+                        if test_count >= 1:
+                            
+                            # Check if we have enough test subjects for balanced group representation
+                            num_groups = len(config["data_input"]["groups"])
+                            if test_count < num_groups:
+                                print(f"\n⚠️  WARNING: You selected {test_count} test subject(s) but have {num_groups} groups.")
+                                print(f"   This means not all groups will have test subjects, which may bias your results.")
+                                print(f"   Recommended: Select at least {num_groups} test subjects for balanced representation.")
+                                
+                                proceed = questionary.select(
+                                    "Do you want to proceed anyway?",
+                                    choices=["Yes, proceed with current selection", "No, let me change the count"]
+                                ).ask()
+                                
+                                if proceed == "No, let me change the count":
+                                    # Go back to asking for test count
+                                    while True:
+                                        new_test_count = questionary.text(
+                                            f"5.2.2 Enter number of subjects for test set (recommended: at least {num_groups} for balanced groups):"
+                                        ).ask()
+                                        try:
+                                            new_count = int(new_test_count)
+                                            if new_count > 0:
+                                                config["data_leakage_prevention"]["test_subjects_count"] = new_count
+                                                test_count = new_count
+                                                break
+                                            else:
+                                                print("[ERROR] Please enter a positive number.")
+                                        except ValueError:
+                                            print("[ERROR] Please enter a valid integer.")
+                            
+                            print(f"\n🎯 Automatically selecting {test_count} test subject(s) for reproducibility...")
+                            
+                            try:
+                                # Use the dedicated function for automatic selection
+                                selected_test_subjects, metadata = select_test_subjects_automatically(
+                                    config["data_input"]["groups"], 
+                                    test_count, 
+                                    random_seed=42
+                                )
+                                
+                                # Add the selected subjects to config as if they were manually selected
+                                config["data_leakage_prevention"]["test_subjects_paths"] = selected_test_subjects
+                                
+                                # Display results
+                                print(f"✅ Automatically selected test subjects: {', '.join(metadata['selected_subject_ids'])}")
+                                print(f"   Paths: {', '.join(selected_test_subjects)}")
+                                print(f"   Random seed: {metadata['random_seed']} (for reproducibility)")
+                                
+                                # Show group representation
+                                if metadata['missing_groups']:
+                                    print(f"   ⚠️  Groups represented: {', '.join(sorted(metadata['selected_groups']))}")
+                                    print(f"   ⚠️  Groups missing: {', '.join(sorted(metadata['missing_groups']))}")
+                                else:
+                                    print(f"   ✅ All groups represented: {', '.join(sorted(metadata['selected_groups']))}")
+                                
+                                # Also add the random seed to config for transparency
+                                config["data_leakage_prevention"]["random_seed"] = metadata['random_seed']
+                                
+                            except ValueError as e:
+                                print(f"❌ ERROR: {e}")
+                                exit(1)
 
                 # Question 2: No split needed (if transform all data is selected)
                 elif (
@@ -1202,6 +1271,28 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     else:
         print(f"📈 Analysis Pipeline: PySpark only (manual ML)")
 
+    # Show test subject selection info if applicable
+    if (config.get("data_leakage_prevention", {}).get("test_subjects_paths")):
+        test_subject_paths = config["data_leakage_prevention"]["test_subjects_paths"]
+        test_count = len(test_subject_paths)
+        
+        # Extract subject IDs from paths
+        selected_subject_ids = []
+        for test_subject_path in test_subject_paths:
+            path_parts = test_subject_path.split('/')
+            filename = path_parts[-1]
+            subject_id = filename.replace('_task-eyesclosed_eeg.set', '').replace('_eeg.set', '').replace('.set', '').replace('.fif', '')
+            selected_subject_ids.append(subject_id)
+        
+        if test_count == 1:
+            print(f"🎯 Test Subject: {selected_subject_ids[0]} (automatically selected)")
+            print(f"   📍 Path: {test_subject_paths[0]}")
+        else:
+            print(f"🎯 Test Subjects: {', '.join(selected_subject_ids)} (automatically selected)")
+            print(f"   📍 Count: {test_count} subjects")
+            for i, (subject_id, path) in enumerate(zip(selected_subject_ids, test_subject_paths), 1):
+                print(f"      {i}. {subject_id}: {path}")
+
     print("=" * 60)
 
     return config, config_name
@@ -1277,6 +1368,106 @@ def check_paths_in_groups(
             missing_paths.append(path)
 
     return found_paths, missing_paths
+
+
+def select_test_subjects_automatically(
+    groups: Dict[str, List[str]], 
+    test_count: int, 
+    random_seed: int = 42
+) -> Tuple[List[str], Dict[str, Any]]:
+    """
+    Automatically select test subjects with balanced group representation when possible.
+    
+    Args:
+        groups: Dictionary of group names to subject paths
+        test_count: Number of test subjects to select
+        random_seed: Random seed for reproducibility (default: 42)
+        
+    Returns:
+        Tuple of (selected_subject_paths, metadata_dict)
+    """
+    num_groups = len(groups)
+    
+    # Collect all available subjects from groups
+    all_subject_paths = []
+    for group_name, paths in groups.items():
+        all_subject_paths.extend(paths)
+    
+    if not all_subject_paths:
+        raise ValueError("No subjects found in groups. Please check your data input configuration.")
+    
+    if test_count > len(all_subject_paths):
+        raise ValueError(f"Requested {test_count} test subjects but only {len(all_subject_paths)} subjects available.")
+    
+    # Use fixed seed for reproducibility
+    random.seed(random_seed)
+    
+    # Select test subjects with balanced group representation when possible
+    if test_count >= num_groups:
+        # Try to select at least one subject from each group
+        selected_test_subjects = []
+        remaining_subjects = all_subject_paths.copy()
+        
+        # First, select one subject from each group
+        for group_name, group_paths in groups.items():
+            if remaining_subjects and any(path in remaining_subjects for path in group_paths):
+                # Find subjects from this group that are still available
+                available_from_group = [path for path in group_paths if path in remaining_subjects]
+                if available_from_group:
+                    selected = random.choice(available_from_group)
+                    selected_test_subjects.append(selected)
+                    remaining_subjects.remove(selected)
+        
+        # Fill remaining slots with random selection from all remaining subjects
+        remaining_needed = test_count - len(selected_test_subjects)
+        if remaining_needed > 0 and remaining_subjects:
+            additional_subjects = random.sample(remaining_subjects, min(remaining_needed, len(remaining_subjects)))
+            selected_test_subjects.extend(additional_subjects)
+        
+        # If we still don't have enough, add more from any available subjects
+        if len(selected_test_subjects) < test_count:
+            all_available = [path for path in all_subject_paths if path not in selected_test_subjects]
+            if all_available:
+                additional_needed = test_count - len(selected_test_subjects)
+                additional = random.sample(all_available, min(additional_needed, len(all_available)))
+                selected_test_subjects.extend(additional)
+    else:
+        # Simple random selection when we can't guarantee balance
+        selected_test_subjects = random.sample(all_subject_paths, test_count)
+    
+    # Extract subject IDs from paths for display
+    selected_subject_ids = []
+    for subject_path in selected_test_subjects:
+        path_parts = subject_path.split('/')
+        filename = path_parts[-1]
+        # Remove common EEG file extensions and task suffixes
+        subject_id = filename.replace('_task-eyesclosed_eeg.set', '').replace('_eeg.set', '').replace('.set', '').replace('.fif', '')
+        selected_subject_ids.append(subject_id)
+    
+    # Show group representation
+    selected_groups = set()
+    for subject_path in selected_test_subjects:
+        for group_name, group_paths in groups.items():
+            if subject_path in group_paths:
+                selected_groups.add(group_name)
+                break
+    
+    all_groups = set(groups.keys())
+    missing_groups = all_groups - selected_groups
+    
+    # Create metadata
+    metadata = {
+        "selected_subject_paths": selected_test_subjects,
+        "selected_subject_ids": selected_subject_ids,
+        "selected_groups": list(selected_groups),
+        "missing_groups": list(missing_groups),
+        "all_groups_represented": len(missing_groups) == 0,
+        "random_seed": random_seed,
+        "test_count": test_count,
+        "num_groups": num_groups
+    }
+    
+    return selected_test_subjects, metadata
 
 
 if __name__ == "__main__":
