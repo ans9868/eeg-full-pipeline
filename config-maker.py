@@ -384,65 +384,69 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             config["preprocessing"]["epoch_rejection"] = None
             print("ℹ️  Epoch rejection disabled")
 
-        # Ask for extreme datapoint removal settings
-        print("\n📊 Extreme Datapoint Removal Settings")
-        print("   This will remove extreme values (outliers) from the processed features.")
-        print("   - Percentile-based removal: Remove data points above/below specified percentiles")
-        print("   - Applied to processed features before transformation")
+        # # Ask for extreme datapoint removal settings
+        # print("\n📊 Extreme Datapoint Removal Settings")
+        # print("   This will remove extreme values (outliers) from the processed features.")
+        # print("   - Percentile-based removal: Remove data points above/below specified percentiles")
+        # print("   - Applied to processed features before transformation")
         
-        # Enable/disable extreme datapoint removal
-        config["preprocessing"]["remove_extreme_datapoints"] = questionary.select(
-            "2.6 Enable extreme datapoint removal?",
-            choices=["Yes", "No"],
-        ).ask()
+        # # Enable/disable extreme datapoint removal
+        # config["preprocessing"]["remove_extreme_datapoints"] = questionary.select(
+        #     "2.6 Enable extreme datapoint removal?",
+        #     choices=["Yes", "No"],
+        # ).ask()
 
-        if config["preprocessing"]["remove_extreme_datapoints"] == "Yes":
-            # Ask for lower percentile threshold
-            while True:
-                lower_percentile_input = questionary.text(
-                    "2.6.1 Lower percentile threshold (decimal):\n   Data points below this percentile will be removed.\n   Default is 0.01 (1% - very conservative):"
-                ).ask()
-                try:
-                    lower_percentile = float(lower_percentile_input)
-                    if 0 <= lower_percentile <= 0.5:
-                        break
-                    else:
-                        print("[ERROR] Please enter a decimal between 0 and 0.5 (e.g., 0.01 for 1%).")
-                except (ValueError, TypeError):
-                    print("[ERROR] Please enter a valid decimal number.")
-            
-            # Ask for upper percentile threshold
-            while True:
-                upper_percentile_input = questionary.text(
-                    "2.6.2 Upper percentile threshold (decimal):\n   Data points above this percentile will be removed.\n   Default is 0.99 (99% - very conservative):"
-                ).ask()
-                try:
-                    upper_percentile = float(upper_percentile_input)
-                    if 0.5 <= upper_percentile <= 1:
-                        break
-                    else:
-                        print("[ERROR] Please enter a decimal between 0.5 and 1 (e.g., 0.99 for 99%).")
-                except (ValueError, TypeError):
-                    print("[ERROR] Please enter a valid decimal number.")
-            
-            # Validate that lower < upper
-            if lower_percentile >= upper_percentile:
-                print("[ERROR] Lower percentile must be less than upper percentile.")
-                print(f"   Lower: {lower_percentile}, Upper: {upper_percentile}")
-                print("   Using default values: Lower 0.01, Upper 0.99")
-                lower_percentile = 0.01
-                upper_percentile = 0.99
-            
-            config["preprocessing"]["extreme_datapoint_removal"] = {
-                "lower_percentile": lower_percentile,
-                "upper_percentile": upper_percentile,
-                "method": "percentile"  # Can be extended to other methods later
-            }
-            
-            print(f"✅ Extreme datapoint removal enabled: {lower_percentile} - {upper_percentile}")
-        else:
-            config["preprocessing"]["extreme_datapoint_removal"] = None
-            print("ℹ️  Extreme datapoint removal disabled")
+        # if config["preprocessing"]["remove_extreme_datapoints"] == "Yes":
+        #     # Ask for lower percentile threshold
+        #     while True:
+        #         lower_percentile_input = questionary.text(
+        #             "2.6.1 Lower percentile threshold (decimal):\n   Data points below this percentile will be removed.\n   Default is 0.01 (1% - very conservative):"
+        #         ).ask()
+        #         try:
+        #             lower_percentile = float(lower_percentile_input)
+        #             if 0 <= lower_percentile <= 0.5:
+        #                 break
+        #             else:
+        #                 print("[ERROR] Please enter a decimal between 0 and 0.5 (e.g., 0.01 for 1%).")
+        #         except (ValueError, TypeError):
+        #             print("[ERROR] Please enter a valid decimal number.")
+        #     
+        #     # Ask for upper percentile threshold
+        #     while True:
+        #         upper_percentile_input = questionary.text(
+        #             "2.6.2 Upper percentile threshold (decimal):\n   Data points above this percentile will be removed.\n   Default is 0.99 (99% - very conservative):"
+        #         ).ask()
+        #         try:
+        #             upper_percentile = float(upper_percentile_input)
+        #             if 0.5 <= upper_percentile <= 1:
+        #                 break
+        #             else:
+        #                 print("[ERROR] Please enter a decimal between 0.5 and 1 (e.g., 0.99 for 99%).")
+        #         except (ValueError, TypeError):
+        #             print("[ERROR] Please enter a valid decimal number.")
+        #     
+        #     # Validate that lower < upper
+        #     if lower_percentile >= upper_percentile:
+        #         print("[ERROR] Lower percentile must be less than upper percentile.")
+        #         print(f"   Lower: {lower_percentile}, Upper: {upper_percentile}")
+        #         print("   Using default values: Lower 0.01, Upper 0.99")
+        #         lower_percentile = 0.01
+        #         upper_percentile = 0.99
+        #     
+        #     config["preprocessing"]["extreme_datapoint_removal"] = {
+        #         "lower_percentile": lower_percentile,
+        #         "upper_percentile": upper_percentile,
+        #         "method": "percentile"  # Can be extended to other methods later
+        #     }
+        #     
+        #     print(f"✅ Extreme datapoint removal enabled: {lower_percentile} - {upper_percentile}")
+        # else:
+        #     config["preprocessing"]["extreme_datapoint_removal"] = None
+        #     print("ℹ️  Extreme datapoint removal disabled")
+        
+        # Default to disabled since the section is commented out
+        config["preprocessing"]["extreme_datapoint_removal"] = None
+        print("ℹ️  Extreme datapoint removal section disabled (commented out in code)")
 
         # # Handle downsampling rate with validation
         # # https://mne.tools/stable/auto_tutorials/preprocessing/30_filtering_resampling.html
