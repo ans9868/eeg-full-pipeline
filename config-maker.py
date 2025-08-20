@@ -673,13 +673,15 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 "Dummy (+1)",
                 "PCA (retain 95% variance)",
                 "PCA (manual count)",
-                "SPCA (manual count)",
                 "MinMax scaler",
                 "Z-score standardization",
-                "ICA",
-                "ICA (manual count)",
+                "Standard scaler",
+                "Log transform (log1p)",
                 "Cohen test (manual count)",
                 "Cohen test (limit to % for example 0.05)",
+                # "SPCA (manual count)",
+                # "ICA", # not in spark
+                # "ICA (manual count)", # not in spark
                 "None",
             ],
         ).ask()
