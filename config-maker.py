@@ -29,6 +29,10 @@ spark.sql.execution.arrow.pyspark.enabled true
 
 """
 
+# TODO: make it such that after ending each section, it asks if you want to continue to the next section
+# we should put each section into its own function and then call the function to run the section
+
+# also make ti such that this part is easier here to see what order its going to be like a forloop or something '? 4.1 Select transformations to apply (can select multiple - they will be applied in ord er): [Z-score standardization]
 
 def infer_target() -> str:
     this_file = Path(
@@ -517,7 +521,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
             # Ask for PSD features first
             psd_features = questionary.checkbox(
-                f"   ├─ PSD Features (spectral):\n   │  💡 Tip: Select 'none' for no features, or select specific features (not both)",
+                f"   ├─ PSD Features (spectral):\n  ",
                 choices=psd_choices,
             ).ask()
 
@@ -666,25 +670,43 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
         # 4. Feature Transformation
         print("\n[4] Feature Transformation")
+        print("📊 Available Transformers:")
+        print("   • Dummy (+1): Simple test transformer (adds +1 to all features)")
+        print("   • PCA: Dimensionality reduction (retain variance or manual count)")
+        print("   • SVD: Singular Value Decomposition for dimensionality reduction")
+        print("   • MinMax scaler: Scale features to [0,1] or [-1,1] range")
+        print("   • Z-score/Standard scaler: Standardize features (mean=0, std=1)")
+        print("   • Robust scaler: Scale using median and IQR (outlier-resistant)")
+        print("   • Normalizer: Lp normalization (L1, L2, L∞) for unit norm vectors")
+        print("   • Log transform (log1p): Apply log(1+x) transformation")
+        print("   • Cohen test: Statistical feature selection")
+        print()
+        
         config["feature_transformation"] = {}
-        config["feature_transformation"]["transformations"] = questionary.select(
-            "4.1 Select a transformation to apply (for more precise options edit the config file directly):",
+        config["feature_transformation"]["transformations"] = questionary.checkbox(
+            "4.1 Select transformations to apply (can select multiple - they will be applied in order):",
             choices=[
                 "Dummy (+1)",
                 "PCA (retain 95% variance)",
                 "PCA (manual count)",
+                "SVD (k components)",
                 "MinMax scaler",
                 "Z-score standardization",
                 "Standard scaler",
+                "Robust scaler",
+                "Normalizer",
                 "Log transform (log1p)",
                 "Cohen test (manual count)",
                 "Cohen test (limit to % for example 0.05)",
                 # "SPCA (manual count)",
                 # "ICA", # not in spark
                 # "ICA (manual count)", # not in spark
-                "None",
             ],
         ).ask()
+        
+        # If no transformations selected, set to "None"
+        if not config["feature_transformation"]["transformations"]:
+            config["feature_transformation"]["transformations"] = ["None"]
 
         config["feature_transformation"]["synthetic"] = questionary.select(
             "4.2 Synthetic data generation method:",
@@ -696,11 +718,119 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             ],
         ).ask()
 
+        # 4.3 Transformer-specific configuration
+        if config["feature_transformation"]["transformations"] != ["None"]:
+            print("\n📊 Transformer Configuration")
+            print(f"   Selected transformations: {', '.join(config['feature_transformation']['transformations'])}")
+            print("   Transformations will be applied in the order selected above")
+            print()
+            
+            # PCA configuration
+            if "PCA (manual count)" in config["feature_transformation"]["transformations"]:
+                while True:
+                    pca_components = questionary.text(
+                        "4.3.1 Enter number of PCA components (e.g., 10):"
+                    ).ask()
+                    try:
+                        count = int(pca_components)
+                        if count > 0:
+                            config["feature_transformation"]["pca_components"] = count
+                            break
+                        else:
+                            print("[ERROR] Please enter a positive number.")
+                    except ValueError:
+                        print("[ERROR] Please enter a valid integer.")
+            
+            # SVD configuration
+            if "SVD (k components)" in config["feature_transformation"]["transformations"]:
+                while True:
+                    svd_components = questionary.text(
+                        "4.3.2 Enter number of SVD components (e.g., 10):"
+                    ).ask()
+                    try:
+                        count = int(svd_components)
+                        if count > 0:
+                            config["feature_transformation"]["svd_components"] = count
+                            break
+                        else:
+                            print("[ERROR] Please enter a positive number.")
+                    except ValueError:
+                        print("[ERROR] Please enter a valid integer.")
+            
+            # MinMax scaler configuration
+            if "MinMax scaler" in config["feature_transformation"]["transformations"]:
+                minmax_range = questionary.select(
+                    "4.3.3 MinMax scaler range:",
+                    choices=["[0, 1]", "[-1, 1]"]
+                ).ask()
+                if minmax_range == "[0, 1]":
+                    config["feature_transformation"]["minmax_range"] = [0.0, 1.0]
+                else:
+                    config["feature_transformation"]["minmax_range"] = [-1.0, 1.0]
+            
+            # Robust scaler configuration
+            if "Robust scaler" in config["feature_transformation"]["transformations"]:
+                robust_centering = questionary.select(
+                    "4.3.4 Robust scaler centering:",
+                    choices=["Yes (center with median)", "No (no centering)"]
+                ).ask()
+                config["feature_transformation"]["robust_scaler_with_centering"] = (robust_centering == "Yes (center with median)")
+                
+                robust_scaling = questionary.select(
+                    "4.3.5 Robust scaler scaling:",
+                    choices=["Yes (scale with IQR)", "No (no scaling)"]
+                ).ask()
+                config["feature_transformation"]["robust_scaler_with_scaling"] = (robust_scaling == "Yes (scale with IQR)")
+            
+            # Normalizer configuration
+            if "Normalizer" in config["feature_transformation"]["transformations"]:
+                p_norm = questionary.select(
+                    "4.3.6 Normalizer p-norm:",
+                    choices=["L1 (Manhattan norm)", "L2 (Euclidean norm)", "L∞ (Maximum norm)"]
+                ).ask()
+                if p_norm == "L1 (Manhattan norm)":
+                    config["feature_transformation"]["normalizer_p"] = 1.0
+                elif p_norm == "L2 (Euclidean norm)":
+                    config["feature_transformation"]["normalizer_p"] = 2.0
+                else:  # L∞
+                    config["feature_transformation"]["normalizer_p"] = float('inf')
+            
+            # Cohen test configuration
+            if "Cohen test" in config["feature_transformation"]["transformations"]:
+                if "manual count" in config["feature_transformation"]["transformations"]:
+                    while True:
+                        cohen_components = questionary.text(
+                            "4.3.7 Enter number of Cohen test components (e.g., 10):"
+                        ).ask()
+                        try:
+                            count = int(cohen_components)
+                            if count > 0:
+                                config["feature_transformation"]["cohen_components"] = count
+                                break
+                            else:
+                                print("[ERROR] Please enter a positive number.")
+                        except ValueError:
+                            print("[ERROR] Please enter a valid integer.")
+                elif "limit to %" in config["feature_transformation"]["transformations"]:
+                    while True:
+                        cohen_limit = questionary.text(
+                            "4.3.8 Enter Cohen test limit percentage (e.g., 0.05 for 5%):"
+                        ).ask()
+                        try:
+                            limit = float(cohen_limit)
+                            if 0 < limit < 1:
+                                config["feature_transformation"]["cohen_limit"] = limit
+                                break
+                            else:
+                                print("[ERROR] Please enter a value between 0 and 1.")
+                        except ValueError:
+                            print("[ERROR] Please enter a valid decimal number.")
+
         # 5. Data Leakage Prevention (only if ML Classification and Feature Transformation are enabled)
         if target == "pyspark-only" or target == "full":
             if (
                 config["project"]["experiment_type"] == "ML (Classification)"
-                and config["feature_transformation"]["transformations"] != "None"
+                and config["feature_transformation"]["transformations"] != ["None"]
             ):
                 print("\n[5] Data Leakage Prevention")
                 print(
