@@ -360,6 +360,15 @@ def preprocessingPart2() -> Dict[str, Any]:
         choices=["Yes", "No"],
     ).ask()
 
+    # TODO: Better division between preprocessing and feature extraction needed
+    # Currently normalize_psd is in preprocessing for pipeline compatibility, 
+    # but logically it belongs to feature extraction. Need to refactor this properly.
+    # Ask for PSD normalization (stored in preprocessing for pipeline compatibility)
+    config["preprocessing"]["normalize_psd"] = questionary.select(
+        "2.5 Normalize PSD values? (Highly recommended, is the default on almost all EEG software)",
+        choices=["Yes", "No"],
+    ).ask()
+
     # Ask for epoch rejection settings
     print("\n📊 Epoch Rejection Settings")
     print("   This will reject individual epochs based on peak-to-peak amplitude thresholds.")
@@ -370,7 +379,7 @@ def preprocessingPart2() -> Dict[str, Any]:
     
     # Enable/disable epoch rejection
     config["preprocessing"]["use_epoch_rejection"] = questionary.select(
-        "2.5 Enable epoch rejection based on amplitude?",
+        "2.6 Enable epoch rejection based on amplitude?",
         choices=["Yes", "No"],
     ).ask()
 
@@ -667,21 +676,15 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
         "per_channel_per_band",
     )
 
-    # Ask for PSD normalization
-    config["preprocessing"]["normalize_psd"] = questionary.select(
-        "3.3 Normalize PSD values? (Highly recommended, is the default on almost all EEG software)",
-        choices=["Yes", "No"],
-    ).ask()
-
     # Ask for intermediate results display
     config["feature_extraction"]["show_intermediate_results"] = questionary.select(
-        "3.4 Show intermediate results (DataFrame previews)? (Not recommended for large datasets)",
+        "3.3 Show intermediate results (DataFrame previews)? (Not recommended for large datasets)",
         choices=["No", "Yes"],
     ).ask()
 
     # Ask for intermediate counts display
     config["feature_extraction"]["show_intermediate_counts"] = questionary.select(
-        "3.5 Show intermediate counts (row counts during processing)? (Not recommended for large datasets)",
+        "3.4 Show intermediate counts (row counts during processing)? (Not recommended for large datasets)",
         choices=["No", "Yes"],
     ).ask()
 
@@ -933,6 +936,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
         choices=[
             # "Rotate test subjects and recompute transforms for each fold (slow, very storage heavy, most reliable ml results)",
             "1 test/1 train split with transforms applied to training set only (faster, single split)",
+            "LOSO (Leave-One-Subject-Out) - systematic cross-validation (recommended for small datasets)",
             "Transform all data together (no split - fastest, and potential data leakage)",
         ],
     ).ask()
@@ -1070,6 +1074,79 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                         print("[ERROR] Please enter a positive number.")
                 except ValueError:
                     print("[ERROR] Please enter a valid integer.")
+
+    # Question 2: LOSO configuration (if LOSO is selected)
+    elif (
+        "LOSO (Leave-One-Subject-Out)"
+        in config["data_leakage_prevention"]["strategy"]
+    ):
+        print("\n📊 LOSO (Leave-One-Subject-Out) Configuration")
+        print("   This will systematically leave out subjects for cross-validation.")
+        print("   Each subject will be used as test data exactly once.")
+        
+        # Calculate total subjects and show group distribution
+        total_subjects = sum(len(paths) for paths in data_input_groups.values())
+        print(f"   📈 Total subjects: {total_subjects}")
+        for group_name, paths in data_input_groups.items():
+            print(f"      {group_name}: {len(paths)} subjects")
+        
+        # Ask for subjects per group to leave out
+        while True:
+            subjects_per_group = questionary.text(
+                "5.2.1 Enter number of subjects to leave out per group (e.g., 1 for true LOSO, 2 for leave-two-out):"
+            ).ask()
+            try:
+                count = int(subjects_per_group)
+                if count > 0:
+                    # Validate that each group has enough subjects
+                    insufficient_groups = []
+                    for group_name, paths in data_input_groups.items():
+                        if len(paths) < count:
+                            insufficient_groups.append(f"{group_name} ({len(paths)} subjects)")
+                    
+                    if insufficient_groups:
+                        print(f"❌ ERROR: The following groups don't have enough subjects:")
+                        for group in insufficient_groups:
+                            print(f"   {group}")
+                        print(f"   Please reduce the number or add more subjects to these groups.")
+                        continue
+                    
+                    config["data_leakage_prevention"]["loso_subjects_per_group"] = count
+                    break
+                else:
+                    print("[ERROR] Please enter a positive number.")
+            except ValueError:
+                print("[ERROR] Please enter a valid integer.")
+        
+        # Generate LOSO folds
+        print(f"   🔄 Generating LOSO folds...")
+        try:
+            loso_folds, fold_metadata = generate_loso_folds(
+                data_input_groups, 
+                count, 
+                random_seed=42
+            )
+            
+            # Store the folds in config
+            config["data_leakage_prevention"]["loso_folds"] = loso_folds
+            config["data_leakage_prevention"]["loso_metadata"] = fold_metadata
+            
+            print(f"   ✅ Generated {len(loso_folds)} LOSO folds")
+            print(f"   📊 Each fold leaves out {count} subjects per group")
+            print(f"   🎯 Total unique test combinations: {len(loso_folds)}")
+            
+            # Show example of first few folds
+            if len(loso_folds) > 0:
+                print(f"   📋 Example fold 1: {len(loso_folds[0])} subjects")
+                if len(loso_folds) > 1:
+                    print(f"   📋 Example fold 2: {len(loso_folds[1])} subjects")
+            
+        except ValueError as e:
+            print(f"❌ ERROR generating LOSO folds: {e}")
+            exit(1)
+        
+        # Set LOSO flag
+        config["data_leakage_prevention"]["use_loso"] = True
 
     # Question 2: Single train/test set definition (if single split is selected)
     elif (
@@ -1473,30 +1550,32 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     config: Dict[str, Any] = {}
 
     # 0. Metadata
-    project_config, config_name = metadataPart0()
+    project_config, config_name = run_section_with_confirmation("Project Metadata", metadataPart0)
     config.update(project_config)
 
     if target == "pyspark-only" or target == "full":
         # 1. Data Input
-        data_input_config = dataInputPart1()
+        data_input_config = run_section_with_confirmation("Data Input", dataInputPart1)
         config.update(data_input_config)
 
         # 2. Preprocessing
-        preprocessing_config = preprocessingPart2()
+        preprocessing_config = run_section_with_confirmation("Preprocessing", preprocessingPart2)
         config.update(preprocessing_config)
 
         # 3. Feature Extraction
-        feature_extraction_config = featureCreationPart3(config["project"]["experiment_type"])
+        feature_extraction_config = run_section_with_confirmation("Feature Extraction", featureCreationPart3, config["project"]["experiment_type"])
         config.update(feature_extraction_config)
 
         # 4. Feature Transformation
-        feature_transformation_config = featureTransformationsPart4()
+        feature_transformation_config = run_section_with_confirmation("Feature Transformation", featureTransformationsPart4)
         config.update(feature_transformation_config)
 
         # 5. Data Leakage Prevention (only if ML Classification and Feature Transformation are enabled)
         if (config["project"]["experiment_type"] == "ML (Classification)" and 
             config["feature_transformation"]["transformations"] != ["None"]):
-            data_leakage_prevention_config = dataLeakagePreventionPart5(
+            data_leakage_prevention_config = run_section_with_confirmation(
+                "Data Leakage Prevention", 
+                dataLeakagePreventionPart5,
                 config["project"]["experiment_type"], 
                 config["feature_transformation"]["transformations"], 
                 config["data_input"]["groups"]
@@ -1510,14 +1589,14 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
     # 6. Deployment Configuration
     print("\n[6] Deployment Configuration")
-    deployment_method_config = deploymentMethodPart6(target, config["project"]["deployment_method"])
+    deployment_method_config = run_section_with_confirmation("Deployment Configuration", deploymentMethodPart6, target, config["project"]["deployment_method"])
     config.update(deployment_method_config)
 
     # 7. Ray Configuration (only if target is ray-only or full AND experiment type is ML)
     if (target == "ray-only" or target == "full") and config["project"][
         "experiment_type"
     ] in ["ML (Classification)", "ML (Clustering)"]:
-        ray_config = rayConfigurationPart7()
+        ray_config = run_section_with_confirmation("Ray Configuration", rayConfigurationPart7)
         config.update(ray_config)
     else:
         # Skip Ray configuration for Analysis mode
@@ -1570,6 +1649,32 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             print(f"   📍 Count: {test_count} subjects")
             for i, (subject_id, path) in enumerate(zip(selected_subject_ids, test_subject_paths), 1):
                 print(f"      {i}. {subject_id}: {path}")
+    
+    # Show LOSO information if applicable
+    elif (config.get("data_leakage_prevention", {}).get("use_loso")):
+        loso_metadata = config["data_leakage_prevention"]["loso_metadata"]
+        total_folds = loso_metadata.get("total_folds", "unknown")
+        subjects_per_group = loso_metadata.get("subjects_per_group", "unknown")
+        total_subjects = loso_metadata.get("total_subjects", "unknown")
+        
+        print(f"🎯 LOSO Cross-Validation: {total_folds} folds")
+        print(f"   📊 Leave out {subjects_per_group} subjects per group per fold")
+        print(f"   📈 Total subjects: {total_subjects}")
+        print(f"   🔄 Each subject used as test data exactly once")
+        
+        # Show example of first fold if available
+        if config.get("data_leakage_prevention", {}).get("loso_folds"):
+            first_fold = config["data_leakage_prevention"]["loso_folds"][0]
+            if first_fold:
+                # Extract subject IDs from first fold
+                first_fold_subject_ids = []
+                for test_path in first_fold:
+                    path_parts = test_path.split('/')
+                    filename = path_parts[-1]
+                    subject_id = filename.replace('_task-eyesclosed_eeg.set', '').replace('_eeg.set', '').replace('.set', '').replace('.fif', '')
+                    first_fold_subject_ids.append(subject_id)
+                
+                print(f"   📋 Example fold 1: {', '.join(first_fold_subject_ids)}")
 
     print("=" * 60)
 
@@ -1598,6 +1703,52 @@ def save_config(config: Dict[str, Any], config_name: str) -> None:
 def sanitize_slurm_options(options: str) -> str:
     # Remove newlines and extra spaces
     return " ".join(options.split())
+
+
+def confirm_config_section(section_name: str, section_config: Dict[str, Any]) -> bool:
+    """
+    Display a configuration section and ask user to confirm.
+    
+    Args:
+        section_name: Name of the configuration section
+        section_config: Dictionary containing the section configuration
+        
+    Returns:
+        True if user confirms, False if user wants to redo the section
+    """
+    print(f"\n" + "="*60)
+    print(f"📋 {section_name.upper()} CONFIGURATION REVIEW")
+    print("="*60)
+    
+    # Pretty print the configuration
+    yaml_str = yaml.dump(section_config, default_flow_style=False, sort_keys=False)
+    print(yaml_str)
+    
+    # Ask for confirmation
+    confirm = questionary.select(
+        f"✅ Does this {section_name.lower()} configuration look correct?",
+        choices=["Yes, continue to next section", "No, let me redo this section"]
+    ).ask()
+    
+    return confirm == "Yes, continue to next section"
+
+
+def run_section_with_confirmation(section_name: str, section_function, *args, **kwargs):
+    """
+    Run a configuration section function with confirmation loop.
+    
+    Args:
+        section_name: Name of the section for display
+        section_function: Function to run for the section
+        *args, **kwargs: Arguments to pass to the section function
+        
+    Returns:
+        The configuration dictionary from the section
+    """
+    while True:
+        section_config = section_function(*args, **kwargs)
+        if confirm_config_section(section_name, section_config):
+            return section_config
 
 
 def validate_eeg_paths(paths: List[str]) -> List[str]:
@@ -1646,6 +1797,83 @@ def check_paths_in_groups(
             missing_paths.append(path)
 
     return found_paths, missing_paths
+
+
+def generate_loso_folds(
+    groups: Dict[str, List[str]], 
+    subjects_per_group: int, 
+    random_seed: int = 42
+) -> Tuple[List[List[str]], Dict[str, Any]]:
+    """
+    Generate LOSO (Leave-One-Subject-Out) folds with balanced group representation.
+    
+    Args:
+        groups: Dictionary of group names to subject paths
+        subjects_per_group: Number of subjects to leave out per group per fold
+        random_seed: Random seed for reproducibility (default: 42)
+        
+    Returns:
+        Tuple of (list_of_test_subject_lists, metadata_dict)
+    """
+    import random
+    from itertools import combinations
+    
+    # Use fixed seed for reproducibility
+    random.seed(random_seed)
+    
+    # Collect all subjects with their group information
+    all_subjects_with_groups = []
+    for group_name, paths in groups.items():
+        for path in paths:
+            all_subjects_with_groups.append((path, group_name))
+    
+    # Group subjects by their group
+    subjects_by_group = {}
+    for path, group_name in all_subjects_with_groups:
+        if group_name not in subjects_by_group:
+            subjects_by_group[group_name] = []
+        subjects_by_group[group_name].append(path)
+    
+    # Generate all possible combinations of subjects per group
+    group_combinations = {}
+    for group_name, subjects in subjects_by_group.items():
+        if len(subjects) >= subjects_per_group:
+            group_combinations[group_name] = list(combinations(subjects, subjects_per_group))
+        else:
+            raise ValueError(f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group} are needed per fold")
+    
+    # Generate all possible fold combinations
+    all_folds = []
+    
+    # Create all possible combinations of group selections
+    group_names = list(group_combinations.keys())
+    group_combinations_list = [group_combinations[group] for group in group_names]
+    
+    # Generate all possible combinations
+    from itertools import product
+    all_combinations = list(product(*group_combinations_list))
+    
+    # Convert combinations to fold format
+    for combination in all_combinations:
+        fold_subjects = []
+        for group_subjects in combination:
+            fold_subjects.extend(group_subjects)
+        all_folds.append(fold_subjects)
+    
+    # Shuffle folds for randomness
+    random.shuffle(all_folds)
+    
+    # Create metadata
+    metadata = {
+        "total_folds": len(all_folds),
+        "subjects_per_group": subjects_per_group,
+        "total_subjects": len(all_subjects_with_groups),
+        "groups": list(groups.keys()),
+        "random_seed": random_seed,
+        "fold_generation_method": "systematic_combinations"
+    }
+    
+    return all_folds, metadata
 
 
 def select_test_subjects_automatically(
