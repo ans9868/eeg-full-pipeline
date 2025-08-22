@@ -1090,33 +1090,88 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
         for group_name, paths in data_input_groups.items():
             print(f"      {group_name}: {len(paths)} subjects")
         
-        # Ask for subjects per group to leave out
-        while True:
-            subjects_per_group = questionary.text(
-                "5.2.1 Enter number of subjects to leave out per group (e.g., 1 for true LOSO, 2 for leave-two-out):"
-            ).ask()
-            try:
-                count = int(subjects_per_group)
-                if count > 0:
-                    # Validate that each group has enough subjects
-                    insufficient_groups = []
-                    for group_name, paths in data_input_groups.items():
-                        if len(paths) < count:
-                            insufficient_groups.append(f"{group_name} ({len(paths)} subjects)")
-                    
-                    if insufficient_groups:
-                        print(f"❌ ERROR: The following groups don't have enough subjects:")
-                        for group in insufficient_groups:
-                            print(f"   {group}")
-                        print(f"   Please reduce the number or add more subjects to these groups.")
-                        continue
-                    
-                    config["data_leakage_prevention"]["loso_subjects_per_group"] = count
-                    break
-                else:
-                    print("[ERROR] Please enter a positive number.")
-            except ValueError:
-                print("[ERROR] Please enter a valid integer.")
+        # Ask for default or custom number of subjects per group
+        num_groups = len(data_input_groups)
+        default_subjects = num_groups  # Default is 1 subject per group per fold
+        
+        loso_choice = questionary.select(
+            "5.2.1 LOSO configuration:",
+            choices=[
+                f"Default ({default_subjects} subjects - 1 per group per fold)",
+                f"Custom number of subjects"
+            ],
+        ).ask()
+        
+        if "Default" in loso_choice:
+            # Use default (1 subject per group per fold)
+            count = default_subjects
+            subjects_per_group_per_fold = 1
+            print(f"   ✅ Using default: {count} subjects ({subjects_per_group_per_fold} per group per fold)")
+            
+            # Calculate how many folds can be generated
+            min_subjects_per_group = min(len(paths) for paths in data_input_groups.values())
+            max_folds = min_subjects_per_group // subjects_per_group_per_fold
+            print(f"   📈 You can generate {max_folds} folds with this configuration")
+            
+            # Validate that each group has enough subjects
+            insufficient_groups = []
+            for group_name, paths in data_input_groups.items():
+                if len(paths) < subjects_per_group_per_fold:
+                    insufficient_groups.append(f"{group_name} ({len(paths)} subjects)")
+            
+            if insufficient_groups:
+                print(f"❌ ERROR: The following groups don't have enough subjects for default LOSO:")
+                for group in insufficient_groups:
+                    print(f"   {group}")
+                print(f"   Each group needs at least 1 subject for default LOSO.")
+                raise ValueError("Insufficient subjects for default LOSO")
+            
+            config["data_leakage_prevention"]["loso_subjects_per_group"] = count
+            
+        else:
+            # Ask for custom number of subjects per group
+            while True:
+                subjects_per_group = questionary.text(
+                    f"5.2.2 Enter custom number of subjects to leave out per group (e.g., {num_groups*2} for 2 per group, {num_groups*3} for 3 per group):"
+                ).ask()
+                try:
+                    count = int(subjects_per_group)
+                    if count > 0:
+                        # Validate that count is evenly divisible by number of groups
+                        if count % num_groups != 0:
+                            print(f"❌ ERROR: {count} is not evenly divisible by {num_groups} groups")
+                            print(f"   Valid options: {num_groups}, {num_groups*2}, {num_groups*3}, etc.")
+                            continue
+                        
+                        # Calculate subjects per group per fold
+                        subjects_per_group_per_fold = count // num_groups
+                        print(f"   📊 This will leave out {subjects_per_group_per_fold} subjects per group per fold")
+                        
+                        # Calculate how many folds can be generated
+                        min_subjects_per_group = min(len(paths) for paths in data_input_groups.values())
+                        max_folds = min_subjects_per_group // subjects_per_group_per_fold
+                        print(f"   📈 You can generate {max_folds} folds with this configuration")
+                        
+                        # Validate that each group has enough subjects
+                        insufficient_groups = []
+                        for group_name, paths in data_input_groups.items():
+                            if len(paths) < subjects_per_group_per_fold:
+                                insufficient_groups.append(f"{group_name} ({len(paths)} subjects)")
+                        
+                        if insufficient_groups:
+                            print(f"❌ ERROR: The following groups don't have enough subjects:")
+                            for group in insufficient_groups:
+                                print(f"   {group}")
+                            print(f"   Each group needs at least {subjects_per_group_per_fold} subjects per fold for this configuration.")
+                            print(f"   With {subjects_per_group_per_fold} subjects per fold, you can generate {min(len(paths) // subjects_per_group_per_fold for paths in data_input_groups.values())} folds.")
+                            continue
+                        
+                        config["data_leakage_prevention"]["loso_subjects_per_group"] = count
+                        break
+                    else:
+                        print("[ERROR] Please enter a positive number.")
+                except ValueError:
+                    print("[ERROR] Please enter a valid integer.")
         
         # Generate LOSO folds
         print(f"   🔄 Generating LOSO folds...")
@@ -1124,7 +1179,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
             loso_folds, fold_metadata = generate_loso_folds(
                 data_input_groups, 
                 count, 
-                random_seed=42
+                # random_seed=42
             )
             
             # Store the folds in config
@@ -1805,72 +1860,66 @@ def generate_loso_folds(
     random_seed: int = 42
 ) -> Tuple[List[List[str]], Dict[str, Any]]:
     """
-    Generate LOSO (Leave-One-Subject-Out) folds with balanced group representation.
+    Generate LOSO (Leave-One-Subject-Out) folds with systematic, ordered selection.
     
     Args:
         groups: Dictionary of group names to subject paths
         subjects_per_group: Number of subjects to leave out per group per fold
-        random_seed: Random seed for reproducibility (default: 42)
+        random_seed: Random seed for reproducibility (default: 42) - not used for ordering
         
     Returns:
         Tuple of (list_of_test_subject_lists, metadata_dict)
     """
-    import random
-    from itertools import combinations
+    # Validate that subjects_per_group is evenly divisible by number of groups
+    num_groups = len(groups)
+    if subjects_per_group % num_groups != 0:
+        raise ValueError(f"Subjects per group ({subjects_per_group}) must be evenly divisible by number of groups ({num_groups})")
     
-    # Use fixed seed for reproducibility
-    random.seed(random_seed)
+    # Calculate subjects per group per fold
+    subjects_per_group_per_fold = subjects_per_group // num_groups
     
-    # Collect all subjects with their group information
-    all_subjects_with_groups = []
-    for group_name, paths in groups.items():
-        for path in paths:
-            all_subjects_with_groups.append((path, group_name))
-    
-    # Group subjects by their group
+    # Collect all subjects with their group information, maintaining order
     subjects_by_group = {}
-    for path, group_name in all_subjects_with_groups:
-        if group_name not in subjects_by_group:
-            subjects_by_group[group_name] = []
-        subjects_by_group[group_name].append(path)
+    for group_name, paths in groups.items():
+        subjects_by_group[group_name] = paths.copy()  # Keep original order
     
-    # Generate all possible combinations of subjects per group
-    group_combinations = {}
+    # Validate that each group has enough subjects
     for group_name, subjects in subjects_by_group.items():
-        if len(subjects) >= subjects_per_group:
-            group_combinations[group_name] = list(combinations(subjects, subjects_per_group))
-        else:
-            raise ValueError(f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group} are needed per fold")
+        if len(subjects) < subjects_per_group_per_fold:
+            raise ValueError(f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group_per_fold} are needed per fold")
     
-    # Generate all possible fold combinations
+    # Generate systematic folds
     all_folds = []
+    group_names = list(subjects_by_group.keys())
     
-    # Create all possible combinations of group selections
-    group_names = list(group_combinations.keys())
-    group_combinations_list = [group_combinations[group] for group in group_names]
+    # Calculate how many folds we can generate
+    min_subjects_per_group = min(len(subjects) for subjects in subjects_by_group.values())
+    max_folds = min_subjects_per_group // subjects_per_group_per_fold
     
-    # Generate all possible combinations
-    from itertools import product
-    all_combinations = list(product(*group_combinations_list))
+    print(f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold")
     
-    # Convert combinations to fold format
-    for combination in all_combinations:
+    for fold_idx in range(max_folds):
         fold_subjects = []
-        for group_subjects in combination:
+        
+        for group_name in group_names:
+            # Get subjects for this group for this fold
+            start_idx = fold_idx * subjects_per_group_per_fold
+            end_idx = start_idx + subjects_per_group_per_fold
+            
+            group_subjects = subjects_by_group[group_name][start_idx:end_idx]
             fold_subjects.extend(group_subjects)
+        
         all_folds.append(fold_subjects)
-    
-    # Shuffle folds for randomness
-    random.shuffle(all_folds)
     
     # Create metadata
     metadata = {
         "total_folds": len(all_folds),
         "subjects_per_group": subjects_per_group,
-        "total_subjects": len(all_subjects_with_groups),
+        "subjects_per_group_per_fold": subjects_per_group_per_fold,
+        "total_subjects": sum(len(subjects) for subjects in subjects_by_group.values()),
         "groups": list(groups.keys()),
-        "random_seed": random_seed,
-        "fold_generation_method": "systematic_combinations"
+        "num_groups": num_groups,
+        "fold_generation_method": "systematic_ordered"
     }
     
     return all_folds, metadata
