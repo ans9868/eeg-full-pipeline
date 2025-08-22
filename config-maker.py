@@ -1098,7 +1098,8 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
             "5.2.1 LOSO configuration:",
             choices=[
                 f"Default ({default_subjects} subjects - 1 per group per fold)",
-                f"Custom number of subjects"
+                f"Custom number of subjects",
+                "Leave-One-Subject-Out (Individual) - each subject as test"
             ],
         ).ask()
         
@@ -1115,7 +1116,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
             
             # Validate that each group has enough subjects
             insufficient_groups = []
-            for group_name, paths in data_input_groups.items():
+            for group_name, paths in data_input_groups.values():
                 if len(paths) < subjects_per_group_per_fold:
                     insufficient_groups.append(f"{group_name} ({len(paths)} subjects)")
             
@@ -1127,6 +1128,27 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                 raise ValueError("Insufficient subjects for default LOSO")
             
             config["data_leakage_prevention"]["loso_subjects_per_group"] = count
+            
+        elif "Leave-One-Subject-Out (Individual)" in loso_choice:
+            # Individual LOSO - each subject gets its own test fold
+            print(f"   ✅ Using Individual LOSO: each subject as test")
+            
+            # Collect all subjects from all groups
+            all_subjects = []
+            for group_name, paths in data_input_groups.items():
+                for path in paths:
+                    all_subjects.append(path)
+            
+            total_subjects = len(all_subjects)
+            print(f"   📊 Total subjects: {total_subjects}")
+            print(f"   📈 You can generate {total_subjects} folds (one per subject)")
+            
+            # Set up for individual LOSO
+            count = total_subjects  # Each subject gets its own fold
+            subjects_per_group_per_fold = 1  # Each fold has exactly 1 subject
+            
+            config["data_leakage_prevention"]["loso_subjects_per_group"] = count
+            config["data_leakage_prevention"]["individual_loso"] = True
             
         else:
             # Ask for custom number of subjects per group
@@ -1176,9 +1198,13 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
         # Generate LOSO folds
         print(f"   🔄 Generating LOSO folds...")
         try:
+            # Check if individual LOSO is enabled
+            individual_loso = config["data_leakage_prevention"].get("individual_loso", False)
+            
             loso_folds, fold_metadata = generate_loso_folds(
                 data_input_groups, 
                 count, 
+                individual_loso=individual_loso
                 # random_seed=42
             )
             
@@ -1857,7 +1883,8 @@ def check_paths_in_groups(
 def generate_loso_folds(
     groups: Dict[str, List[str]], 
     subjects_per_group: int, 
-    random_seed: int = 42
+    random_seed: int = 42,
+    individual_loso: bool = False
 ) -> Tuple[List[List[str]], Dict[str, Any]]:
     """
     Generate LOSO (Leave-One-Subject-Out) folds with systematic, ordered selection.
@@ -1866,63 +1893,95 @@ def generate_loso_folds(
         groups: Dictionary of group names to subject paths
         subjects_per_group: Number of subjects to leave out per group per fold
         random_seed: Random seed for reproducibility (default: 42) - not used for ordering
+        individual_loso: If True, each subject gets its own test fold regardless of group
         
     Returns:
         Tuple of (list_of_test_subject_lists, metadata_dict)
     """
-    # Validate that subjects_per_group is evenly divisible by number of groups
-    num_groups = len(groups)
-    if subjects_per_group % num_groups != 0:
-        raise ValueError(f"Subjects per group ({subjects_per_group}) must be evenly divisible by number of groups ({num_groups})")
     
-    # Calculate subjects per group per fold
-    subjects_per_group_per_fold = subjects_per_group // num_groups
-    
-    # Collect all subjects with their group information, maintaining order
-    subjects_by_group = {}
-    for group_name, paths in groups.items():
-        subjects_by_group[group_name] = paths.copy()  # Keep original order
-    
-    # Validate that each group has enough subjects
-    for group_name, subjects in subjects_by_group.items():
-        if len(subjects) < subjects_per_group_per_fold:
-            raise ValueError(f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group_per_fold} are needed per fold")
-    
-    # Generate systematic folds
-    all_folds = []
-    group_names = list(subjects_by_group.keys())
-    
-    # Calculate how many folds we can generate
-    min_subjects_per_group = min(len(subjects) for subjects in subjects_by_group.values())
-    max_folds = min_subjects_per_group // subjects_per_group_per_fold
-    
-    print(f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold")
-    
-    for fold_idx in range(max_folds):
-        fold_subjects = []
+    if individual_loso:
+        # Individual LOSO: each subject gets its own test fold
+        print(f"   🎯 Generating Individual LOSO folds (one per subject)")
         
-        for group_name in group_names:
-            # Get subjects for this group for this fold
-            start_idx = fold_idx * subjects_per_group_per_fold
-            end_idx = start_idx + subjects_per_group_per_fold
+        # Collect all subjects from all groups
+        all_subjects = []
+        for group_name, paths in groups.items():
+            for path in paths:
+                all_subjects.append(path)
+        
+        # Create one fold per subject
+        all_folds = []
+        for subject_path in all_subjects:
+            all_folds.append([subject_path])  # Each fold contains exactly one subject
+        
+        # Create metadata for individual LOSO
+        metadata = {
+            "total_folds": len(all_folds),
+            "subjects_per_group": len(all_subjects),
+            "subjects_per_group_per_fold": 1,
+            "total_subjects": len(all_subjects),
+            "groups": list(groups.keys()),
+            "num_groups": len(groups),
+            "fold_generation_method": "individual_loso"
+        }
+        
+        return all_folds, metadata
+    
+    else:
+        # Standard LOSO: systematic selection per group
+        # Validate that subjects_per_group is evenly divisible by number of groups
+        num_groups = len(groups)
+        if subjects_per_group % num_groups != 0:
+            raise ValueError(f"Subjects per group ({subjects_per_group}) must be evenly divisible by number of groups ({num_groups})")
+        
+        # Calculate subjects per group per fold
+        subjects_per_group_per_fold = subjects_per_group // num_groups
+        
+        # Collect all subjects with their group information, maintaining order
+        subjects_by_group = {}
+        for group_name, paths in groups.items():
+            subjects_by_group[group_name] = paths.copy()  # Keep original order
+        
+        # Validate that each group has enough subjects
+        for group_name, subjects in subjects_by_group.items():
+            if len(subjects) < subjects_per_group_per_fold:
+                raise ValueError(f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group_per_fold} are needed per fold")
+        
+        # Generate systematic folds
+        all_folds = []
+        group_names = list(subjects_by_group.keys())
+        
+        # Calculate how many folds we can generate
+        min_subjects_per_group = min(len(subjects) for subjects in subjects_by_group.values())
+        max_folds = min_subjects_per_group // subjects_per_group_per_fold
+        
+        print(f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold")
+        
+        for fold_idx in range(max_folds):
+            fold_subjects = []
             
-            group_subjects = subjects_by_group[group_name][start_idx:end_idx]
-            fold_subjects.extend(group_subjects)
+            for group_name in group_names:
+                # Get subjects for this group for this fold
+                start_idx = fold_idx * subjects_per_group_per_fold
+                end_idx = start_idx + subjects_per_group_per_fold
+                
+                group_subjects = subjects_by_group[group_name][start_idx:end_idx]
+                fold_subjects.extend(group_subjects)
+            
+            all_folds.append(fold_subjects)
         
-        all_folds.append(fold_subjects)
-    
-    # Create metadata
-    metadata = {
-        "total_folds": len(all_folds),
-        "subjects_per_group": subjects_per_group,
-        "subjects_per_group_per_fold": subjects_per_group_per_fold,
-        "total_subjects": sum(len(subjects) for subjects in subjects_by_group.values()),
-        "groups": list(groups.keys()),
-        "num_groups": num_groups,
-        "fold_generation_method": "systematic_ordered"
-    }
-    
-    return all_folds, metadata
+        # Create metadata
+        metadata = {
+            "total_folds": len(all_folds),
+            "subjects_per_group": subjects_per_group,
+            "subjects_per_group_per_fold": subjects_per_group_per_fold,
+            "total_subjects": sum(len(subjects) for subjects in subjects_by_group.values()),
+            "groups": list(groups.keys()),
+            "num_groups": num_groups,
+            "fold_generation_method": "systematic_ordered"
+        }
+        
+        return all_folds, metadata
 
 
 def select_test_subjects_automatically(
