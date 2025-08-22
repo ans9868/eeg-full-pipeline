@@ -1947,6 +1947,15 @@ def generate_loso_folds(
             if len(subjects) < subjects_per_group_per_fold:
                 raise ValueError(f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group_per_fold} are needed per fold")
         
+        # Validate that we don't leave out all subjects (which would leave no training data)
+        total_subjects = sum(len(subjects) for subjects in subjects_by_group.values())
+        if subjects_per_group >= total_subjects:
+            raise ValueError(
+                f"❌ Invalid LOSO configuration: {subjects_per_group} subjects per group >= {total_subjects} total subjects. "
+                f"This would leave no training subjects, preventing transformers from fitting. "
+                f"Please ensure at least one subject remains for training."
+            )
+        
         # Generate systematic folds
         all_folds = []
         group_names = list(subjects_by_group.keys())
