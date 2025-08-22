@@ -30,6 +30,7 @@ spark.sql.execution.arrow.pyspark.enabled true
 """
 
 # TODO: make it such that after ending each section, it asks if you want to continue to the next section
+# TODO: make it such that asks if want logs in console or in log file for spark  ... this could be done thorugh the spark config in config/spark/log4j.properties
 # we should put each section into its own function and then call the function to run the section
 
 # also make ti such that this part is easier here to see what order its going to be like a forloop or something '? 4.1 Select transformations to apply (can select multiple - they will be applied in ord er): [Z-score standardization]
