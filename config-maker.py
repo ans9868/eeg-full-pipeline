@@ -724,7 +724,8 @@ def featureTransformationsPart4() -> Dict[str, Any]:
     print("   • Robust scaler: Scale using median and IQR (outlier-resistant)")
     print("   • Normalizer: Lp normalization (L1, L2, L∞) for unit norm vectors")
     print("   • Log transform (log1p): Apply log(1+x) transformation")
-    print("   • Cohen test: Statistical feature selection")
+    # print("   • Polynomial expansion: Polynomial expansion (coming soon)")
+    # print("   • Cohen test: Statistical feature selection")
     print()
 
     config = {}
@@ -742,6 +743,7 @@ def featureTransformationsPart4() -> Dict[str, Any]:
         "Robust scaler",
         "Normalizer",
         "Log transform (log1p)",
+        # "Polynomial expansion", # coming soon
         # "Cohen test (manual count)", # not implemented (can be done with linear regression)
         # "Cohen test (limit to % for example 0.05)", # not implemented (can be done with linear regression)
         # "SPCA (manual count)", # not in spark
