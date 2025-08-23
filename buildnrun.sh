@@ -8,5 +8,5 @@ make build
 make push
 cd ..
 
+py-neuro-env
 python start-pipelines.py
-

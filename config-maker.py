@@ -1626,6 +1626,58 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         "7.7 Enter random state for reproducibility:", default="42"
     )
 
+    # 7.8 Ray Resource Configuration
+    print("\n[7.8] Ray Resource Configuration")
+    print("Ray resource configuration helps optimize performance for hyperparameter tuning.")
+    print("If not configured, Ray will fall back to PySpark resource settings.")
+    
+    configure_ray_resources = questionary.select(
+        "7.8.1 Do you want to configure Ray-specific resources?",
+        choices=["Yes", "No (use PySpark settings as fallback)"],
+    ).ask()
+
+    if configure_ray_resources == "Yes":
+        print("\nRay Resource Configuration:")
+        print("For example, for a 8-core CPU with 16GB memory, we can safely allocate:")
+        print("  - 4-6 CPUs for Ray cluster")
+        print("  - 8-12GB memory for Ray")
+        print("  - 2-4 concurrent trials")
+        print("This is optimized for ML workloads.")
+        
+        config["ray"]["resources"] = {}
+        config["ray"]["resources"]["num_cpus"] = validate_integer_input(
+            "7.8.2 Enter number of CPUs for Ray cluster:", default="4"
+        )
+        config["ray"]["resources"]["memory_gb"] = validate_integer_input(
+            "7.8.3 Enter memory in GB for Ray:", default="8"
+        )
+        config["ray"]["resources"]["object_store_memory_gb"] = validate_integer_input(
+            "7.8.4 Enter object store memory in GB (for data caching):", default="4"
+        )
+        
+        # Ask for GPU configuration if needed
+        use_gpu = questionary.select(
+            "7.8.5 Do you want to use GPU acceleration (if available)?",
+            choices=["No", "Yes"],
+        ).ask()
+        
+        if use_gpu == "Yes":
+            config["ray"]["resources"]["num_gpus"] = validate_integer_input(
+                "7.8.6 Enter number of GPUs to use:", default="1"
+            )
+        else:
+            config["ray"]["resources"]["num_gpus"] = 0
+            
+        # Ask for Ray dashboard port
+        config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
+            "7.8.7 Enter Ray dashboard port (for monitoring):", default="8265"
+        )
+        
+        print("✅ Ray resource configuration completed")
+    else:
+        print("ℹ️  Ray will use PySpark resource settings as fallback")
+        config["ray"]["resources"] = None
+
     return config
 
 
