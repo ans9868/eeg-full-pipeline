@@ -1576,7 +1576,7 @@ def rayConfigurationPart7() -> Dict[str, Any]:
     
     # far in the future todo: make it such that we can choose distributed or sklearn (where distributed is ray and pyspark with raydp)
     # Machine Learning Models Selection
-    config["ray"]["models"] = questionary.checkbox(
+    selected_models = questionary.checkbox(
         "7.1 Select machine learning models to test:",
         choices=[
             "Random Forest",
@@ -1591,17 +1591,42 @@ def rayConfigurationPart7() -> Dict[str, Any]:
             "AdaBoost",
         ],
     ).ask()
+    
+    config["ray"]["models"] = selected_models
+    
+    # 7.2 Individual Model Hyperparameter Configuration
+    if selected_models:
+        print("\n[7.2] Individual Model Hyperparameter Configuration")
+        print("Configure hyperparameter search spaces for each selected model.")
+        print("You can customize the search ranges for better optimization.")
+        
+        config["ray"]["model_configs"] = {}
+        
+        for model in selected_models:
+            print(f"\n--- Configuring {model} ---")
+            
+            # Ask if user wants to customize hyperparameters for this model
+            customize = questionary.select(
+                f"7.2.{selected_models.index(model)+1} Customize hyperparameters for {model}?",
+                choices=["Use default grid", "Customize hyperparameters"],
+            ).ask()
+            
+            if customize == "Use default grid":
+                config["ray"]["model_configs"][model] = {"use_default": True}
+            else:
+                # Model-specific hyperparameter configuration
+                config["ray"]["model_configs"][model] = configure_model_hyperparameters(model)
 
     config["ray"]["num_trials"] = validate_integer_input(
-        "7.2 Enter number of trials for hyperparameter optimization:", default="10"
+        "7.3 Enter number of trials for hyperparameter optimization:", default="10"
     )
 
     config["ray"]["max_concurrent"] = validate_integer_input(
-        "7.3 Enter maximum concurrent trials:", default="2"
+        "7.4 Enter maximum concurrent trials:", default="2"
     )
 
     config["ray"]["metric"] = questionary.select(
-        "7.4 Select optimization metric:",
+        "7.5 Select optimization metric:",
         choices=[
             "accuracy",
             "f1",
@@ -1615,24 +1640,24 @@ def rayConfigurationPart7() -> Dict[str, Any]:
     ).ask()
 
     config["ray"]["mode"] = questionary.select(
-        "7.5 Select optimization mode:", choices=["max", "min"]
+        "7.6 Select optimization mode:", choices=["max", "min"]
     ).ask()
 
     config["ray"]["cv_folds"] = validate_integer_input(
-        "7.6 Enter number of cross-validation folds:", default="5"
+        "7.7 Enter number of cross-validation folds:", default="5"
     )
 
     config["ray"]["random_state"] = validate_integer_input(
-        "7.7 Enter random state for reproducibility:", default="42"
+        "7.8 Enter random state for reproducibility:", default="42"
     )
 
-    # 7.8 Ray Resource Configuration
-    print("\n[7.8] Ray Resource Configuration")
+    # 7.9 Ray Resource Configuration
+    print("\n[7.9] Ray Resource Configuration")
     print("Ray resource configuration helps optimize performance for hyperparameter tuning.")
     print("If not configured, Ray will fall back to PySpark resource settings.")
     
     configure_ray_resources = questionary.select(
-        "7.8.1 Do you want to configure Ray-specific resources?",
+        "7.9.1 Do you want to configure Ray-specific resources?",
         choices=["Yes", "No (use PySpark settings as fallback)"],
     ).ask()
 
@@ -1646,31 +1671,330 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         
         config["ray"]["resources"] = {}
         config["ray"]["resources"]["num_cpus"] = validate_integer_input(
-            "7.8.2 Enter number of CPUs for Ray cluster:", default="4"
+            "7.9.2 Enter number of CPUs for Ray cluster:", default="4"
         )
         config["ray"]["resources"]["memory_gb"] = validate_integer_input(
-            "7.8.3 Enter memory in GB for Ray:", default="8"
+            "7.9.3 Enter memory in GB for Ray:", default="8"
         )
         config["ray"]["resources"]["object_store_memory_gb"] = validate_integer_input(
-            "7.8.4 Enter object store memory in GB (for data caching):", default="4"
+            "7.9.4 Enter object store memory in GB (for data caching):", default="4"
         )
         
         # Ask for GPU configuration if needed
         use_gpu = questionary.select(
-            "7.8.5 Do you want to use GPU acceleration (if available)?",
+            "7.9.5 Do you want to use GPU acceleration (if available)?",
             choices=["No", "Yes"],
         ).ask()
         
         if use_gpu == "Yes":
             config["ray"]["resources"]["num_gpus"] = validate_integer_input(
-                "7.8.6 Enter number of GPUs to use:", default="1"
+                "7.9.6 Enter number of GPUs to use:", default="1"
             )
         else:
             config["ray"]["resources"]["num_gpus"] = 0
             
         # Ask for Ray dashboard port
         config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
-            "7.8.7 Enter Ray dashboard port (for monitoring):", default="8265"
+            "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
+        )
+        
+        print("✅ Ray resource configuration completed")
+    else:
+        print("ℹ️  Ray will use PySpark resource settings as fallback")
+        config["ray"]["resources"] = None
+
+    return config
+
+
+def configure_model_hyperparameters(model_name: str) -> dict:
+    """
+    Configure hyperparameters for a specific model.
+    
+    Args:
+        model_name: Name of the model to configure
+        
+    Returns:
+        Dictionary with hyperparameter configuration
+    """
+    config = {"use_default": False, "hyperparameters": {}}
+    
+    if model_name == "Random Forest":
+        print("\nRandom Forest Hyperparameters:")
+        config["hyperparameters"]["n_estimators"] = questionary.checkbox(
+            "n_estimators (number of trees):",
+            choices=["50", "100", "200", "300", "500"],
+            default=["100", "200"]
+        ).ask()
+        
+        config["hyperparameters"]["max_depth"] = questionary.checkbox(
+            "max_depth (max tree depth):",
+            choices=["None", "10", "20", "30", "50"],
+            default=["None", "20"]
+        ).ask()
+        
+        config["hyperparameters"]["min_samples_split"] = questionary.checkbox(
+            "min_samples_split:",
+            choices=["2", "5", "10", "20"],
+            default=["2", "5"]
+        ).ask()
+        
+        config["hyperparameters"]["max_features"] = questionary.checkbox(
+            "max_features:",
+            choices=["sqrt", "log2", "None"],
+            default=["sqrt", "log2"]
+        ).ask()
+        
+    elif model_name == "XGBoost":
+        print("\nXGBoost Hyperparameters:")
+        config["hyperparameters"]["n_estimators"] = questionary.checkbox(
+            "n_estimators (number of trees):",
+            choices=["50", "100", "200", "300", "500"],
+            default=["100", "200"]
+        ).ask()
+        
+        config["hyperparameters"]["max_depth"] = questionary.checkbox(
+            "max_depth (max tree depth):",
+            choices=["3", "6", "9", "12", "15"],
+            default=["6", "9"]
+        ).ask()
+        
+        config["hyperparameters"]["learning_rate"] = questionary.checkbox(
+            "learning_rate:",
+            choices=["0.01", "0.05", "0.1", "0.2", "0.3"],
+            default=["0.1", "0.2"]
+        ).ask()
+        
+        config["hyperparameters"]["subsample"] = questionary.checkbox(
+            "subsample (fraction of samples):",
+            choices=["0.6", "0.7", "0.8", "0.9", "1.0"],
+            default=["0.8", "1.0"]
+        ).ask()
+        
+    elif model_name == "SVM":
+        print("\nSVM Hyperparameters:")
+        config["hyperparameters"]["C"] = questionary.checkbox(
+            "C (regularization parameter):",
+            choices=["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"],
+            default=["1.0", "10.0"]
+        ).ask()
+        
+        config["hyperparameters"]["kernel"] = questionary.checkbox(
+            "kernel:",
+            choices=["rbf", "linear", "poly", "sigmoid"],
+            default=["rbf", "linear"]
+        ).ask()
+        
+        config["hyperparameters"]["gamma"] = questionary.checkbox(
+            "gamma:",
+            choices=["scale", "auto", "0.001", "0.01", "0.1"],
+            default=["scale", "auto"]
+        ).ask()
+        
+    elif model_name == "KNN":
+        print("\nKNN Hyperparameters:")
+        config["hyperparameters"]["n_neighbors"] = questionary.checkbox(
+            "n_neighbors:",
+            choices=["3", "5", "7", "9", "11", "15", "21"],
+            default=["5", "7", "9"]
+        ).ask()
+        
+        config["hyperparameters"]["weights"] = questionary.checkbox(
+            "weights:",
+            choices=["uniform", "distance"],
+            default=["uniform", "distance"]
+        ).ask()
+        
+        config["hyperparameters"]["metric"] = questionary.checkbox(
+            "metric:",
+            choices=["euclidean", "manhattan", "minkowski", "cosine"],
+            default=["euclidean", "manhattan"]
+        ).ask()
+        
+    elif model_name == "Gradient Boosting":
+        print("\nGradient Boosting Hyperparameters:")
+        config["hyperparameters"]["n_estimators"] = questionary.checkbox(
+            "n_estimators:",
+            choices=["50", "100", "200", "300"],
+            default=["100", "200"]
+        ).ask()
+        
+        config["hyperparameters"]["max_depth"] = questionary.checkbox(
+            "max_depth:",
+            choices=["3", "6", "9", "12"],
+            default=["3", "6"]
+        ).ask()
+        
+        config["hyperparameters"]["learning_rate"] = questionary.checkbox(
+            "learning_rate:",
+            choices=["0.01", "0.05", "0.1", "0.2", "0.3"],
+            default=["0.1", "0.2"]
+        ).ask()
+        
+        config["hyperparameters"]["subsample"] = questionary.checkbox(
+            "subsample:",
+            choices=["0.6", "0.7", "0.8", "0.9", "1.0"],
+            default=["0.8", "1.0"]
+        ).ask()
+        
+    elif model_name == "MLP (Neural Network)":
+        print("\nMLP (Neural Network) Hyperparameters:")
+        
+        # Ask for number of different MLP architectures
+        while True:
+            num_mlps = validate_integer_input(
+                "How many different MLP architectures do you want to test? (1-3)",
+                default="3"
+            )
+            if 1 <= int(num_mlps) <= 3:
+                break
+            print("⚠️  Please enter a number between 1 and 3")
+        
+        mlp_architectures = []
+        for mlp_idx in range(int(num_mlps)):
+            print(f"\n--- Configuring MLP Architecture {mlp_idx + 1} ---")
+            
+            # Ask for number of hidden layers
+            while True:
+                num_layers = validate_integer_input(
+                    f"MLP {mlp_idx + 1}: How many hidden layers? (1-10)",
+                    default="1"
+                )
+                if 1 <= int(num_layers) <= 10:
+                    break
+                print("⚠️  Please enter a number between 1 and 10")
+            
+            layer_sizes = []
+            for layer_idx in range(int(num_layers)):
+                while True:
+                    neurons = validate_integer_input(
+                        f"MLP {mlp_idx + 1}, Layer {layer_idx + 1}: How many neurons? (5-500)",
+                        default="50"
+                    )
+                    if 5 <= int(neurons) <= 500:
+                        layer_sizes.append(int(neurons))
+                        break
+                    print("⚠️  Please enter a number between 5 and 500")
+            
+            # Convert to tuple format for sklearn
+            architecture = tuple(layer_sizes)
+            mlp_architectures.append(str(architecture))
+            print(f"✅ MLP {mlp_idx + 1} architecture: {architecture}")
+        
+        config["hyperparameters"]["hidden_layer_sizes"] = mlp_architectures
+        
+        # Show summary of created architectures
+        print(f"\n📊 MLP Architecture Summary:")
+        for i, arch in enumerate(mlp_architectures):
+            print(f"   🧠 MLP {i+1}: {arch}")
+        
+        config["hyperparameters"]["activation"] = questionary.checkbox(
+            "activation:",
+            choices=["relu", "tanh", "logistic"]
+        ).ask()
+        
+        config["hyperparameters"]["alpha"] = questionary.checkbox(
+            "alpha (regularization):",
+            choices=["0.0001", "0.001", "0.01", "0.1"]
+        ).ask()
+        
+    elif model_name == "Decision Tree":
+        print("\nDecision Tree Hyperparameters:")
+        config["hyperparameters"]["max_depth"] = questionary.checkbox(
+            "max_depth:",
+            choices=["None", "5", "10", "15", "20", "30"],
+        ).ask()
+        
+        config["hyperparameters"]["min_samples_split"] = questionary.checkbox(
+            "min_samples_split:",
+            choices=["2", "5", "10", "20"],
+        ).ask()
+        
+        config["hyperparameters"]["max_features"] = questionary.checkbox(
+            "max_features:",
+            choices=["sqrt", "log2", "None"],
+        ).ask()
+        
+    elif model_name == "AdaBoost":
+        print("\nAdaBoost Hyperparameters:")
+        config["hyperparameters"]["n_estimators"] = questionary.checkbox(
+            "n_estimators:",
+            choices=["50", "100", "200", "300"],
+        ).ask()
+        
+        config["hyperparameters"]["learning_rate"] = questionary.checkbox(
+            "learning_rate:",
+            choices=["0.01", "0.05", "0.1", "0.2", "0.5", "1.0"],
+        ).ask()
+        
+        config["hyperparameters"]["algorithm"] = questionary.checkbox(
+            "algorithm:",
+            choices=["SAMME", "SAMME.R"],
+        ).ask()
+        
+    elif model_name in ["Linear Regression", "Logistic Regression"]:
+        print(f"\n{model_name} Hyperparameters:")
+        config["hyperparameters"]["C"] = questionary.checkbox(
+            "C (inverse regularization strength):",
+            choices=["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"],
+        ).ask()
+        
+        config["hyperparameters"]["solver"] = questionary.checkbox(
+            "solver:",
+            choices=["lbfgs", "liblinear", "newton-cg", "sag", "saga"],
+        ).ask()
+        
+        config["hyperparameters"]["max_iter"] = questionary.checkbox(
+            "max_iter:",
+            choices=["100", "200", "500", "1000"],
+        ).ask()
+    
+    return config
+
+    # 7.9 Ray Resource Configuration
+    print("\n[7.9] Ray Resource Configuration")
+    print("Ray resource configuration helps optimize performance for hyperparameter tuning.")
+    print("If not configured, Ray will fall back to PySpark resource settings.")
+    
+    configure_ray_resources = questionary.select(
+        "7.9.1 Do you want to configure Ray-specific resources?",
+        choices=["Yes", "No (use PySpark settings as fallback)"],
+    ).ask()
+
+    if configure_ray_resources == "Yes":
+        print("\nRay Resource Configuration:")
+        print("For example, for a 8-core CPU with 16GB memory, we can safely allocate:")
+        print("  - 4-6 CPUs for Ray cluster")
+        print("  - 8-12GB memory for Ray")
+        print("  - 2-4 concurrent trials")
+        print("This is optimized for ML workloads.")
+        
+        config["ray"]["resources"] = {}
+        config["ray"]["resources"]["num_cpus"] = validate_integer_input(
+            "7.9.2 Enter number of CPUs for Ray cluster:", default="4"
+        )
+        config["ray"]["resources"]["memory_gb"] = validate_integer_input(
+            "7.9.3 Enter memory in GB for Ray:", default="8"
+        )
+        config["ray"]["resources"]["object_store_memory_gb"] = validate_integer_input(
+            "7.9.4 Enter object store memory in GB (for data caching):", default="4"
+        )
+        
+        # Ask for GPU configuration if needed
+        use_gpu = questionary.select(
+            "7.9.5 Do you want to use GPU acceleration (if available)?",
+            choices=["No", "Yes"],
+        ).ask()
+        
+        if use_gpu == "Yes":
+            config["ray"]["resources"]["num_gpus"] = validate_integer_input(
+                "7.9.6 Enter number of GPUs to use:", default="1"
+            )
+        else:
+            config["ray"]["resources"]["num_gpus"] = 0
+            
+        # Ask for Ray dashboard port
+        config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
+            "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
         )
         
         print("✅ Ray resource configuration completed")
