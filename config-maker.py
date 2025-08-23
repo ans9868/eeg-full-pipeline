@@ -1706,6 +1706,40 @@ def rayConfigurationPart7() -> Dict[str, Any]:
     return config
 
 
+def get_hyperparameter_with_custom(parameter_name: str, choices: List[str], custom_prompt: str = None) -> List[str]:
+    """
+    Get hyperparameter selection with custom option.
+    
+    Args:
+        parameter_name: Name of the parameter for display
+        choices: List of predefined choices
+        custom_prompt: Custom prompt for custom value input (optional)
+        
+    Returns:
+        List of selected values including any custom values
+    """
+    # Add custom option to choices
+    choices_with_custom = choices + ["custom"]
+    
+    # Get user selection
+    selected = questionary.checkbox(
+        f"{parameter_name}:",
+        choices=choices_with_custom
+    ).ask()
+    
+    # Handle custom values
+    if "custom" in selected:
+        selected.remove("custom")
+        if custom_prompt is None:
+            custom_prompt = f"Enter custom {parameter_name.lower()} value:"
+        
+        custom_value = questionary.text(custom_prompt).ask()
+        if custom_value.strip():
+            selected.append(custom_value.strip())
+    
+    return selected
+
+
 def configure_model_hyperparameters(model_name: str) -> dict:
     """
     Configure hyperparameters for a specific model.
@@ -1720,121 +1754,105 @@ def configure_model_hyperparameters(model_name: str) -> dict:
     
     if model_name == "Random Forest":
         print("\nRandom Forest Hyperparameters:")
-        config["hyperparameters"]["n_estimators"] = questionary.checkbox(
-            "n_estimators (number of trees):",
-            choices=["50", "100", "200", "300", "500"],
-            default=["100", "200"]
-        ).ask()
+        config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
+            "n_estimators (number of trees)",
+            ["50", "100", "200", "300", "500"]
+        )
         
-        config["hyperparameters"]["max_depth"] = questionary.checkbox(
-            "max_depth (max tree depth):",
-            choices=["None", "10", "20", "30", "50"],
-            default=["None", "20"]
-        ).ask()
+        config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
+            "max_depth (max tree depth)",
+            ["None", "10", "20", "30", "50"],
+            "Enter custom max_depth value (or 'None'):"
+        )
         
-        config["hyperparameters"]["min_samples_split"] = questionary.checkbox(
-            "min_samples_split:",
-            choices=["2", "5", "10", "20"],
-            default=["2", "5"]
-        ).ask()
+        config["hyperparameters"]["min_samples_split"] = get_hyperparameter_with_custom(
+            "min_samples_split",
+            ["2", "5", "10", "20"]
+        )
         
-        config["hyperparameters"]["max_features"] = questionary.checkbox(
-            "max_features:",
-            choices=["sqrt", "log2", "None"],
-            default=["sqrt", "log2"]
-        ).ask()
+        config["hyperparameters"]["max_features"] = get_hyperparameter_with_custom(
+            "max_features",
+            ["sqrt", "log2", "None"],
+            "Enter custom max_features value (sqrt, log2, None, or number):"
+        )
         
     elif model_name == "XGBoost":
         print("\nXGBoost Hyperparameters:")
-        config["hyperparameters"]["n_estimators"] = questionary.checkbox(
-            "n_estimators (number of trees):",
-            choices=["50", "100", "200", "300", "500"],
-            default=["100", "200"]
-        ).ask()
+        config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
+            "n_estimators (number of trees)",
+            ["50", "100", "200", "300", "500"]
+        )
         
-        config["hyperparameters"]["max_depth"] = questionary.checkbox(
-            "max_depth (max tree depth):",
-            choices=["3", "6", "9", "12", "15"],
-            default=["6", "9"]
-        ).ask()
+        config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
+            "max_depth (max tree depth)",
+            ["3", "6", "9", "12", "15"]
+        )
         
-        config["hyperparameters"]["learning_rate"] = questionary.checkbox(
-            "learning_rate:",
-            choices=["0.01", "0.05", "0.1", "0.2", "0.3"],
-            default=["0.1", "0.2"]
-        ).ask()
+        config["hyperparameters"]["learning_rate"] = get_hyperparameter_with_custom(
+            "learning_rate",
+            ["0.01", "0.05", "0.1", "0.2", "0.3"]
+        )
         
-        config["hyperparameters"]["subsample"] = questionary.checkbox(
-            "subsample (fraction of samples):",
-            choices=["0.6", "0.7", "0.8", "0.9", "1.0"],
-            default=["0.8", "1.0"]
-        ).ask()
+        config["hyperparameters"]["subsample"] = get_hyperparameter_with_custom(
+            "subsample (fraction of samples)",
+            ["0.6", "0.7", "0.8", "0.9", "1.0"]
+        )
         
     elif model_name == "SVM":
         print("\nSVM Hyperparameters:")
-        config["hyperparameters"]["C"] = questionary.checkbox(
-            "C (regularization parameter):",
-            choices=["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"],
-            default=["1.0", "10.0"]
-        ).ask()
+        config["hyperparameters"]["C"] = get_hyperparameter_with_custom(
+            "C (regularization parameter)",
+            ["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"]
+        )
         
-        config["hyperparameters"]["kernel"] = questionary.checkbox(
-            "kernel:",
-            choices=["rbf", "linear", "poly", "sigmoid"],
-            default=["rbf", "linear"]
-        ).ask()
+        config["hyperparameters"]["kernel"] = get_hyperparameter_with_custom(
+            "kernel",
+            ["rbf", "linear", "poly", "sigmoid"]
+        )
         
-        config["hyperparameters"]["gamma"] = questionary.checkbox(
-            "gamma:",
-            choices=["scale", "auto", "0.001", "0.01", "0.1"],
-            default=["scale", "auto"]
-        ).ask()
+        config["hyperparameters"]["gamma"] = get_hyperparameter_with_custom(
+            "gamma",
+            ["scale", "auto", "0.001", "0.01", "0.1"]
+        )
         
     elif model_name == "KNN":
         print("\nKNN Hyperparameters:")
-        config["hyperparameters"]["n_neighbors"] = questionary.checkbox(
-            "n_neighbors:",
-            choices=["3", "5", "7", "9", "11", "15", "21"],
-            default=["5", "7", "9"]
-        ).ask()
+        config["hyperparameters"]["n_neighbors"] = get_hyperparameter_with_custom(
+            "n_neighbors",
+            ["3", "5", "7", "9", "11", "15", "21"]
+        )
         
-        config["hyperparameters"]["weights"] = questionary.checkbox(
-            "weights:",
-            choices=["uniform", "distance"],
-            default=["uniform", "distance"]
-        ).ask()
+        config["hyperparameters"]["weights"] = get_hyperparameter_with_custom(
+            "weights",
+            ["uniform", "distance"]
+        )
         
-        config["hyperparameters"]["metric"] = questionary.checkbox(
-            "metric:",
-            choices=["euclidean", "manhattan", "minkowski", "cosine"],
-            default=["euclidean", "manhattan"]
-        ).ask()
+        config["hyperparameters"]["metric"] = get_hyperparameter_with_custom(
+            "metric",
+            ["euclidean", "manhattan", "minkowski", "cosine"]
+        )
         
     elif model_name == "Gradient Boosting":
         print("\nGradient Boosting Hyperparameters:")
-        config["hyperparameters"]["n_estimators"] = questionary.checkbox(
-            "n_estimators:",
-            choices=["50", "100", "200", "300"],
-            default=["100", "200"]
-        ).ask()
+        config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
+            "n_estimators",
+            ["50", "100", "200", "300"]
+        )
         
-        config["hyperparameters"]["max_depth"] = questionary.checkbox(
-            "max_depth:",
-            choices=["3", "6", "9", "12"],
-            default=["3", "6"]
-        ).ask()
+        config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
+            "max_depth",
+            ["3", "6", "9", "12"]
+        )
         
-        config["hyperparameters"]["learning_rate"] = questionary.checkbox(
-            "learning_rate:",
-            choices=["0.01", "0.05", "0.1", "0.2", "0.3"],
-            default=["0.1", "0.2"]
-        ).ask()
+        config["hyperparameters"]["learning_rate"] = get_hyperparameter_with_custom(
+            "learning_rate",
+            ["0.01", "0.05", "0.1", "0.2", "0.3"]
+        )
         
-        config["hyperparameters"]["subsample"] = questionary.checkbox(
-            "subsample:",
-            choices=["0.6", "0.7", "0.8", "0.9", "1.0"],
-            default=["0.8", "1.0"]
-        ).ask()
+        config["hyperparameters"]["subsample"] = get_hyperparameter_with_custom(
+            "subsample",
+            ["0.6", "0.7", "0.8", "0.9", "1.0"]
+        )
         
     elif model_name == "MLP (Neural Network)":
         print("\nMLP (Neural Network) Hyperparameters:")
@@ -1899,54 +1917,56 @@ def configure_model_hyperparameters(model_name: str) -> dict:
         
     elif model_name == "Decision Tree":
         print("\nDecision Tree Hyperparameters:")
-        config["hyperparameters"]["max_depth"] = questionary.checkbox(
-            "max_depth:",
-            choices=["None", "5", "10", "15", "20", "30"],
-        ).ask()
+        config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
+            "max_depth",
+            ["None", "5", "10", "15", "20", "30"],
+            "Enter custom max_depth value (or 'None'):"
+        )
         
-        config["hyperparameters"]["min_samples_split"] = questionary.checkbox(
-            "min_samples_split:",
-            choices=["2", "5", "10", "20"],
-        ).ask()
+        config["hyperparameters"]["min_samples_split"] = get_hyperparameter_with_custom(
+            "min_samples_split",
+            ["2", "5", "10", "20"]
+        )
         
-        config["hyperparameters"]["max_features"] = questionary.checkbox(
-            "max_features:",
-            choices=["sqrt", "log2", "None"],
-        ).ask()
+        config["hyperparameters"]["max_features"] = get_hyperparameter_with_custom(
+            "max_features",
+            ["sqrt", "log2", "None"],
+            "Enter custom max_features value (sqrt, log2, None, or number):"
+        )
         
     elif model_name == "AdaBoost":
         print("\nAdaBoost Hyperparameters:")
-        config["hyperparameters"]["n_estimators"] = questionary.checkbox(
-            "n_estimators:",
-            choices=["50", "100", "200", "300"],
-        ).ask()
+        config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
+            "n_estimators",
+            ["50", "100", "200", "300"]
+        )
         
-        config["hyperparameters"]["learning_rate"] = questionary.checkbox(
-            "learning_rate:",
-            choices=["0.01", "0.05", "0.1", "0.2", "0.5", "1.0"],
-        ).ask()
+        config["hyperparameters"]["learning_rate"] = get_hyperparameter_with_custom(
+            "learning_rate",
+            ["0.01", "0.05", "0.1", "0.2", "0.5", "1.0"]
+        )
         
-        config["hyperparameters"]["algorithm"] = questionary.checkbox(
-            "algorithm:",
-            choices=["SAMME", "SAMME.R"],
-        ).ask()
+        config["hyperparameters"]["algorithm"] = get_hyperparameter_with_custom(
+            "algorithm",
+            ["SAMME", "SAMME.R"]
+        )
         
     elif model_name in ["Linear Regression", "Logistic Regression"]:
         print(f"\n{model_name} Hyperparameters:")
-        config["hyperparameters"]["C"] = questionary.checkbox(
-            "C (inverse regularization strength):",
-            choices=["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"],
-        ).ask()
+        config["hyperparameters"]["C"] = get_hyperparameter_with_custom(
+            "C (inverse regularization strength)",
+            ["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"]
+        )
         
-        config["hyperparameters"]["solver"] = questionary.checkbox(
-            "solver:",
-            choices=["lbfgs", "liblinear", "newton-cg", "sag", "saga"],
-        ).ask()
+        config["hyperparameters"]["solver"] = get_hyperparameter_with_custom(
+            "solver",
+            ["lbfgs", "liblinear", "newton-cg", "sag", "saga"]
+        )
         
-        config["hyperparameters"]["max_iter"] = questionary.checkbox(
-            "max_iter:",
-            choices=["100", "200", "500", "1000"],
-        ).ask()
+        config["hyperparameters"]["max_iter"] = get_hyperparameter_with_custom(
+            "max_iter",
+            ["100", "200", "500", "1000"]
+        )
     
     return config
 
