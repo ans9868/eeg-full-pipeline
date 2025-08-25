@@ -72,7 +72,7 @@ CONTAINER_CONFIG = {
         "command": "python",
         "job_name": "ray-tuner",
         "mounts": [
-            # TODO ray logs and ray config
+            ("./logs/ray-events", "/app/logs/ray-events"),  # Ray event logs
             # Done through config file
             # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
             # ("./data", "/app/data"),
@@ -172,7 +172,7 @@ def create_required_directories(output_dir: str = "./data") -> None:
         # config/ray
         "logs",
         "logs/spark-events",
-        # logs/ray-events
+        "logs/ray-events",
         output_dir,
     ]
 
