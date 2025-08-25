@@ -1688,7 +1688,7 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         
         if use_gpu == "Yes":
             config["ray"]["resources"]["num_gpus"] = validate_integer_input(
-                "7.9.6 Enter number of GPUs to use:", default="1"
+                "7.9.6 Enter number of GPUs to use:", default="0"
             )
         else:
             config["ray"]["resources"]["num_gpus"] = 0
@@ -1975,12 +1975,13 @@ def configure_model_hyperparameters(model_name: str) -> dict:
     print("Ray resource configuration helps optimize performance for hyperparameter tuning.")
     print("If not configured, Ray will fall back to PySpark resource settings.")
     
-    configure_ray_resources = questionary.select(
-        "7.9.1 Do you want to configure Ray-specific resources?",
-        choices=["Yes", "No (use PySpark settings as fallback)"],
-    ).ask()
+    # configure_ray_resources = questionary.select(
+    #     "7.9.1 Do you want to configure Ray-specific resources?",
+    #     choices=["Yes", "No (use PySpark settings as fallback)"],
+    # ).ask()
 
-    if configure_ray_resources == "Yes":
+    # if configure_ray_resources == "Yes":
+    if True:
         print("\nRay Resource Configuration:")
         print("For example, for a 8-core CPU with 16GB memory, we can safely allocate:")
         print("  - 4-6 CPUs for Ray cluster")
@@ -2018,9 +2019,9 @@ def configure_model_hyperparameters(model_name: str) -> dict:
         )
         
         print("✅ Ray resource configuration completed")
-    else:
-        print("ℹ️  Ray will use PySpark resource settings as fallback")
-        config["ray"]["resources"] = None
+    # else:
+    #     print("ℹ️  Ray will use PySpark resource settings as fallback")
+    #     config["ray"]["resources"] = None
 
     return config
 
