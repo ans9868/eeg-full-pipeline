@@ -1118,7 +1118,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
             
             # Validate that each group has enough subjects
             insufficient_groups = []
-            for group_name, paths in data_input_groups.values():
+            for group_name, paths in data_input_groups.items():
                 if len(paths) < subjects_per_group_per_fold:
                     insufficient_groups.append(f"{group_name} ({len(paths)} subjects)")
             
