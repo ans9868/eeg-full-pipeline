@@ -1566,7 +1566,9 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
             "6.2.1 Enter SLURM options for building .sif containers:",
             default="--time=00:10:00 --mem=8G --cpus-per-task=2",
         ).ask()
-        config["project"]["slurm_options_build"] = (
+        # Store SLURM options in a separate section to avoid overwriting project metadata
+        config["slurm_options"] = {}
+        config["slurm_options"]["build"] = (
             sanitize_slurm_options(build_slurm_options) if build_slurm_options else ""
         )
 
@@ -1582,10 +1584,10 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
                     "6.2.3 Enter SLURM options for both PySpark and Ray:",
                     default="--time=24:00:00 --mem=16G --cpus-per-task=4",
                 ).ask()
-                config["project"]["slurm_options_pyspark"] = (
+                config["slurm_options"]["pyspark"] = (
                     sanitize_slurm_options(slurm_options) if slurm_options else ""
                 )
-                config["project"]["slurm_options_ray"] = (
+                config["slurm_options"]["ray"] = (
                     sanitize_slurm_options(slurm_options) if slurm_options else ""
                 )
             else:  # Different options
@@ -1597,10 +1599,10 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
                     "6.2.4 Enter SLURM options for Ray:",
                     default="--time=24:00:00 --mem=16G --cpus-per-task=4",
                 ).ask()
-                config["project"]["slurm_options_pyspark"] = (
+                config["slurm_options"]["pyspark"] = (
                     sanitize_slurm_options(pyspark_slurm) if pyspark_slurm else ""
                 )
-                config["project"]["slurm_options_ray"] = (
+                config["slurm_options"]["ray"] = (
                     sanitize_slurm_options(ray_slurm) if ray_slurm else ""
                 )
 
@@ -1609,7 +1611,7 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
                 "6.3.2 Enter SLURM options for PySpark:",
                 default="--time=12:00:00 --mem=8G --cpus-per-task=2",
             ).ask()
-            config["project"]["slurm_options_pyspark"] = (
+            config["slurm_options"]["pyspark"] = (
                 sanitize_slurm_options(slurm_options) if slurm_options else ""
             )
 
@@ -1618,7 +1620,7 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
                 "6.3.2 Enter SLURM options for Ray:",
                 default="--time=24:00:00 --mem=16G --cpus-per-task=4",
             ).ask()
-            config["project"]["slurm_options_ray"] = (
+            config["slurm_options"]["ray"] = (
                 sanitize_slurm_options(slurm_options) if slurm_options else ""
             )
 
@@ -2130,6 +2132,13 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     print("\n[6] Deployment Configuration")
     deployment_method_config = run_section_with_confirmation("Deployment Configuration", deploymentMethodPart6, target, config["project"]["deployment_method"])
     config.update(deployment_method_config)
+    
+    # Move SLURM options to project section if they exist
+    if "slurm_options" in config:
+        if "project" not in config:
+            config["project"] = {}
+        config["project"].update(config["slurm_options"])
+        del config["slurm_options"]  # Remove the temporary section
 
     # 7. Ray Configuration (only if target is ray-only or full AND experiment type is ML)
     if (target == "ray-only" or target == "full") and config["project"][
