@@ -54,6 +54,32 @@ def infer_target() -> str:
         )
 
 
+def get_target_with_ray_option() -> str:
+    """Get target with option to include Ray configuration for ML experiments."""
+    base_target = infer_target()
+    
+    # If we're in eeg-pyspark-pipeline and user wants ML, offer Ray option
+    if base_target == "pyspark-only":
+        print("\n🎯 Target Configuration")
+        print("   You're running from eeg-pyspark-pipeline (PySpark processing)")
+        print("   For ML experiments, you can optionally include Ray configuration")
+        
+        include_ray = questionary.select(
+            "Do you want to include Ray ML configuration?",
+            choices=[
+                "No - PySpark only (data processing)",
+                "Yes - Include Ray ML (data processing + ML)"
+            ],
+        ).ask()
+        
+        if "Yes" in include_ray:
+            return "full"  # This will include both PySpark and Ray
+        else:
+            return "pyspark-only"
+    
+    return base_target
+
+
 def validate_downsampling_rate(rate_str: Optional[str]) -> Optional[float]:
     """Validate and convert downsampling rate input."""
     if not rate_str or rate_str.lower() == "none":
@@ -1197,6 +1223,38 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                 except ValueError:
                     print("[ERROR] Please enter a valid integer.")
         
+        # Check for uneven group sizes and ask for handling strategy
+        group_sizes = {group_name: len(paths) for group_name, paths in data_input_groups.items()}
+        min_group_size = min(group_sizes.values())
+        max_group_size = max(group_sizes.values())
+        
+        if min_group_size != max_group_size:
+            print(f"   ⚠️  Uneven group sizes detected:")
+            for group_name, size in group_sizes.items():
+                print(f"      📊 {group_name}: {size} subjects")
+            
+            # Ask for uneven handling strategy
+            uneven_handling_choice = questionary.select(
+                "5.2.3 How should we handle uneven group sizes?",
+                choices=[
+                    "Cutoff - Stop when any group runs out of subjects",
+                    "Wrap-around - Reuse subjects from beginning when group runs out"
+                ],
+            ).ask()
+            
+            if "Cutoff" in uneven_handling_choice:
+                uneven_handling = "cutoff"
+                print(f"   ✅ Using cutoff strategy: will stop when any group runs out of subjects")
+            else:
+                uneven_handling = "wrap_around"
+                print(f"   ✅ Using wrap-around strategy: will reuse subjects when group runs out")
+            
+            config["data_leakage_prevention"]["uneven_handling"] = uneven_handling
+        else:
+            # All groups have the same size, use default
+            uneven_handling = "cutoff"
+            config["data_leakage_prevention"]["uneven_handling"] = uneven_handling
+        
         # Generate LOSO folds
         print(f"   🔄 Generating LOSO folds...")
         try:
@@ -1206,7 +1264,8 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
             loso_folds, fold_metadata = generate_loso_folds(
                 data_input_groups, 
                 count, 
-                individual_loso=individual_loso
+                individual_loso=individual_loso,
+                uneven_handling=uneven_handling
                 # random_seed=42
             )
             
@@ -2283,7 +2342,8 @@ def generate_loso_folds(
     groups: Dict[str, List[str]], 
     subjects_per_group: int, 
     random_seed: int = 42,
-    individual_loso: bool = False
+    individual_loso: bool = False,
+    uneven_handling: str = "cutoff"
 ) -> Tuple[List[List[str]], Dict[str, Any]]:
     """
     Generate LOSO (Leave-One-Subject-Out) folds with systematic, ordered selection.
@@ -2293,6 +2353,8 @@ def generate_loso_folds(
         subjects_per_group: Number of subjects to leave out per group per fold
         random_seed: Random seed for reproducibility (default: 42) - not used for ordering
         individual_loso: If True, each subject gets its own test fold regardless of group
+        uneven_handling: How to handle uneven group sizes - "cutoff" (stop when any group runs out) 
+                        or "wrap_around" (reuse subjects from beginning when group runs out)
         
     Returns:
         Tuple of (list_of_test_subject_lists, metadata_dict)
@@ -2328,10 +2390,12 @@ def generate_loso_folds(
     
     else:
         # Standard LOSO: systematic selection per group
-        # Validate that subjects_per_group is evenly divisible by number of groups
         num_groups = len(groups)
+        
+        # Check if subjects_per_group is evenly divisible by number of groups
         if subjects_per_group % num_groups != 0:
-            raise ValueError(f"Subjects per group ({subjects_per_group}) must be evenly divisible by number of groups ({num_groups})")
+            print(f"   ⚠️  WARNING: Subjects per group ({subjects_per_group}) is not evenly divisible by number of groups ({num_groups})")
+            print(f"   📊 This will result in uneven subject distribution across groups")
         
         # Calculate subjects per group per fold
         subjects_per_group_per_fold = subjects_per_group // num_groups
@@ -2341,7 +2405,25 @@ def generate_loso_folds(
         for group_name, paths in groups.items():
             subjects_by_group[group_name] = paths.copy()  # Keep original order
         
-        # Validate that each group has enough subjects
+        # Check for uneven group sizes and provide warning
+        group_sizes = {group_name: len(subjects) for group_name, subjects in subjects_by_group.items()}
+        min_group_size = min(group_sizes.values())
+        max_group_size = max(group_sizes.values())
+        
+        if min_group_size != max_group_size:
+            print(f"   ⚠️  WARNING: Uneven group sizes detected:")
+            for group_name, size in group_sizes.items():
+                print(f"      📊 {group_name}: {size} subjects")
+            print(f"   🎯 Using '{uneven_handling}' strategy for uneven groups")
+            
+            if uneven_handling == "cutoff":
+                print(f"   📋 Strategy: Stop creating folds when any group runs out of subjects")
+            elif uneven_handling == "wrap_around":
+                print(f"   📋 Strategy: Reuse subjects from beginning when group runs out (wrap-around)")
+            else:
+                raise ValueError(f"Invalid uneven_handling option: {uneven_handling}. Use 'cutoff' or 'wrap_around'")
+        
+        # Validate that each group has enough subjects for at least one fold
         for group_name, subjects in subjects_by_group.items():
             if len(subjects) < subjects_per_group_per_fold:
                 raise ValueError(f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group_per_fold} are needed per fold")
@@ -2359,11 +2441,15 @@ def generate_loso_folds(
         all_folds = []
         group_names = list(subjects_by_group.keys())
         
-        # Calculate how many folds we can generate
-        min_subjects_per_group = min(len(subjects) for subjects in subjects_by_group.values())
-        max_folds = min_subjects_per_group // subjects_per_group_per_fold
-        
-        print(f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold")
+        # Calculate how many folds we can generate based on strategy
+        if uneven_handling == "cutoff":
+            # Stop when any group runs out of subjects
+            max_folds = min_group_size // subjects_per_group_per_fold
+            print(f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold (cutoff strategy)")
+        else:  # wrap_around
+            # Can generate more folds by reusing subjects
+            max_folds = max_group_size // subjects_per_group_per_fold
+            print(f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold (wrap-around strategy)")
         
         for fold_idx in range(max_folds):
             fold_subjects = []
@@ -2373,8 +2459,37 @@ def generate_loso_folds(
                 start_idx = fold_idx * subjects_per_group_per_fold
                 end_idx = start_idx + subjects_per_group_per_fold
                 
-                group_subjects = subjects_by_group[group_name][start_idx:end_idx]
+                if uneven_handling == "cutoff":
+                    # Stop if we run out of subjects in this group
+                    if start_idx >= len(subjects_by_group[group_name]):
+                        print(f"   ⏹️  Stopping at fold {fold_idx + 1}: Group {group_name} ran out of subjects")
+                        break
+                    
+                    # Take available subjects (might be fewer than requested)
+                    available_subjects = subjects_by_group[group_name][start_idx:]
+                    if len(available_subjects) < subjects_per_group_per_fold:
+                        print(f"   ⚠️  Fold {fold_idx + 1}: Group {group_name} only has {len(available_subjects)} subjects available (requested {subjects_per_group_per_fold})")
+                        group_subjects = available_subjects
+                    else:
+                        group_subjects = available_subjects[:subjects_per_group_per_fold]
+                
+                else:  # wrap_around
+                    # Use modulo to wrap around when we run out of subjects
+                    group_subjects = []
+                    for i in range(subjects_per_group_per_fold):
+                        subject_idx = (start_idx + i) % len(subjects_by_group[group_name])
+                        group_subjects.append(subjects_by_group[group_name][subject_idx])
+                    
+                    # Check if we're reusing subjects
+                    if start_idx + subjects_per_group_per_fold > len(subjects_by_group[group_name]):
+                        print(f"   🔄 Fold {fold_idx + 1}: Group {group_name} using wrap-around (reusing subjects)")
+                
                 fold_subjects.extend(group_subjects)
+            
+            # If we broke out of the loop due to cutoff, stop creating more folds
+            if uneven_handling == "cutoff" and len(fold_subjects) < subjects_per_group:
+                print(f"   ⏹️  Stopping fold generation: insufficient subjects for complete fold")
+                break
             
             all_folds.append(fold_subjects)
         
@@ -2493,7 +2608,8 @@ def select_test_subjects_automatically(
 
 
 if __name__ == "__main__":
-    target: str = infer_target()
+    target: str = get_target_with_ray_option()
     print(f"Generating config for target: {target}")
+
     config, config_name = build_config(target=target)
     save_config(config, config_name)
