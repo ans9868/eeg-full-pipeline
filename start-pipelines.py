@@ -298,8 +298,26 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     # But LD_PRELOAD is still needed for nss_wrapper in Docker - moved to Dockerfile
     # docker_cmd.extend(["-e", "LD_PRELOAD=/opt/bitnami/common/lib/libnss_wrapper.so"])
 
-    # Add port mappings for pyspark container
+    # Add Ray-specific environment variables if this is a Ray container
+    if container_type == "ray":
+        ray_resources = config_data.get("ray", {}).get("resources", {})
+        if ray_resources:
+            print(f"{EMOJI_INFO} Setting Ray resources from config:")
+            print(f"   CPUs: {ray_resources.get('num_cpus', 2)}")
+            print(f"   Memory: {ray_resources.get('memory_gb', 4)}GB")
+            print(f"   Object Store: {ray_resources.get('object_store_memory_gb', 2)}GB")
+            print(f"   Dashboard Port: {ray_resources.get('dashboard_port', 8265)}")
+            
+            docker_cmd.extend([
+                "-e", f"RAY_CPUS={ray_resources.get('num_cpus', 2)}",
+                "-e", f"RAY_MEMORY_GB={ray_resources.get('memory_gb', 4)}",
+                "-e", f"RAY_OBJECT_STORE_GB={ray_resources.get('object_store_memory_gb', 2)}",
+                "-e", f"RAY_DASHBOARD_PORT={ray_resources.get('dashboard_port', 8265)}"
+            ])
+        else:
+            print(f"{EMOJI_WARNING} No Ray resources found in config, using defaults")
 
+    # Add port mappings for pyspark container
     ports = config.get("ports", [])
     for port_mapping in ports:
         docker_cmd.extend(["-p", port_mapping])
@@ -410,6 +428,25 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
             "JAVA_TOOL_OPTIONS=-Djava.security.auth.login.config= -Dhadoop.security.authentication=simple -Dhadoop.security.authorization=false",
         ]
     )
+
+    # Add Ray-specific environment variables if this is a Ray container
+    if container_type == "ray":
+        ray_resources = config_data.get("ray", {}).get("resources", {})
+        if ray_resources:
+            print(f"{EMOJI_INFO} Setting Ray resources from config:")
+            print(f"   CPUs: {ray_resources.get('num_cpus', 2)}")
+            print(f"   Memory: {ray_resources.get('memory_gb', 4)}GB")
+            print(f"   Object Store: {ray_resources.get('object_store_memory_gb', 2)}GB")
+            print(f"   Dashboard Port: {ray_resources.get('dashboard_port', 8265)}")
+            
+            singularity_cmd.extend([
+                "--env", f"RAY_CPUS={ray_resources.get('num_cpus', 2)}",
+                "--env", f"RAY_MEMORY_GB={ray_resources.get('memory_gb', 4)}",
+                "--env", f"RAY_OBJECT_STORE_GB={ray_resources.get('object_store_memory_gb', 2)}",
+                "--env", f"RAY_DASHBOARD_PORT={ray_resources.get('dashboard_port', 8265)}"
+            ])
+        else:
+            print(f"{EMOJI_WARNING} No Ray resources found in config, using defaults")
 
     # Add user database bind mounts to help resolve Unix user resolution issues
     # Even with --cleanenv, we need the container to know about the current user
