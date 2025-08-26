@@ -265,6 +265,7 @@ def get_all_mount_mappings(
     # Get output directory from config or use default
     output_dir = config_data.get("project", {}).get("output_dir", "./data")
 
+    # TODO don't need to mount .set directories for ray tuner
     # Create required directories
     create_required_directories(output_dir)
 
