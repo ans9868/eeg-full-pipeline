@@ -2137,7 +2137,14 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     if "slurm_options" in config:
         if "project" not in config:
             config["project"] = {}
-        config["project"].update(config["slurm_options"])
+        # Convert keys to match what start-pipelines.py expects
+        slurm_options = config["slurm_options"]
+        if "build" in slurm_options:
+            config["project"]["slurm_options_build"] = slurm_options["build"]
+        if "pyspark" in slurm_options:
+            config["project"]["slurm_options_pyspark"] = slurm_options["pyspark"]
+        if "ray" in slurm_options:
+            config["project"]["slurm_options_ray"] = slurm_options["ray"]
         del config["slurm_options"]  # Remove the temporary section
 
     # 7. Ray Configuration (only if target is ray-only or full AND experiment type is ML)
