@@ -78,6 +78,7 @@ CONTAINER_CONFIG = {
             # ("./data", "/app/data"),
         ],
         # "ports": [ # TODO: add ray ports if needed]
+        "ports": ["8265:8265"], # ask ports in config but now using those ... ? 
     },
 }
 
