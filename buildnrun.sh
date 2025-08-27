@@ -1,3 +1,13 @@
+#!/bin/bash
+
+# Check if an argument was provided
+if [ $# -eq 0 ]; then
+  echo "Usage: $0 <input_parameter>"
+  exit 1
+fi
+
+INPUT_PARAM="$1"
+
 cd eeg-pyspark-pipeline
 make build
 make push
@@ -8,5 +18,5 @@ make build
 make push
 cd ..
 
-py-neuro-env
-python start-pipelines.py
+python start-pipelines.py "$INPUT_PARAM"
+
