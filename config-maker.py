@@ -558,11 +558,13 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
     print("\nModerate Complexity (Good Balance):")
     print("hjorth_mobility: 2/5 - Good feature, reasonable computation")
     print("spectral_entropy: 2/5 - Informative, moderate cost")
+    print("   ⚠️  WARNING!!!: spectral_entropy may produce NA values, especially for per_channel_across_bands")
     print("\nComputationally Expensive (Use Sparingly):")
     print("hjorth_complexity: 3/5 - More complex but valuable")
     print("skewness: 4/5 - Very expensive, consider carefully")
     print("kurtosis: 4/5 - Very expensive, use only if needed")
     print("spectral_entropy: 4/5 - Most expensive, use only if needed")
+    print("   ⚠️  WARNING!!!: spectral_entropy may produce NA values, especially for per_channel_across_bands")
     print()
 
     # Initialize the features dictionary
