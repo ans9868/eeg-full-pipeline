@@ -29,7 +29,6 @@ spark.sql.execution.arrow.pyspark.enabled true
 
 """
 
-# TODO: make it such that after ending each section, it asks if you want to continue to the next section
 # TODO: make it such that asks if want logs in console or in log file for spark  ... this could be done thorugh the spark config in config/spark/log4j.properties
 # we should put each section into its own function and then call the function to run the section
 

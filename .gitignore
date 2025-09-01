@@ -21,6 +21,9 @@ wheels/
 *.egg
 MANIFEST
 
+# configurations 
+config-handler-temp.py
+
 # PyInstaller
 *.manifest
 *.spec
