@@ -553,6 +553,39 @@ class UnifiedConfigHandler:
             ray_options = slurm_config['ray']
             if not isinstance(ray_options, str):
                 raise ValueError("SLURM Ray options must be a string")
+    
+    def validate_all_sections(self) -> None:
+        """
+        Validate all configuration sections upfront.
+        This method provides comprehensive validation of the entire configuration
+        and should be called once in main.py before passing config to pipeline functions.
+        """
+        print("🔍 Validating all configuration sections...")
+        
+        # Validate individual sections
+        self.metadataPart0_validate()
+        
+        # Conditional validation based on what's present
+        if 'data_input' in self.raw_config:
+            self.dataInputPart1_validate()
+        if 'preprocessing' in self.raw_config:
+            self.preprocessingPart2_validate()
+        if 'feature_extraction' in self.raw_config:
+            self.featureCreationPart3_validate()
+        if 'feature_transformation' in self.raw_config:
+            self.featureTransformationsPart4_validate()
+        if 'data_leakage_prevention' in self.raw_config:
+            self.dataLeakagePreventionPart5_validate()
+        if 'pyspark' in self.raw_config:
+            self.deploymentMethodPart6_validate()
+        if 'ray' in self.raw_config:
+            self.rayConfigurationPart7_validate()
+        
+        # Validate SLURM options if present (created by config-maker.py)
+        if 'slurm_options' in self.raw_config:
+            self.slurmOptionsPart6_validate()
+        
+        print("✅ All configuration sections validated successfully!")
      
     def _validate_transformation(self, transformations) -> bool:
         """
