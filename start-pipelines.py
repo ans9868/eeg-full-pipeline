@@ -67,7 +67,7 @@ CONTAINER_CONFIG = {
     "ray": {
         "docker_image": "nour333/eeg-ray-tuner:latest",
         "singularity_image": "./containers/eeg-ray-tuner.sif",
-        "entrypoint": "/app/ray_tuner.py",
+        "entrypoint": "/app/main.py",
         # "entrypoint": "/app/test-ray.py",
         "command": "python",
         "job_name": "ray-tuner",

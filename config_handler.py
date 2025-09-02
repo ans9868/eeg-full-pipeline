@@ -22,7 +22,7 @@ Every validation method directly corresponds to a Part function in config-maker.
 
 This ensures perfect synchronization between configuration creation and validation.
 
-Author: EEG Pipeline Team
+Author: Adel Sahuc
 """
 
 import os
@@ -478,9 +478,10 @@ class UnifiedConfigHandler:
         # Validate Ray resources if present
         if 'resources' in ray_config:
             resources = ray_config['resources']
-            if resources is not None:
-                if not isinstance(resources, dict):
-                    raise ValueError("Ray resources must be a dictionary or None")
+            if resources is None:
+                raise ValueError("Ray resources must be a dictionary and not None")
+            if not isinstance(resources, dict):
+                raise ValueError("Ray resources must be a dictionary and not None")
                 
                 # Validate required resource fields
                 required_resource_fields = ['num_cpus', 'memory_gb', 'object_store_memory_gb']

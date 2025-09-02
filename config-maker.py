@@ -7,32 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import questionary
 import yaml
 
-"""
-max push for m4 mini 24gb
-should allow for this here type of setup ... more things to setup
-spark.master                          spark://localhost:7077
-spark.dynamicAllocation.enabled       false
-
-spark.driver.cores                    2
-spark.driver.memory                   6g
-spark.driver.maxResultSize            4g
-
-spark.executor.instances              1
-spark.executor.cores                  8
-spark.executor.memory                 14g
-spark.executor.memoryOverhead         3g
-
-spark.sql.shuffle.partitions          96
-spark.serializer                      org.apache.spark.serializer.KryoSerializer
-spark.sql.execution.arrow.pyspark.enabled true
-
-
-"""
-
-# TODO: make it such that asks if want logs in console or in log file for spark  ... this could be done thorugh the spark config in config/spark/log4j.properties
-# we should put each section into its own function and then call the function to run the section
-
-# also make ti such that this part is easier here to see what order its going to be like a forloop or something '? 4.1 Select transformations to apply (can select multiple - they will be applied in ord er): [Z-score standardization]
 
 def infer_target() -> str:
     this_file = Path(
@@ -195,7 +169,6 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
     config["project"]["config_name"] = config_name
     
     return config, config_name
-
 
 def dataInputPart1() -> Dict[str, Any]:
     """
@@ -1720,7 +1693,7 @@ def rayConfigurationPart7() -> Dict[str, Any]:
     
     configure_ray_resources = questionary.select(
         "7.9.1 Do you want to configure Ray-specific resources?",
-        choices=["Yes", "No (use PySpark settings as fallback)"],
+        choices=["Yes", "No (use approximatley the same settings as PySpark)"],
     ).ask()
 
     if configure_ray_resources == "Yes":
@@ -1761,9 +1734,27 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         )
         
         print("✅ Ray resource configuration completed")
-    else:
+    else: # 'No (use approximatley the same settings as PySpark)'
         print("ℹ️  Ray will use PySpark resource settings as fallback")
-        config["ray"]["resources"] = None
+        
+        # Get PySpark settings to use as base for Ray resources
+        pyspark_master = int(config.get("pyspark", {}).get("master", "6"))
+        pyspark_driver_memory = int(config.get("pyspark", {}).get("driver_memory", "6"))
+        pyspark_executor_memory = int(config.get("pyspark", {}).get("executor_memory", "6"))
+        
+        # Calculate Ray resources based on PySpark settings
+        ray_cpus = max(2, pyspark_master - 2)  # Leave some cores for system
+        ray_memory = max(4, pyspark_driver_memory + pyspark_executor_memory - 4)  # Leave some memory for system
+        ray_object_store = max(2, ray_memory // 2)  # Object store is typically half of total memory
+        
+        # Set Ray resources based on PySpark fallback
+        config["ray"]["resources"] = {
+            "num_cpus": str(ray_cpus),
+            "memory_gb": str(ray_memory),
+            "object_store_memory_gb": str(ray_object_store),
+            "num_gpus": 0,
+            "dashboard_port": "8265"
+        }
 
     return config
 
@@ -2081,9 +2072,6 @@ def configure_model_hyperparameters(model_name: str) -> dict:
         )
         
         print("✅ Ray resource configuration completed")
-    # else:
-    #     print("ℹ️  Ray will use PySpark resource settings as fallback")
-    #     config["ray"]["resources"] = None
 
     return config
 
