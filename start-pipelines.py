@@ -489,7 +489,7 @@ def run_singularity_container(container_type: str, config_path: str) -> None:
                 elif "Converting SIF" in line or "Mounting" in line:
                     print(f"{EMOJI_MOUNTING} {line.strip()}")
                 elif line.strip():
-                    print(f"{EMOJI_RUNNING} {line.strip()}")
+                    print(f"{line.strip()}")
 
             except queue.Empty:
                 continue
