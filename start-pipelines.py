@@ -55,7 +55,8 @@ CONTAINER_CONFIG = {
                 "./config/spark",
                 "/opt/bitnami/spark/conf",
             ),  # Spark configs (editable) - removing this puts spark logs in console
-            ("./logs/spark-events", "/opt/bitnami/spark/logs/"),  # Spark event logs
+            # Log mounts are now added dynamically based on config[project][config_name]
+            # ("./logs/spark-events", "/opt/bitnami/spark/logs/"),  # Spark event logs - COMMENTED OUT: Added dynamically
             # Done through config file
             # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
             # ("./data", "/app/data"),
@@ -72,7 +73,8 @@ CONTAINER_CONFIG = {
         "command": "python",
         "job_name": "ray-tuner",
         "mounts": [
-            ("./logs/ray-events", "/app/logs/ray-events"),  # Ray event logs
+            # Log mounts are now added dynamically based on config[project][config_name]
+            # ("./logs/ray-events", "/app/logs/ray-events"),  # Ray event logs - COMMENTED OUT: Added dynamically
             # Done through config file
             # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
             # ("./data", "/app/data"),
@@ -172,8 +174,9 @@ def create_required_directories(output_dir: str = "./data") -> None:
         "config/spark",
         # config/ray
         "logs",
-        "logs/spark-events",
-        "logs/ray-events",
+        # Log subdirectories are now created dynamically based on config[project][config_name]
+        # "logs/spark-events",  # COMMENTED OUT: Created dynamically
+        # "logs/ray-events",    # COMMENTED OUT: Created dynamically
         output_dir,
     ]
 
@@ -264,6 +267,31 @@ def get_all_mount_mappings(
 
     # Get output directory from config or use default
     output_dir = config_data.get("project", {}).get("output_dir", "./data")
+
+    # Get config name for dynamic log directory creation
+    config_name = config_data.get("project", {}).get("name", "default")
+    
+    # Generate timestamp in format '2025-09-03_1741' for current datetime
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+    
+    # Create dynamic log directories based on config name and timestamp
+    if container_type == "pyspark":
+        log_dir = f"./logs/spark-events/{config_name}_{timestamp}"
+        container_log_path = "/opt/bitnami/spark/logs/"
+    elif container_type == "ray":
+        log_dir = f"./logs/ray-events/{config_name}_{timestamp}"
+        container_log_path = "/app/logs/ray-events"
+    else:
+        log_dir = None
+        container_log_path = None
+    
+    # Create the log directory if it exists
+    if log_dir:
+        Path(log_dir).mkdir(parents=True, exist_ok=True)
+        print(f"{EMOJI_CREATING} Created/verified log directory: {log_dir}")
+        # Add dynamic log mount
+        mount_mappings.append((log_dir, container_log_path))
+        print(f"{EMOJI_MOUNTING} Adding dynamic log mount: {log_dir} -> {container_log_path}")
 
     # TODO don't need to mount .set directories for ray tuner
     # Create required directories

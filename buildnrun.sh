@@ -19,7 +19,7 @@ cd ..
 
 # Try to run the Python script with error handling
 if ! python start-pipelines.py "$INPUT_PARAM"; then
-    echo "ERROR: setup python correctly and with the right modules"
-    echo "The Python script failed with exit code: $?"
-    exit 1
+  echo "ERROR: Pipeline was unable to run. Possibly python was not setup correctly."
+  echo "The Python script failed with exit code: $?"
+  exit 1
 fi

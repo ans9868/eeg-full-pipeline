@@ -1,5 +1,5 @@
-import re
 import random
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -30,26 +30,26 @@ def infer_target() -> str:
 def get_target_with_ray_option() -> str:
     """Get target with option to include Ray configuration for ML experiments."""
     base_target = infer_target()
-    
+
     # If we're in eeg-pyspark-pipeline and user wants ML, offer Ray option
     if base_target == "pyspark-only":
         print("\n🎯 Target Configuration")
         print("   You're running from eeg-pyspark-pipeline (PySpark processing)")
         print("   For ML experiments, you can optionally include Ray configuration")
-        
+
         include_ray = questionary.select(
             "Do you want to include Ray ML configuration?",
             choices=[
                 "No - PySpark only (data processing)",
-                "Yes - Include Ray ML (data processing + ML)"
+                "Yes - Include Ray ML (data processing + ML)",
             ],
         ).ask()
-        
+
         if "Yes" in include_ray:
             return "full"  # This will include both PySpark and Ray
         else:
             return "pyspark-only"
-    
+
     return base_target
 
 
@@ -92,7 +92,7 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
     print("\n[0] Project Metadata")
     config = {}
     config["project"] = {}
-    
+
     project_name_input = questionary.text("0.1 Project name:").ask()
     config["project"]["name"] = project_name_input.strip() if project_name_input else ""
 
@@ -123,10 +123,17 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
         config["project"]["experiment_type"] = "ML (Classification)"  # Default fallback
 
     config["project"]["subjects_or_events"] = questionary.select(
-        "0.4 Are we analyzing subjects or events:", choices=["subjects", "events"]
+        "0.4 Are we analyzing subjects or events: (events are not currently supported)",
+        choices=["subjects", "events"],
     ).ask()
 
-    # 0.4.1 Event selection (only if analyzing events)
+    # if select events raise error_message
+    if config["project"]["subjects_or_events"] == "events":
+        raise ValueError(
+            "Unfortunatly support for events has not been created yet."
+        )
+
+    # 0.4.1 Event selection (only if analyzing events) (currently not supported)
     if config["project"]["subjects_or_events"] == "events":
         events_input = questionary.text(
             "0.4.1 Enter comma-separated list of events to analyze (must match exactly as written in the data):"
@@ -167,8 +174,9 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
     config_name = f"config_{sanitized_name}_{timestamp}.yaml"
     print(f"📝 Config name: '{config_name}'")
     config["project"]["config_name"] = config_name
-    
+
     return config, config_name
+
 
 def dataInputPart1() -> Dict[str, Any]:
     """
@@ -247,11 +255,7 @@ def dataInputPart1() -> Dict[str, Any]:
 
             try:
                 valid_paths = validate_eeg_paths(
-                    [
-                        path.strip()
-                        for path in group_input.split(",")
-                        if path.strip()
-                    ]
+                    [path.strip() for path in group_input.split(",") if path.strip()]
                 )
                 if len(valid_paths) == 0:
                     print("[ERROR] At least 1 valid path is required per group.")
@@ -289,7 +293,7 @@ def dataInputPart1() -> Dict[str, Any]:
         "1.6 Save transformed data (post PCA, z-score etc.) for reuse? (Necessary for RayTuner to work)",
         choices=["Yes", "No"],
     ).ask()
-    
+
     return config
 
 
@@ -359,7 +363,7 @@ def preprocessingPart2() -> Dict[str, Any]:
     ).ask()
 
     # TODO: Better division between preprocessing and feature extraction needed
-    # Currently normalize_psd is in preprocessing for pipeline compatibility, 
+    # Currently normalize_psd is in preprocessing for pipeline compatibility,
     # but logically it belongs to feature extraction. Need to refactor this properly.
     # Ask for PSD normalization (stored in preprocessing for pipeline compatibility)
     config["preprocessing"]["normalize_psd"] = questionary.select(
@@ -369,12 +373,16 @@ def preprocessingPart2() -> Dict[str, Any]:
 
     # Ask for epoch rejection settings
     print("\n📊 Epoch Rejection Settings")
-    print("   This will reject individual epochs based on peak-to-peak amplitude thresholds.")
+    print(
+        "   This will reject individual epochs based on peak-to-peak amplitude thresholds."
+    )
     print("   - Reject threshold: Maximum acceptable peak-to-peak amplitude per epoch")
     print("   - Flat threshold: Minimum acceptable peak-to-peak amplitude per epoch")
     print("   - Applied during epoch creation (more efficient than annotation)")
-    print("   - Note: Values are entered in μV but automatically converted to V for MNE")
-    
+    print(
+        "   - Note: Values are entered in μV but automatically converted to V for MNE"
+    )
+
     # Enable/disable epoch rejection
     config["preprocessing"]["use_epoch_rejection"] = questionary.select(
         "2.6 Enable epoch rejection based on amplitude?",
@@ -395,7 +403,7 @@ def preprocessingPart2() -> Dict[str, Any]:
                     print("[ERROR] Please enter a positive number.")
             except (ValueError, TypeError):
                 print("[ERROR] Please enter a valid number.")
-        
+
         # Ask for flat threshold (minimum acceptable peak-to-peak amplitude)
         while True:
             flat_input = questionary.text(
@@ -409,12 +417,12 @@ def preprocessingPart2() -> Dict[str, Any]:
                     print("[ERROR] Please enter a non-negative number.")
             except (ValueError, TypeError):
                 print("[ERROR] Please enter a valid number.")
-        
+
         config["preprocessing"]["epoch_rejection"] = {
             "reject": reject,
             "flat": flat,
         }
-        
+
         print(f"✅ Epoch rejection enabled with {reject}μV reject, {flat}μV flat")
         # print(f"   🔄 Will be converted to {reject*1e-6:.6f}V and {flat*1e-6:.6f}V for MNE processing")
     else:
@@ -426,7 +434,7 @@ def preprocessingPart2() -> Dict[str, Any]:
     # print("   This will remove extreme values (outliers) from the processed features.")
     # print("   - Percentile-based removal: Remove data points above/below specified percentiles")
     # print("   - Applied to processed features before transformation")
-    
+
     # # Enable/disable extreme datapoint removal
     # config["preprocessing"]["remove_extreme_datapoints"] = questionary.select(
     #     "2.6 Enable extreme datapoint removal?",
@@ -447,7 +455,7 @@ def preprocessingPart2() -> Dict[str, Any]:
     #                 print("[ERROR] Please enter a decimal between 0 and 0.5 (e.g., 0.01 for 1%).")
     #         except (ValueError, TypeError):
     #             print("[ERROR] Please enter a valid decimal number.")
-    #     
+    #
     #     # Ask for upper percentile threshold
     #     while True:
     #         upper_percentile_input = questionary.text(
@@ -461,7 +469,7 @@ def preprocessingPart2() -> Dict[str, Any]:
     #                 print("[ERROR] Please enter a decimal between 0.5 and 1 (e.g., 0.99 for 99%).")
     #         except (ValueError, TypeError):
     #             print("[ERROR] Please enter a valid decimal number.")
-    #     
+    #
     #     # Validate that lower < upper
     #     if lower_percentile >= upper_percentile:
     #         print("[ERROR] Lower percentile must be less than upper percentile.")
@@ -469,18 +477,18 @@ def preprocessingPart2() -> Dict[str, Any]:
     #         print("   Using default values: Lower 0.01, Upper 0.99")
     #         lower_percentile = 0.01
     #         upper_percentile = 0.99
-    #     
+    #
     #     config["preprocessing"]["extreme_datapoint_removal"] = {
     #         "lower_percentile": lower_percentile,
     #         "upper_percentile": upper_percentile,
     #         "method": "percentile"  # Can be extended to other methods later
     #     }
-    #     
+    #
     #     print(f"✅ Extreme datapoint removal enabled: {lower_percentile} - {upper_percentile}")
     # else:
     #     config["preprocessing"]["extreme_datapoint_removal"] = None
     #     print("ℹ️  Extreme datapoint removal disabled")
-    
+
     # Default to disabled since the section is commented out
     config["preprocessing"]["extreme_datapoint_removal"] = None
     print("ℹ️  Extreme datapoint removal section disabled (commented out in code)")
@@ -495,7 +503,7 @@ def preprocessingPart2() -> Dict[str, Any]:
     #     if downsampling_rate is not None or downsampling_input.lower() == "none":
     #         break
     # config["preprocessing"]["downsampling"] = downsampling_rate
-    
+
     return config
 
 
@@ -530,13 +538,17 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
     print("\nModerate Complexity (Good Balance):")
     print("hjorth_mobility: 2/5 - Good feature, reasonable computation")
     print("spectral_entropy: 2/5 - Informative, moderate cost")
-    print("   ⚠️  WARNING!!!: spectral_entropy may produce NA values, especially for per_channel_across_bands")
+    print(
+        "   ⚠️  WARNING!!!: spectral_entropy may produce NA values, especially for per_channel_across_bands"
+    )
     print("\nComputationally Expensive (Use Sparingly):")
     print("hjorth_complexity: 3/5 - More complex but valuable")
     print("skewness: 4/5 - Very expensive, consider carefully")
     print("kurtosis: 4/5 - Very expensive, use only if needed")
     print("spectral_entropy: 4/5 - Most expensive, use only if needed")
-    print("   ⚠️  WARNING!!!: spectral_entropy may produce NA values, especially for per_channel_across_bands")
+    print(
+        "   ⚠️  WARNING!!!: spectral_entropy may produce NA values, especially for per_channel_across_bands"
+    )
     print()
 
     # Initialize the features dictionary
@@ -662,9 +674,7 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
 
             is_valid, error_message = validate_feature_selection(selected_features)
             if is_valid:
-                config["feature_extraction"]["features"][
-                    config_key
-                ] = selected_features
+                config["feature_extraction"]["features"][config_key] = selected_features
                 break
             else:
                 print(error_message)
@@ -701,11 +711,9 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
         print(
             "   ✅ Auto-selected: analysis format (one row per channel-band, good for data analysis)"
         )
-        print(
-            "      📊 Each row contains one feature for one channel/band combination"
-        )
+        print("      📊 Each row contains one feature for one channel/band combination")
         print("      🔍 Perfect for exploratory data analysis")
-    
+
     return config
 
 
@@ -730,7 +738,7 @@ def featureTransformationsPart4() -> Dict[str, Any]:
 
     config = {}
     config["feature_transformation"] = {}
-    
+
     # Define available transformations
     available_transformations = [
         "Dummy (+1)",
@@ -750,41 +758,47 @@ def featureTransformationsPart4() -> Dict[str, Any]:
         # "ICA", # not in spark
         # "ICA (manual count)", # not in spark
     ]
-    
+
     # Initialize transformations list
     selected_transformations = []
-    
-    print("4.1 Select transformations to apply (one by one, select 'done' when finished):")
+
+    print(
+        "4.1 Select transformations to apply (one by one, select 'done' when finished):"
+    )
     print("   Transformations will be applied in the order you select them")
     print()
-    
+
     while True:
         # Show current selections
         if selected_transformations:
             print(f"   Current selections: {', '.join(selected_transformations)}")
             print()
-        
+
         # Create choices list with remaining transformations plus 'done'
-        remaining_choices = [choice for choice in available_transformations if choice not in selected_transformations]
+        remaining_choices = [
+            choice
+            for choice in available_transformations
+            if choice not in selected_transformations
+        ]
         choices = remaining_choices + ["done"]
-        
+
         if not remaining_choices:
             print("   ✅ All transformations have been selected!")
             break
-        
+
         # Ask for next transformation
         next_transformation = questionary.select(
             f"4.1.{len(selected_transformations) + 1} Select next transformation (or 'done' to finish):",
             choices=choices,
         ).ask()
-        
+
         if next_transformation == "done":
             break
-        
+
         selected_transformations.append(next_transformation)
         print(f"   ✅ Added: {next_transformation}")
         print()
-    
+
     # Set transformations (empty list becomes ["None"])
     if not selected_transformations:
         config["feature_transformation"]["transformations"] = ["None"]
@@ -804,10 +818,12 @@ def featureTransformationsPart4() -> Dict[str, Any]:
     # 4.3 Transformer-specific configuration
     if config["feature_transformation"]["transformations"] != ["None"]:
         print("\n📊 Transformer Configuration")
-        print(f"   Selected transformations: {', '.join(config['feature_transformation']['transformations'])}")
+        print(
+            f"   Selected transformations: {', '.join(config['feature_transformation']['transformations'])}"
+        )
         print("   Transformations will be applied in the order selected above")
         print()
-        
+
         # PCA configuration
         if "PCA (manual count)" in config["feature_transformation"]["transformations"]:
             while True:
@@ -823,7 +839,7 @@ def featureTransformationsPart4() -> Dict[str, Any]:
                         print("[ERROR] Please enter a positive number.")
                 except ValueError:
                     print("[ERROR] Please enter a valid integer.")
-        
+
         # SVD configuration
         if "SVD (k components)" in config["feature_transformation"]["transformations"]:
             while True:
@@ -839,45 +855,52 @@ def featureTransformationsPart4() -> Dict[str, Any]:
                         print("[ERROR] Please enter a positive number.")
                 except ValueError:
                     print("[ERROR] Please enter a valid integer.")
-        
+
         # MinMax scaler configuration
         if "MinMax scaler" in config["feature_transformation"]["transformations"]:
             minmax_range = questionary.select(
-                "4.3.3 MinMax scaler range:",
-                choices=["[0, 1]", "[-1, 1]"]
+                "4.3.3 MinMax scaler range:", choices=["[0, 1]", "[-1, 1]"]
             ).ask()
             if minmax_range == "[0, 1]":
                 config["feature_transformation"]["minmax_range"] = [0.0, 1.0]
             else:
                 config["feature_transformation"]["minmax_range"] = [-1.0, 1.0]
-        
+
         # Robust scaler configuration
         if "Robust scaler" in config["feature_transformation"]["transformations"]:
             robust_centering = questionary.select(
                 "4.3.4 Robust scaler centering:",
-                choices=["Yes (center with median)", "No (no centering)"]
+                choices=["Yes (center with median)", "No (no centering)"],
             ).ask()
-            config["feature_transformation"]["robust_scaler_with_centering"] = (robust_centering == "Yes (center with median)")
-            
+            config["feature_transformation"]["robust_scaler_with_centering"] = (
+                robust_centering == "Yes (center with median)"
+            )
+
             robust_scaling = questionary.select(
                 "4.3.5 Robust scaler scaling:",
-                choices=["Yes (scale with IQR)", "No (no scaling)"]
+                choices=["Yes (scale with IQR)", "No (no scaling)"],
             ).ask()
-            config["feature_transformation"]["robust_scaler_with_scaling"] = (robust_scaling == "Yes (scale with IQR)")
-        
+            config["feature_transformation"]["robust_scaler_with_scaling"] = (
+                robust_scaling == "Yes (scale with IQR)"
+            )
+
         # Normalizer configuration
         if "Normalizer" in config["feature_transformation"]["transformations"]:
             p_norm = questionary.select(
                 "4.3.6 Normalizer p-norm:",
-                choices=["L1 (Manhattan norm)", "L2 (Euclidean norm)", "L∞ (Maximum norm)"]
+                choices=[
+                    "L1 (Manhattan norm)",
+                    "L2 (Euclidean norm)",
+                    "L∞ (Maximum norm)",
+                ],
             ).ask()
             if p_norm == "L1 (Manhattan norm)":
                 config["feature_transformation"]["normalizer_p"] = 1.0
             elif p_norm == "L2 (Euclidean norm)":
                 config["feature_transformation"]["normalizer_p"] = 2.0
             else:  # L∞
-                config["feature_transformation"]["normalizer_p"] = float('inf')
-        
+                config["feature_transformation"]["normalizer_p"] = float("inf")
+
         # Cohen test configuration
         if "Cohen test" in config["feature_transformation"]["transformations"]:
             if "manual count" in config["feature_transformation"]["transformations"]:
@@ -908,11 +931,15 @@ def featureTransformationsPart4() -> Dict[str, Any]:
                             print("[ERROR] Please enter a value between 0 and 1.")
                     except ValueError:
                         print("[ERROR] Please enter a valid decimal number.")
-    
+
     return config
 
 
-def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: List[str], data_input_groups: Dict[str, List[str]]) -> Dict[str, Any]:
+def dataLeakagePreventionPart5(
+    experiment_type: str,
+    feature_transformations: List[str],
+    data_input_groups: Dict[str, List[str]],
+) -> Dict[str, Any]:
     """
     Section 5: Data Leakage Prevention
     Args:
@@ -922,12 +949,8 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
     Returns: Dictionary containing data_leakage_prevention configuration
     """
     print("\n[5] Data Leakage Prevention")
-    print(
-        "⚠️  WARNING: You selected Classification with Feature Transformation."
-    )
-    print(
-        "   This can cause data leakage if test data influences training transforms."
-    )
+    print("⚠️  WARNING: You selected Classification with Feature Transformation.")
+    print("   This can cause data leakage if test data influences training transforms.")
 
     config = {}
     config["data_leakage_prevention"] = {}
@@ -944,19 +967,14 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
     ).ask()
 
     # Question 2: Test subject definition (if rotation is selected)
-    if (
-        "Rotate test subjects"
-        in config["data_leakage_prevention"]["strategy"]
-    ):
-        config["data_leakage_prevention"]["test_subject_method"] = (
-            questionary.select(
-                "5.2.1 How would you like to define test subjects for rotation?",
-                choices=[
-                    "Manually select X test subjects per fold and provide full paths",
-                    "Automatically rotate all subjects (leave-X-out cross-validation)",
-                ],
-            ).ask()
-        )
+    if "Rotate test subjects" in config["data_leakage_prevention"]["strategy"]:
+        config["data_leakage_prevention"]["test_subject_method"] = questionary.select(
+            "5.2.1 How would you like to define test subjects for rotation?",
+            choices=[
+                "Manually select X test subjects per fold and provide full paths",
+                "Automatically rotate all subjects (leave-X-out cross-validation)",
+            ],
+        ).ask()
 
         if (
             "Manually select"
@@ -1000,9 +1018,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                 # Validate paths
                 try:
                     fold_paths = [
-                        path.strip()
-                        for path in fold_input.split(",")
-                        if path.strip()
+                        path.strip() for path in fold_input.split(",") if path.strip()
                     ]
                     valid_fold_paths = validate_eeg_paths(fold_paths)
 
@@ -1036,9 +1052,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                     # Check if number of subjects matches expected count
                     if (
                         len(valid_fold_paths)
-                        != config["data_leakage_prevention"][
-                            "test_subjects_per_fold"
-                        ]
+                        != config["data_leakage_prevention"]["test_subjects_per_fold"]
                     ):
                         confirm = questionary.select(
                             f"⚠️  You entered {len(valid_fold_paths)} subjects but expected {config['data_leakage_prevention']['test_subjects_per_fold']}. Continue anyway?",
@@ -1068,9 +1082,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                 try:
                     count = int(leave_out_count)
                     if count > 0:
-                        config["data_leakage_prevention"][
-                            "leave_out_count"
-                        ] = count
+                        config["data_leakage_prevention"]["leave_out_count"] = count
                         break
                     else:
                         print("[ERROR] Please enter a positive number.")
@@ -1079,79 +1091,84 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
 
     # Question 2: LOSO configuration (if LOSO is selected)
     elif (
-        "LOSO (Leave-One-Subject-Out)"
-        in config["data_leakage_prevention"]["strategy"]
+        "LOSO (Leave-One-Subject-Out)" in config["data_leakage_prevention"]["strategy"]
     ):
         print("\n📊 LOSO (Leave-One-Subject-Out) Configuration")
         print("   This will systematically leave out subjects for cross-validation.")
         print("   Each subject will be used as test data exactly once.")
-        
+
         # Calculate total subjects and show group distribution
         total_subjects = sum(len(paths) for paths in data_input_groups.values())
         print(f"   📈 Total subjects: {total_subjects}")
         for group_name, paths in data_input_groups.items():
             print(f"      {group_name}: {len(paths)} subjects")
-        
+
         # Ask for default or custom number of subjects per group
         num_groups = len(data_input_groups)
         default_subjects = num_groups  # Default is 1 subject per group per fold
-        
+
         loso_choice = questionary.select(
             "5.2.1 LOSO configuration:",
             choices=[
                 f"Default ({default_subjects} subjects - 1 per group per fold)",
                 f"Custom number of subjects",
-                "Leave-One-Subject-Out (Individual) - each subject as test"
+                "Leave-One-Subject-Out (Individual) - each subject as test",
             ],
         ).ask()
-        
+
         if "Default" in loso_choice:
             # Use default (1 subject per group per fold)
             count = default_subjects
             subjects_per_group_per_fold = 1
-            print(f"   ✅ Using default: {count} subjects ({subjects_per_group_per_fold} per group per fold)")
-            
+            print(
+                f"   ✅ Using default: {count} subjects ({subjects_per_group_per_fold} per group per fold)"
+            )
+
             # Calculate how many folds can be generated
-            min_subjects_per_group = min(len(paths) for paths in data_input_groups.values())
+            min_subjects_per_group = min(
+                len(paths) for paths in data_input_groups.values()
+            )
             max_folds = min_subjects_per_group // subjects_per_group_per_fold
             print(f"   📈 You can generate {max_folds} folds with this configuration")
-            
+
             # Validate that each group has enough subjects
             insufficient_groups = []
             for group_name, paths in data_input_groups.items():
                 if len(paths) < subjects_per_group_per_fold:
                     insufficient_groups.append(f"{group_name} ({len(paths)} subjects)")
-            
+
             if insufficient_groups:
-                print(f"❌ ERROR: The following groups don't have enough subjects for default LOSO:")
+                print(
+                    f"❌ ERROR: The following groups don't have enough subjects for default LOSO:"
+                )
                 for group in insufficient_groups:
                     print(f"   {group}")
                 print(f"   Each group needs at least 1 subject for default LOSO.")
                 raise ValueError("Insufficient subjects for default LOSO")
-            
+
             config["data_leakage_prevention"]["loso_subjects_per_group"] = count
-            
+
         elif "Leave-One-Subject-Out (Individual)" in loso_choice:
             # Individual LOSO - each subject gets its own test fold
             print(f"   ✅ Using Individual LOSO: each subject as test")
-            
+
             # Collect all subjects from all groups
             all_subjects = []
             for group_name, paths in data_input_groups.items():
                 for path in paths:
                     all_subjects.append(path)
-            
+
             total_subjects = len(all_subjects)
             print(f"   📊 Total subjects: {total_subjects}")
             print(f"   📈 You can generate {total_subjects} folds (one per subject)")
-            
+
             # Set up for individual LOSO
             count = total_subjects  # Each subject gets its own fold
             subjects_per_group_per_fold = 1  # Each fold has exactly 1 subject
-            
+
             config["data_leakage_prevention"]["loso_subjects_per_group"] = count
             config["data_leakage_prevention"]["individual_loso"] = True
-            
+
         else:
             # Ask for custom number of subjects per group
             while True:
@@ -1163,121 +1180,146 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                     if count > 0:
                         # Validate that count is evenly divisible by number of groups
                         if count % num_groups != 0:
-                            print(f"❌ ERROR: {count} is not evenly divisible by {num_groups} groups")
-                            print(f"   Valid options: {num_groups}, {num_groups*2}, {num_groups*3}, etc.")
+                            print(
+                                f"❌ ERROR: {count} is not evenly divisible by {num_groups} groups"
+                            )
+                            print(
+                                f"   Valid options: {num_groups}, {num_groups*2}, {num_groups*3}, etc."
+                            )
                             continue
-                        
+
                         # Calculate subjects per group per fold
                         subjects_per_group_per_fold = count // num_groups
-                        print(f"   📊 This will leave out {subjects_per_group_per_fold} subjects per group per fold")
-                        
+                        print(
+                            f"   📊 This will leave out {subjects_per_group_per_fold} subjects per group per fold"
+                        )
+
                         # Calculate how many folds can be generated
-                        min_subjects_per_group = min(len(paths) for paths in data_input_groups.values())
-                        max_folds = min_subjects_per_group // subjects_per_group_per_fold
-                        print(f"   📈 You can generate {max_folds} folds with this configuration")
-                        
+                        min_subjects_per_group = min(
+                            len(paths) for paths in data_input_groups.values()
+                        )
+                        max_folds = (
+                            min_subjects_per_group // subjects_per_group_per_fold
+                        )
+                        print(
+                            f"   📈 You can generate {max_folds} folds with this configuration"
+                        )
+
                         # Validate that each group has enough subjects
                         insufficient_groups = []
                         for group_name, paths in data_input_groups.items():
                             if len(paths) < subjects_per_group_per_fold:
-                                insufficient_groups.append(f"{group_name} ({len(paths)} subjects)")
-                        
+                                insufficient_groups.append(
+                                    f"{group_name} ({len(paths)} subjects)"
+                                )
+
                         if insufficient_groups:
-                            print(f"❌ ERROR: The following groups don't have enough subjects:")
+                            print(
+                                f"❌ ERROR: The following groups don't have enough subjects:"
+                            )
                             for group in insufficient_groups:
                                 print(f"   {group}")
-                            print(f"   Each group needs at least {subjects_per_group_per_fold} subjects per fold for this configuration.")
-                            print(f"   With {subjects_per_group_per_fold} subjects per fold, you can generate {min(len(paths) // subjects_per_group_per_fold for paths in data_input_groups.values())} folds.")
+                            print(
+                                f"   Each group needs at least {subjects_per_group_per_fold} subjects per fold for this configuration."
+                            )
+                            print(
+                                f"   With {subjects_per_group_per_fold} subjects per fold, you can generate {min(len(paths) // subjects_per_group_per_fold for paths in data_input_groups.values())} folds."
+                            )
                             continue
-                        
-                        config["data_leakage_prevention"]["loso_subjects_per_group"] = count
+
+                        config["data_leakage_prevention"][
+                            "loso_subjects_per_group"
+                        ] = count
                         break
                     else:
                         print("[ERROR] Please enter a positive number.")
                 except ValueError:
                     print("[ERROR] Please enter a valid integer.")
-        
+
         # Check for uneven group sizes and ask for handling strategy
-        group_sizes = {group_name: len(paths) for group_name, paths in data_input_groups.items()}
+        group_sizes = {
+            group_name: len(paths) for group_name, paths in data_input_groups.items()
+        }
         min_group_size = min(group_sizes.values())
         max_group_size = max(group_sizes.values())
-        
+
         if min_group_size != max_group_size:
             print(f"   ⚠️  Uneven group sizes detected:")
             for group_name, size in group_sizes.items():
                 print(f"      📊 {group_name}: {size} subjects")
-            
+
             # Ask for uneven handling strategy
             uneven_handling_choice = questionary.select(
                 "5.2.3 How should we handle uneven group sizes?",
                 choices=[
                     "Cutoff - Stop when any group runs out of subjects",
-                    "Wrap-around - Reuse subjects from beginning when group runs out"
+                    "Wrap-around - Reuse subjects from beginning when group runs out",
                 ],
             ).ask()
-            
+
             if "Cutoff" in uneven_handling_choice:
                 uneven_handling = "cutoff"
-                print(f"   ✅ Using cutoff strategy: will stop when any group runs out of subjects")
+                print(
+                    f"   ✅ Using cutoff strategy: will stop when any group runs out of subjects"
+                )
             else:
                 uneven_handling = "wrap_around"
-                print(f"   ✅ Using wrap-around strategy: will reuse subjects when group runs out")
-            
+                print(
+                    f"   ✅ Using wrap-around strategy: will reuse subjects when group runs out"
+                )
+
             config["data_leakage_prevention"]["uneven_handling"] = uneven_handling
         else:
             # All groups have the same size, use default
             uneven_handling = "cutoff"
             config["data_leakage_prevention"]["uneven_handling"] = uneven_handling
-        
+
         # Generate LOSO folds
         print(f"   🔄 Generating LOSO folds...")
         try:
             # Check if individual LOSO is enabled
-            individual_loso = config["data_leakage_prevention"].get("individual_loso", False)
-            
+            individual_loso = config["data_leakage_prevention"].get(
+                "individual_loso", False
+            )
+
             loso_folds, fold_metadata = generate_loso_folds(
-                data_input_groups, 
-                count, 
+                data_input_groups,
+                count,
                 individual_loso=individual_loso,
-                uneven_handling=uneven_handling
+                uneven_handling=uneven_handling,
                 # random_seed=42
             )
-            
+
             # Store the folds in config
             config["data_leakage_prevention"]["loso_folds"] = loso_folds
             config["data_leakage_prevention"]["loso_metadata"] = fold_metadata
-            
+
             print(f"   ✅ Generated {len(loso_folds)} LOSO folds")
             print(f"   📊 Each fold leaves out {count} subjects per group")
             print(f"   🎯 Total unique test combinations: {len(loso_folds)}")
-            
+
             # Show example of first few folds
             if len(loso_folds) > 0:
                 print(f"   📋 Example fold 1: {len(loso_folds[0])} subjects")
                 if len(loso_folds) > 1:
                     print(f"   📋 Example fold 2: {len(loso_folds[1])} subjects")
-            
+
         except ValueError as e:
             print(f"❌ ERROR generating LOSO folds: {e}")
             exit(1)
-        
+
         # Set LOSO flag
         config["data_leakage_prevention"]["use_loso"] = True
 
     # Question 2: Single train/test set definition (if single split is selected)
-    elif (
-        "1 test/1 train split"
-        in config["data_leakage_prevention"]["strategy"]
-    ):
-        config["data_leakage_prevention"]["single_split_method"] = (
-            questionary.select(
-                "5.2.1 How would you like to define this 1 training/testing set?",
-                choices=[
-                    "Manually select test subjects and provide full paths",
-                    "Automatically split subjects (e.g., 5 test subjects)",
-                ],
-            ).ask()
-        )
+    elif "1 test/1 train split" in config["data_leakage_prevention"]["strategy"]:
+        config["data_leakage_prevention"]["single_split_method"] = questionary.select(
+            "5.2.1 How would you like to define this 1 training/testing set?",
+            choices=[
+                "Manually select test subjects and provide full paths",
+                "Automatically split subjects (e.g., 5 test subjects)",
+            ],
+        ).ask()
 
         if (
             "Manually select"
@@ -1291,9 +1333,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                 try:
                     count = int(test_subjects_count)
                     if count > 0:
-                        config["data_leakage_prevention"][
-                            "test_subjects_count"
-                        ] = count
+                        config["data_leakage_prevention"]["test_subjects_count"] = count
                         break
                     else:
                         print("[ERROR] Please enter a positive number.")
@@ -1351,9 +1391,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                     # Check if number of subjects matches expected count
                     if (
                         len(valid_test_paths)
-                        != config["data_leakage_prevention"][
-                            "test_subjects_count"
-                        ]
+                        != config["data_leakage_prevention"]["test_subjects_count"]
                     ):
                         confirm = questionary.select(
                             f"⚠️  You entered {len(valid_test_paths)} subjects but expected {config['data_leakage_prevention']['test_subjects_count']}. Continue anyway?",
@@ -1384,33 +1422,40 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                 try:
                     count = int(test_subjects_count)
                     if count > 0:
-                        config["data_leakage_prevention"][
-                            "test_subjects_count"
-                        ] = count
+                        config["data_leakage_prevention"]["test_subjects_count"] = count
                         break
                     else:
                         print("[ERROR] Please enter a positive number.")
                 except ValueError:
                     print("[ERROR] Please enter a valid integer.")
-            
+
             # Automatically select test subjects and add them to config for reproducibility
             # This makes the split reproducible and explicit, avoiding the need for the Ray container
             # to re-implement the same random selection logic
             test_count = config["data_leakage_prevention"]["test_subjects_count"]
             if test_count >= 1:
-                
+
                 # Check if we have enough test subjects for balanced group representation
                 num_groups = len(data_input_groups)
                 if test_count < num_groups:
-                    print(f"\n⚠️  WARNING: You selected {test_count} test subject(s) but have {num_groups} groups.")
-                    print(f"   This means not all groups will have test subjects, which may bias your results.")
-                    print(f"   Recommended: Select at least {num_groups} test subjects for balanced representation.")
-                    
+                    print(
+                        f"\n⚠️  WARNING: You selected {test_count} test subject(s) but have {num_groups} groups."
+                    )
+                    print(
+                        f"   This means not all groups will have test subjects, which may bias your results."
+                    )
+                    print(
+                        f"   Recommended: Select at least {num_groups} test subjects for balanced representation."
+                    )
+
                     proceed = questionary.select(
                         "Do you want to proceed anyway?",
-                        choices=["Yes, proceed with current selection", "No, let me change the count"]
+                        choices=[
+                            "Yes, proceed with current selection",
+                            "No, let me change the count",
+                        ],
                     ).ask()
-                    
+
                     if proceed == "No, let me change the count":
                         # Go back to asking for test count
                         while True:
@@ -1420,51 +1465,66 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
                             try:
                                 new_count = int(new_test_count)
                                 if new_count > 0:
-                                    config["data_leakage_prevention"]["test_subjects_count"] = new_count
+                                    config["data_leakage_prevention"][
+                                        "test_subjects_count"
+                                    ] = new_count
                                     test_count = new_count
                                     break
                                 else:
                                     print("[ERROR] Please enter a positive number.")
                             except ValueError:
                                 print("[ERROR] Please enter a valid integer.")
-                
-                print(f"\n🎯 Automatically selecting {test_count} test subject(s) for reproducibility...")
-                
+
+                print(
+                    f"\n🎯 Automatically selecting {test_count} test subject(s) for reproducibility..."
+                )
+
                 try:
                     # Use the dedicated function for automatic selection
-                    selected_test_subjects, metadata = select_test_subjects_automatically(
-                        data_input_groups, 
-                        test_count, 
-                        random_seed=42
+                    selected_test_subjects, metadata = (
+                        select_test_subjects_automatically(
+                            data_input_groups, test_count, random_seed=42
+                        )
                     )
-                    
+
                     # Add the selected subjects to config as if they were manually selected
-                    config["data_leakage_prevention"]["test_subjects_paths"] = selected_test_subjects
-                    
+                    config["data_leakage_prevention"][
+                        "test_subjects_paths"
+                    ] = selected_test_subjects
+
                     # Display results
-                    print(f"✅ Automatically selected test subjects: {', '.join(metadata['selected_subject_ids'])}")
+                    print(
+                        f"✅ Automatically selected test subjects: {', '.join(metadata['selected_subject_ids'])}"
+                    )
                     print(f"   Paths: {', '.join(selected_test_subjects)}")
-                    print(f"   Random seed: {metadata['random_seed']} (for reproducibility)")
-                    
+                    print(
+                        f"   Random seed: {metadata['random_seed']} (for reproducibility)"
+                    )
+
                     # Show group representation
-                    if metadata['missing_groups']:
-                        print(f"   ⚠️  Groups represented: {', '.join(sorted(metadata['selected_groups']))}")
-                        print(f"   ⚠️  Groups missing: {', '.join(sorted(metadata['missing_groups']))}")
+                    if metadata["missing_groups"]:
+                        print(
+                            f"   ⚠️  Groups represented: {', '.join(sorted(metadata['selected_groups']))}"
+                        )
+                        print(
+                            f"   ⚠️  Groups missing: {', '.join(sorted(metadata['missing_groups']))}"
+                        )
                     else:
-                        print(f"   ✅ All groups represented: {', '.join(sorted(metadata['selected_groups']))}")
-                    
+                        print(
+                            f"   ✅ All groups represented: {', '.join(sorted(metadata['selected_groups']))}"
+                        )
+
                     # Also add the random seed to config for transparency
-                    config["data_leakage_prevention"]["random_seed"] = metadata['random_seed']
-                    
+                    config["data_leakage_prevention"]["random_seed"] = metadata[
+                        "random_seed"
+                    ]
+
                 except ValueError as e:
                     print(f"❌ ERROR: {e}")
                     exit(1)
 
     # Question 2: No split needed (if transform all data is selected)
-    elif (
-        "Transform all data together"
-        in config["data_leakage_prevention"]["strategy"]
-    ):
+    elif "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
         print("⚠️  WARNING: You selected to transform all data together.")
         print(
             "   This may cause data leakage as test data will influence training transforms."
@@ -1472,7 +1532,7 @@ def dataLeakagePreventionPart5(experiment_type: str, feature_transformations: Li
         print(
             "   No additional configuration needed - all data will be transformed together."
         )
-    
+
     return config
 
 
@@ -1600,6 +1660,7 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
 
     return config
 
+
 def rayConfigurationPart7() -> Dict[str, Any]:
     """
     Section 7: Ray Configuration
@@ -1608,7 +1669,7 @@ def rayConfigurationPart7() -> Dict[str, Any]:
     print("\n[7] Ray Configuration")
     config = {}
     config["ray"] = {}
-    
+
     # far in the future todo: make it such that we can choose distributed or sklearn (where distributed is ray and pyspark with raydp)
     # Machine Learning Models Selection
     selected_models = questionary.checkbox(
@@ -1626,31 +1687,33 @@ def rayConfigurationPart7() -> Dict[str, Any]:
             "AdaBoost",
         ],
     ).ask()
-    
+
     config["ray"]["models"] = selected_models
-    
+
     # 7.2 Individual Model Hyperparameter Configuration
     if selected_models:
         print("\n[7.2] Individual Model Hyperparameter Configuration")
         print("Configure hyperparameter search spaces for each selected model.")
         print("You can customize the search ranges for better optimization.")
-        
+
         config["ray"]["model_configs"] = {}
-        
+
         for model in selected_models:
             print(f"\n--- Configuring {model} ---")
-            
+
             # Ask if user wants to customize hyperparameters for this model
             customize = questionary.select(
                 f"7.2.{selected_models.index(model)+1} Customize hyperparameters for {model}?",
                 choices=["Use default grid", "Customize hyperparameters"],
             ).ask()
-            
+
             if customize == "Use default grid":
                 config["ray"]["model_configs"][model] = {"use_default": True}
             else:
                 # Model-specific hyperparameter configuration
-                config["ray"]["model_configs"][model] = configure_model_hyperparameters(model)
+                config["ray"]["model_configs"][model] = configure_model_hyperparameters(
+                    model
+                )
 
     config["ray"]["num_trials"] = validate_integer_input(
         "7.3 Enter number of trials for hyperparameter optimization:", default="10"
@@ -1688,9 +1751,11 @@ def rayConfigurationPart7() -> Dict[str, Any]:
 
     # 7.9 Ray Resource Configuration
     print("\n[7.9] Ray Resource Configuration")
-    print("Ray resource configuration helps optimize performance for hyperparameter tuning.")
+    print(
+        "Ray resource configuration helps optimize performance for hyperparameter tuning."
+    )
     print("If not configured, Ray will fall back to PySpark resource settings.")
-    
+
     configure_ray_resources = questionary.select(
         "7.9.1 Do you want to configure Ray-specific resources?",
         choices=["Yes", "No (use approximatley the same settings as PySpark)"],
@@ -1703,7 +1768,7 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         print("  - 8-12GB memory for Ray")
         print("  - 2-4 concurrent trials")
         print("This is optimized for ML workloads.")
-        
+
         config["ray"]["resources"] = {}
         config["ray"]["resources"]["num_cpus"] = validate_integer_input(
             "7.9.2 Enter number of CPUs for Ray cluster:", default="4"
@@ -1714,320 +1779,304 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         config["ray"]["resources"]["object_store_memory_gb"] = validate_integer_input(
             "7.9.4 Enter object store memory in GB (for data caching):", default="4"
         )
-        
+
         # Ask for GPU configuration if needed
         use_gpu = questionary.select(
             "7.9.5 Do you want to use GPU acceleration (if available)?",
             choices=["No", "Yes"],
         ).ask()
-        
+
         if use_gpu == "Yes":
             config["ray"]["resources"]["num_gpus"] = validate_integer_input(
                 "7.9.6 Enter number of GPUs to use:", default="0"
             )
         else:
             config["ray"]["resources"]["num_gpus"] = 0
-            
+
         # # Ask for Ray dashboard port
         # config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
         #     "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
         # )
-        
+
         print("✅ Ray resource configuration completed")
-    else: # 'No (use approximatley the same settings as PySpark)'
+    else:  # 'No (use approximatley the same settings as PySpark)'
         print("ℹ️  Ray will use PySpark resource settings as fallback")
-        
+
         # Get PySpark settings to use as base for Ray resources
         pyspark_master = int(config.get("pyspark", {}).get("master", "6"))
         pyspark_driver_memory = int(config.get("pyspark", {}).get("driver_memory", "6"))
-        pyspark_executor_memory = int(config.get("pyspark", {}).get("executor_memory", "6"))
-        
+        pyspark_executor_memory = int(
+            config.get("pyspark", {}).get("executor_memory", "6")
+        )
+
         # Calculate Ray resources based on PySpark settings
         ray_cpus = max(2, pyspark_master - 2)  # Leave some cores for system
-        ray_memory = max(4, pyspark_driver_memory + pyspark_executor_memory - 4)  # Leave some memory for system
-        ray_object_store = max(2, ray_memory // 2)  # Object store is typically half of total memory
-        
+        ray_memory = max(
+            4, pyspark_driver_memory + pyspark_executor_memory - 4
+        )  # Leave some memory for system
+        ray_object_store = max(
+            2, ray_memory // 2
+        )  # Object store is typically half of total memory
+
         # Set Ray resources based on PySpark fallback
         config["ray"]["resources"] = {
             "num_cpus": str(ray_cpus),
             "memory_gb": str(ray_memory),
             "object_store_memory_gb": str(ray_object_store),
             "num_gpus": 0,
-            "dashboard_port": "8265"
+            "dashboard_port": "8265",
         }
 
     return config
 
 
-def get_hyperparameter_with_custom(parameter_name: str, choices: List[str], custom_prompt: str = None) -> List[str]:
+def get_hyperparameter_with_custom(
+    parameter_name: str, choices: List[str], custom_prompt: str = None
+) -> List[str]:
     """
     Get hyperparameter selection with custom option.
-    
+
     Args:
         parameter_name: Name of the parameter for display
         choices: List of predefined choices
         custom_prompt: Custom prompt for custom value input (optional)
-        
+
     Returns:
         List of selected values including any custom values
     """
     # Add custom option to choices
     choices_with_custom = choices + ["custom"]
-    
+
     # Get user selection
     selected = questionary.checkbox(
-        f"{parameter_name}:",
-        choices=choices_with_custom
+        f"{parameter_name}:", choices=choices_with_custom
     ).ask()
-    
+
     # Handle custom values
     if "custom" in selected:
         selected.remove("custom")
         if custom_prompt is None:
             custom_prompt = f"Enter custom {parameter_name.lower()} value:"
-        
+
         custom_value = questionary.text(custom_prompt).ask()
         if custom_value.strip():
             selected.append(custom_value.strip())
-    
+
     return selected
 
 
 def configure_model_hyperparameters(model_name: str) -> dict:
     """
     Configure hyperparameters for a specific model.
-    
+
     Args:
         model_name: Name of the model to configure
-        
+
     Returns:
         Dictionary with hyperparameter configuration
     """
     config = {"use_default": False, "hyperparameters": {}}
-    
+
     if model_name == "Random Forest":
         print("\nRandom Forest Hyperparameters:")
         config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
-            "n_estimators (number of trees)",
-            ["50", "100", "200", "300", "500"]
+            "n_estimators (number of trees)", ["50", "100", "200", "300", "500"]
         )
-        
+
         config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
             "max_depth (max tree depth)",
             ["None", "10", "20", "30", "50"],
-            "Enter custom max_depth value (or 'None'):"
+            "Enter custom max_depth value (or 'None'):",
         )
-        
+
         config["hyperparameters"]["min_samples_split"] = get_hyperparameter_with_custom(
-            "min_samples_split",
-            ["2", "5", "10", "20"]
+            "min_samples_split", ["2", "5", "10", "20"]
         )
-        
+
         config["hyperparameters"]["max_features"] = get_hyperparameter_with_custom(
             "max_features",
             ["sqrt", "log2", "None"],
-            "Enter custom max_features value (sqrt, log2, None, or number):"
+            "Enter custom max_features value (sqrt, log2, None, or number):",
         )
-        
+
     elif model_name == "XGBoost":
         print("\nXGBoost Hyperparameters:")
         config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
-            "n_estimators (number of trees)",
-            ["50", "100", "200", "300", "500"]
+            "n_estimators (number of trees)", ["50", "100", "200", "300", "500"]
         )
-        
+
         config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
-            "max_depth (max tree depth)",
-            ["3", "6", "9", "12", "15"]
+            "max_depth (max tree depth)", ["3", "6", "9", "12", "15"]
         )
-        
+
         config["hyperparameters"]["learning_rate"] = get_hyperparameter_with_custom(
-            "learning_rate",
-            ["0.01", "0.05", "0.1", "0.2", "0.3"]
+            "learning_rate", ["0.01", "0.05", "0.1", "0.2", "0.3"]
         )
-        
+
         config["hyperparameters"]["subsample"] = get_hyperparameter_with_custom(
-            "subsample (fraction of samples)",
-            ["0.6", "0.7", "0.8", "0.9", "1.0"]
+            "subsample (fraction of samples)", ["0.6", "0.7", "0.8", "0.9", "1.0"]
         )
-        
+
     elif model_name == "SVM":
         print("\nSVM Hyperparameters:")
         config["hyperparameters"]["C"] = get_hyperparameter_with_custom(
-            "C (regularization parameter)",
-            ["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"]
+            "C (regularization parameter)", ["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"]
         )
-        
+
         config["hyperparameters"]["kernel"] = get_hyperparameter_with_custom(
-            "kernel",
-            ["rbf", "linear", "poly", "sigmoid"]
+            "kernel", ["rbf", "linear", "poly", "sigmoid"]
         )
-        
+
         config["hyperparameters"]["gamma"] = get_hyperparameter_with_custom(
-            "gamma",
-            ["scale", "auto", "0.001", "0.01", "0.1"]
+            "gamma", ["scale", "auto", "0.001", "0.01", "0.1"]
         )
-        
+
     elif model_name == "KNN":
         print("\nKNN Hyperparameters:")
         config["hyperparameters"]["n_neighbors"] = get_hyperparameter_with_custom(
-            "n_neighbors",
-            ["3", "5", "7", "9", "11", "15", "21"]
+            "n_neighbors", ["3", "5", "7", "9", "11", "15", "21"]
         )
-        
+
         config["hyperparameters"]["weights"] = get_hyperparameter_with_custom(
-            "weights",
-            ["uniform", "distance"]
+            "weights", ["uniform", "distance"]
         )
-        
+
         config["hyperparameters"]["metric"] = get_hyperparameter_with_custom(
-            "metric",
-            ["euclidean", "manhattan", "minkowski", "cosine"]
+            "metric", ["euclidean", "manhattan", "minkowski", "cosine"]
         )
-        
+
     elif model_name == "Gradient Boosting":
         print("\nGradient Boosting Hyperparameters:")
         config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
-            "n_estimators",
-            ["50", "100", "200", "300"]
+            "n_estimators", ["50", "100", "200", "300"]
         )
-        
+
         config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
-            "max_depth",
-            ["3", "6", "9", "12"]
+            "max_depth", ["3", "6", "9", "12"]
         )
-        
+
         config["hyperparameters"]["learning_rate"] = get_hyperparameter_with_custom(
-            "learning_rate",
-            ["0.01", "0.05", "0.1", "0.2", "0.3"]
+            "learning_rate", ["0.01", "0.05", "0.1", "0.2", "0.3"]
         )
-        
+
         config["hyperparameters"]["subsample"] = get_hyperparameter_with_custom(
-            "subsample",
-            ["0.6", "0.7", "0.8", "0.9", "1.0"]
+            "subsample", ["0.6", "0.7", "0.8", "0.9", "1.0"]
         )
-        
+
     elif model_name == "MLP (Neural Network)":
         print("\nMLP (Neural Network) Hyperparameters:")
-        
+
         # Ask for number of different MLP architectures
         while True:
             num_mlps = validate_integer_input(
                 "How many different MLP architectures do you want to test? (1-3)",
-                default="3"
+                default="3",
             )
             if 1 <= int(num_mlps) <= 3:
                 break
             print("⚠️  Please enter a number between 1 and 3")
-        
+
         mlp_architectures = []
         for mlp_idx in range(int(num_mlps)):
             print(f"\n--- Configuring MLP Architecture {mlp_idx + 1} ---")
-            
+
             # Ask for number of hidden layers
             while True:
                 num_layers = validate_integer_input(
-                    f"MLP {mlp_idx + 1}: How many hidden layers? (1-10)",
-                    default="1"
+                    f"MLP {mlp_idx + 1}: How many hidden layers? (1-10)", default="1"
                 )
                 if 1 <= int(num_layers) <= 10:
                     break
                 print("⚠️  Please enter a number between 1 and 10")
-            
+
             layer_sizes = []
             for layer_idx in range(int(num_layers)):
                 while True:
                     neurons = validate_integer_input(
                         f"MLP {mlp_idx + 1}, Layer {layer_idx + 1}: How many neurons? (5-500)",
-                        default="50"
+                        default="50",
                     )
                     if 5 <= int(neurons) <= 500:
                         layer_sizes.append(int(neurons))
                         break
                     print("⚠️  Please enter a number between 5 and 500")
-            
+
             # Convert to tuple format for sklearn
             architecture = tuple(layer_sizes)
             mlp_architectures.append(str(architecture))
             print(f"✅ MLP {mlp_idx + 1} architecture: {architecture}")
-        
+
         config["hyperparameters"]["hidden_layer_sizes"] = mlp_architectures
-        
+
         # Show summary of created architectures
         print(f"\n📊 MLP Architecture Summary:")
         for i, arch in enumerate(mlp_architectures):
             print(f"   🧠 MLP {i+1}: {arch}")
-        
+
         config["hyperparameters"]["activation"] = questionary.checkbox(
-            "activation:",
-            choices=["relu", "tanh", "logistic"]
+            "activation:", choices=["relu", "tanh", "logistic"]
         ).ask()
-        
+
         config["hyperparameters"]["alpha"] = questionary.checkbox(
-            "alpha (regularization):",
-            choices=["0.0001", "0.001", "0.01", "0.1"]
+            "alpha (regularization):", choices=["0.0001", "0.001", "0.01", "0.1"]
         ).ask()
-        
+
     elif model_name == "Decision Tree":
         print("\nDecision Tree Hyperparameters:")
         config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
             "max_depth",
             ["None", "5", "10", "15", "20", "30"],
-            "Enter custom max_depth value (or 'None'):"
+            "Enter custom max_depth value (or 'None'):",
         )
-        
+
         config["hyperparameters"]["min_samples_split"] = get_hyperparameter_with_custom(
-            "min_samples_split",
-            ["2", "5", "10", "20"]
+            "min_samples_split", ["2", "5", "10", "20"]
         )
-        
+
         config["hyperparameters"]["max_features"] = get_hyperparameter_with_custom(
             "max_features",
             ["sqrt", "log2", "None"],
-            "Enter custom max_features value (sqrt, log2, None, or number):"
+            "Enter custom max_features value (sqrt, log2, None, or number):",
         )
-        
+
     elif model_name == "AdaBoost":
         print("\nAdaBoost Hyperparameters:")
         config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
-            "n_estimators",
-            ["50", "100", "200", "300"]
+            "n_estimators", ["50", "100", "200", "300"]
         )
-        
+
         config["hyperparameters"]["learning_rate"] = get_hyperparameter_with_custom(
-            "learning_rate",
-            ["0.01", "0.05", "0.1", "0.2", "0.5", "1.0"]
+            "learning_rate", ["0.01", "0.05", "0.1", "0.2", "0.5", "1.0"]
         )
-        
+
         config["hyperparameters"]["algorithm"] = get_hyperparameter_with_custom(
-            "algorithm",
-            ["SAMME", "SAMME.R"]
+            "algorithm", ["SAMME", "SAMME.R"]
         )
-        
+
     elif model_name in ["Linear Regression", "Logistic Regression"]:
         print(f"\n{model_name} Hyperparameters:")
         config["hyperparameters"]["C"] = get_hyperparameter_with_custom(
             "C (inverse regularization strength)",
-            ["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"]
+            ["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"],
         )
-        
+
         config["hyperparameters"]["solver"] = get_hyperparameter_with_custom(
-            "solver",
-            ["lbfgs", "liblinear", "newton-cg", "sag", "saga"]
+            "solver", ["lbfgs", "liblinear", "newton-cg", "sag", "saga"]
         )
-        
+
         config["hyperparameters"]["max_iter"] = get_hyperparameter_with_custom(
-            "max_iter",
-            ["100", "200", "500", "1000"]
+            "max_iter", ["100", "200", "500", "1000"]
         )
-    
+
     return config
 
     # 7.9 Ray Resource Configuration
     print("\n[7.9] Ray Resource Configuration")
-    print("Ray resource configuration helps optimize performance for hyperparameter tuning.")
+    print(
+        "Ray resource configuration helps optimize performance for hyperparameter tuning."
+    )
     print("If not configured, Ray will fall back to PySpark resource settings.")
-    
+
     # configure_ray_resources = questionary.select(
     #     "7.9.1 Do you want to configure Ray-specific resources?",
     #     choices=["Yes", "No (use PySpark settings as fallback)"],
@@ -2041,7 +2090,7 @@ def configure_model_hyperparameters(model_name: str) -> dict:
         print("  - 8-12GB memory for Ray")
         print("  - 2-4 concurrent trials")
         print("This is optimized for ML workloads.")
-        
+
         config["ray"]["resources"] = {}
         config["ray"]["resources"]["num_cpus"] = validate_integer_input(
             "7.9.2 Enter number of CPUs for Ray cluster:", default="4"
@@ -2052,25 +2101,25 @@ def configure_model_hyperparameters(model_name: str) -> dict:
         config["ray"]["resources"]["object_store_memory_gb"] = validate_integer_input(
             "7.9.4 Enter object store memory in GB (for data caching):", default="4"
         )
-        
+
         # Ask for GPU configuration if needed
         use_gpu = questionary.select(
             "7.9.5 Do you want to use GPU acceleration (if available)?",
             choices=["No", "Yes"],
         ).ask()
-        
+
         if use_gpu == "Yes":
             config["ray"]["resources"]["num_gpus"] = validate_integer_input(
                 "7.9.6 Enter number of GPUs to use:", default="1"
             )
         else:
             config["ray"]["resources"]["num_gpus"] = 0
-            
+
         # Ask for Ray dashboard port
         config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
             "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
         )
-        
+
         print("✅ Ray resource configuration completed")
 
     return config
@@ -2080,7 +2129,9 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     config: Dict[str, Any] = {}
 
     # 0. Metadata
-    project_config, config_name = run_section_with_confirmation("Project Metadata", metadataPart0)
+    project_config, config_name = run_section_with_confirmation(
+        "Project Metadata", metadataPart0
+    )
     config.update(project_config)
 
     if target == "pyspark-only" or target == "full":
@@ -2089,26 +2140,35 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         config.update(data_input_config)
 
         # 2. Preprocessing
-        preprocessing_config = run_section_with_confirmation("Preprocessing", preprocessingPart2)
+        preprocessing_config = run_section_with_confirmation(
+            "Preprocessing", preprocessingPart2
+        )
         config.update(preprocessing_config)
 
         # 3. Feature Extraction
-        feature_extraction_config = run_section_with_confirmation("Feature Extraction", featureCreationPart3, config["project"]["experiment_type"])
+        feature_extraction_config = run_section_with_confirmation(
+            "Feature Extraction",
+            featureCreationPart3,
+            config["project"]["experiment_type"],
+        )
         config.update(feature_extraction_config)
 
         # 4. Feature Transformation
-        feature_transformation_config = run_section_with_confirmation("Feature Transformation", featureTransformationsPart4)
+        feature_transformation_config = run_section_with_confirmation(
+            "Feature Transformation", featureTransformationsPart4
+        )
         config.update(feature_transformation_config)
 
         # 5. Data Leakage Prevention (only if ML Classification and Feature Transformation are enabled)
-        if (config["project"]["experiment_type"] == "ML (Classification)" and 
-            config["feature_transformation"]["transformations"] != ["None"]):
+        if config["project"]["experiment_type"] == "ML (Classification)" and config[
+            "feature_transformation"
+        ]["transformations"] != ["None"]:
             data_leakage_prevention_config = run_section_with_confirmation(
-                "Data Leakage Prevention", 
+                "Data Leakage Prevention",
                 dataLeakagePreventionPart5,
-                config["project"]["experiment_type"], 
-                config["feature_transformation"]["transformations"], 
-                config["data_input"]["groups"]
+                config["project"]["experiment_type"],
+                config["feature_transformation"]["transformations"],
+                config["data_input"]["groups"],
             )
             config.update(data_leakage_prevention_config)
 
@@ -2119,9 +2179,14 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
     # 6. Deployment Configuration
     print("\n[6] Deployment Configuration")
-    deployment_method_config = run_section_with_confirmation("Deployment Configuration", deploymentMethodPart6, target, config["project"]["deployment_method"])
+    deployment_method_config = run_section_with_confirmation(
+        "Deployment Configuration",
+        deploymentMethodPart6,
+        target,
+        config["project"]["deployment_method"],
+    )
     config.update(deployment_method_config)
-    
+
     # Move SLURM options to project section if they exist
     if "slurm_options" in config:
         if "project" not in config:
@@ -2141,7 +2206,9 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     if (target == "ray-only" or target == "full") and config["project"][
         "experiment_type"
     ] in ["ML (Classification)", "ML (Clustering)"]:
-        ray_config = run_section_with_confirmation("Ray Configuration", rayConfigurationPart7)
+        ray_config = run_section_with_confirmation(
+            "Ray Configuration", rayConfigurationPart7
+        )
         config.update(ray_config)
     else:
         # Skip Ray configuration for Analysis mode
@@ -2155,8 +2222,6 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             print(
                 "   📁 Output: Parquet files ready for pandas, R, or other analysis tools"
             )
-
-      
 
     # Configuration summary
     print("\n" + "=" * 60)
@@ -2174,39 +2239,50 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print(f"📈 Analysis Pipeline: PySpark only (manual ML)")
 
     # Show test subject selection info if applicable
-    if (config.get("data_leakage_prevention", {}).get("test_subjects_paths")):
+    if config.get("data_leakage_prevention", {}).get("test_subjects_paths"):
         test_subject_paths = config["data_leakage_prevention"]["test_subjects_paths"]
         test_count = len(test_subject_paths)
-        
+
         # Extract subject IDs from paths
         selected_subject_ids = []
         for test_subject_path in test_subject_paths:
-            path_parts = test_subject_path.split('/')
+            path_parts = test_subject_path.split("/")
             filename = path_parts[-1]
-            subject_id = filename.replace('_task-eyesclosed_eeg.set', '').replace('_eeg.set', '').replace('.set', '').replace('.fif', '')
+            subject_id = (
+                filename.replace("_task-eyesclosed_eeg.set", "")
+                .replace("_eeg.set", "")
+                .replace(".set", "")
+                .replace(".fif", "")
+            )
             selected_subject_ids.append(subject_id)
-        
+
         if test_count == 1:
-            print(f"🎯 Test Subject: {selected_subject_ids[0]} (automatically selected)")
+            print(
+                f"🎯 Test Subject: {selected_subject_ids[0]} (automatically selected)"
+            )
             print(f"   📍 Path: {test_subject_paths[0]}")
         else:
-            print(f"🎯 Test Subjects: {', '.join(selected_subject_ids)} (automatically selected)")
+            print(
+                f"🎯 Test Subjects: {', '.join(selected_subject_ids)} (automatically selected)"
+            )
             print(f"   📍 Count: {test_count} subjects")
-            for i, (subject_id, path) in enumerate(zip(selected_subject_ids, test_subject_paths), 1):
+            for i, (subject_id, path) in enumerate(
+                zip(selected_subject_ids, test_subject_paths), 1
+            ):
                 print(f"      {i}. {subject_id}: {path}")
-    
+
     # Show LOSO information if applicable
-    elif (config.get("data_leakage_prevention", {}).get("use_loso")):
+    elif config.get("data_leakage_prevention", {}).get("use_loso"):
         loso_metadata = config["data_leakage_prevention"]["loso_metadata"]
         total_folds = loso_metadata.get("total_folds", "unknown")
         subjects_per_group = loso_metadata.get("subjects_per_group", "unknown")
         total_subjects = loso_metadata.get("total_subjects", "unknown")
-        
+
         print(f"🎯 LOSO Cross-Validation: {total_folds} folds")
         print(f"   📊 Leave out {subjects_per_group} subjects per group per fold")
         print(f"   📈 Total subjects: {total_subjects}")
         print(f"   🔄 Each subject used as test data exactly once")
-        
+
         # Show example of first fold if available
         if config.get("data_leakage_prevention", {}).get("loso_folds"):
             first_fold = config["data_leakage_prevention"]["loso_folds"][0]
@@ -2214,11 +2290,16 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 # Extract subject IDs from first fold
                 first_fold_subject_ids = []
                 for test_path in first_fold:
-                    path_parts = test_path.split('/')
+                    path_parts = test_path.split("/")
                     filename = path_parts[-1]
-                    subject_id = filename.replace('_task-eyesclosed_eeg.set', '').replace('_eeg.set', '').replace('.set', '').replace('.fif', '')
+                    subject_id = (
+                        filename.replace("_task-eyesclosed_eeg.set", "")
+                        .replace("_eeg.set", "")
+                        .replace(".set", "")
+                        .replace(".fif", "")
+                    )
                     first_fold_subject_ids.append(subject_id)
-                
+
                 print(f"   📋 Example fold 1: {', '.join(first_fold_subject_ids)}")
 
     print("=" * 60)
@@ -2253,40 +2334,40 @@ def sanitize_slurm_options(options: str) -> str:
 def confirm_config_section(section_name: str, section_config: Dict[str, Any]) -> bool:
     """
     Display a configuration section and ask user to confirm.
-    
+
     Args:
         section_name: Name of the configuration section
         section_config: Dictionary containing the section configuration
-        
+
     Returns:
         True if user confirms, False if user wants to redo the section
     """
-    print(f"\n" + "="*60)
+    print(f"\n" + "=" * 60)
     print(f"📋 {section_name.upper()} CONFIGURATION REVIEW")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Pretty print the configuration
     yaml_str = yaml.dump(section_config, default_flow_style=False, sort_keys=False)
     print(yaml_str)
-    
+
     # Ask for confirmation
     confirm = questionary.select(
         f"✅ Does this {section_name.lower()} configuration look correct?",
-        choices=["Yes, continue to next section", "No, let me redo this section"]
+        choices=["Yes, continue to next section", "No, let me redo this section"],
     ).ask()
-    
+
     return confirm == "Yes, continue to next section"
 
 
 def run_section_with_confirmation(section_name: str, section_function, *args, **kwargs):
     """
     Run a configuration section function with confirmation loop.
-    
+
     Args:
         section_name: Name of the section for display
         section_function: Function to run for the section
         *args, **kwargs: Arguments to pass to the section function
-        
+
     Returns:
         The configuration dictionary from the section
     """
@@ -2345,42 +2426,42 @@ def check_paths_in_groups(
 
 
 def generate_loso_folds(
-    groups: Dict[str, List[str]], 
-    subjects_per_group: int, 
+    groups: Dict[str, List[str]],
+    subjects_per_group: int,
     random_seed: int = 42,
     individual_loso: bool = False,
-    uneven_handling: str = "cutoff"
+    uneven_handling: str = "cutoff",
 ) -> Tuple[List[List[str]], Dict[str, Any]]:
     """
     Generate LOSO (Leave-One-Subject-Out) folds with systematic, ordered selection.
-    
+
     Args:
         groups: Dictionary of group names to subject paths
         subjects_per_group: Number of subjects to leave out per group per fold
         random_seed: Random seed for reproducibility (default: 42) - not used for ordering
         individual_loso: If True, each subject gets its own test fold regardless of group
-        uneven_handling: How to handle uneven group sizes - "cutoff" (stop when any group runs out) 
+        uneven_handling: How to handle uneven group sizes - "cutoff" (stop when any group runs out)
                         or "wrap_around" (reuse subjects from beginning when group runs out)
-        
+
     Returns:
         Tuple of (list_of_test_subject_lists, metadata_dict)
     """
-    
+
     if individual_loso:
         # Individual LOSO: each subject gets its own test fold
         print(f"   🎯 Generating Individual LOSO folds (one per subject)")
-        
+
         # Collect all subjects from all groups
         all_subjects = []
         for group_name, paths in groups.items():
             for path in paths:
                 all_subjects.append(path)
-        
+
         # Create one fold per subject
         all_folds = []
         for subject_path in all_subjects:
             all_folds.append([subject_path])  # Each fold contains exactly one subject
-        
+
         # Create metadata for individual LOSO
         metadata = {
             "total_folds": len(all_folds),
@@ -2389,51 +2470,66 @@ def generate_loso_folds(
             "total_subjects": len(all_subjects),
             "groups": list(groups.keys()),
             "num_groups": len(groups),
-            "fold_generation_method": "individual_loso"
+            "fold_generation_method": "individual_loso",
         }
-        
+
         return all_folds, metadata
-    
+
     else:
         # Standard LOSO: systematic selection per group
         num_groups = len(groups)
-        
+
         # Check if subjects_per_group is evenly divisible by number of groups
         if subjects_per_group % num_groups != 0:
-            print(f"   ⚠️  WARNING: Subjects per group ({subjects_per_group}) is not evenly divisible by number of groups ({num_groups})")
-            print(f"   📊 This will result in uneven subject distribution across groups")
-        
+            print(
+                f"   ⚠️  WARNING: Subjects per group ({subjects_per_group}) is not evenly divisible by number of groups ({num_groups})"
+            )
+            print(
+                f"   📊 This will result in uneven subject distribution across groups"
+            )
+
         # Calculate subjects per group per fold
         subjects_per_group_per_fold = subjects_per_group // num_groups
-        
+
         # Collect all subjects with their group information, maintaining order
         subjects_by_group = {}
         for group_name, paths in groups.items():
             subjects_by_group[group_name] = paths.copy()  # Keep original order
-        
+
         # Check for uneven group sizes and provide warning
-        group_sizes = {group_name: len(subjects) for group_name, subjects in subjects_by_group.items()}
+        group_sizes = {
+            group_name: len(subjects)
+            for group_name, subjects in subjects_by_group.items()
+        }
         min_group_size = min(group_sizes.values())
         max_group_size = max(group_sizes.values())
-        
+
         if min_group_size != max_group_size:
             print(f"   ⚠️  WARNING: Uneven group sizes detected:")
             for group_name, size in group_sizes.items():
                 print(f"      📊 {group_name}: {size} subjects")
             print(f"   🎯 Using '{uneven_handling}' strategy for uneven groups")
-            
+
             if uneven_handling == "cutoff":
-                print(f"   📋 Strategy: Stop creating folds when any group runs out of subjects")
+                print(
+                    f"   📋 Strategy: Stop creating folds when any group runs out of subjects"
+                )
             elif uneven_handling == "wrap_around":
-                print(f"   📋 Strategy: Reuse subjects from beginning when group runs out (wrap-around)")
+                print(
+                    f"   📋 Strategy: Reuse subjects from beginning when group runs out (wrap-around)"
+                )
             else:
-                raise ValueError(f"Invalid uneven_handling option: {uneven_handling}. Use 'cutoff' or 'wrap_around'")
-        
+                raise ValueError(
+                    f"Invalid uneven_handling option: {uneven_handling}. Use 'cutoff' or 'wrap_around'"
+                )
+
         # Validate that each group has enough subjects for at least one fold
         for group_name, subjects in subjects_by_group.items():
             if len(subjects) < subjects_per_group_per_fold:
-                raise ValueError(f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group_per_fold} are needed per fold")
-        
+                raise ValueError(
+                    f"Group {group_name} has only {len(subjects)} subjects, but {subjects_per_group_per_fold} are needed per fold"
+                )
+
         # Validate that we don't leave out all subjects (which would leave no training data)
         total_subjects = sum(len(subjects) for subjects in subjects_by_group.values())
         if subjects_per_group >= total_subjects:
@@ -2442,151 +2538,190 @@ def generate_loso_folds(
                 f"This would leave no training subjects, preventing transformers from fitting. "
                 f"Please ensure at least one subject remains for training."
             )
-        
+
         # Generate systematic folds
         all_folds = []
         group_names = list(subjects_by_group.keys())
-        
+
         # Calculate how many folds we can generate based on strategy
         if uneven_handling == "cutoff":
             # Stop when any group runs out of subjects
             max_folds = min_group_size // subjects_per_group_per_fold
-            print(f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold (cutoff strategy)")
+            print(
+                f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold (cutoff strategy)"
+            )
         else:  # wrap_around
             # Can generate more folds by reusing subjects
             max_folds = max_group_size // subjects_per_group_per_fold
-            print(f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold (wrap-around strategy)")
-        
+            print(
+                f"   📊 Generating {max_folds} folds with {subjects_per_group_per_fold} subjects per group per fold (wrap-around strategy)"
+            )
+
         for fold_idx in range(max_folds):
             fold_subjects = []
-            
+
             for group_name in group_names:
                 # Get subjects for this group for this fold
                 start_idx = fold_idx * subjects_per_group_per_fold
                 end_idx = start_idx + subjects_per_group_per_fold
-                
+
                 if uneven_handling == "cutoff":
                     # Stop if we run out of subjects in this group
                     if start_idx >= len(subjects_by_group[group_name]):
-                        print(f"   ⏹️  Stopping at fold {fold_idx + 1}: Group {group_name} ran out of subjects")
+                        print(
+                            f"   ⏹️  Stopping at fold {fold_idx + 1}: Group {group_name} ran out of subjects"
+                        )
                         break
-                    
+
                     # Take available subjects (might be fewer than requested)
                     available_subjects = subjects_by_group[group_name][start_idx:]
                     if len(available_subjects) < subjects_per_group_per_fold:
-                        print(f"   ⚠️  Fold {fold_idx + 1}: Group {group_name} only has {len(available_subjects)} subjects available (requested {subjects_per_group_per_fold})")
+                        print(
+                            f"   ⚠️  Fold {fold_idx + 1}: Group {group_name} only has {len(available_subjects)} subjects available (requested {subjects_per_group_per_fold})"
+                        )
                         group_subjects = available_subjects
                     else:
-                        group_subjects = available_subjects[:subjects_per_group_per_fold]
-                
+                        group_subjects = available_subjects[
+                            :subjects_per_group_per_fold
+                        ]
+
                 else:  # wrap_around
                     # Use modulo to wrap around when we run out of subjects
                     group_subjects = []
                     for i in range(subjects_per_group_per_fold):
-                        subject_idx = (start_idx + i) % len(subjects_by_group[group_name])
-                        group_subjects.append(subjects_by_group[group_name][subject_idx])
-                    
+                        subject_idx = (start_idx + i) % len(
+                            subjects_by_group[group_name]
+                        )
+                        group_subjects.append(
+                            subjects_by_group[group_name][subject_idx]
+                        )
+
                     # Check if we're reusing subjects
-                    if start_idx + subjects_per_group_per_fold > len(subjects_by_group[group_name]):
-                        print(f"   🔄 Fold {fold_idx + 1}: Group {group_name} using wrap-around (reusing subjects)")
-                
+                    if start_idx + subjects_per_group_per_fold > len(
+                        subjects_by_group[group_name]
+                    ):
+                        print(
+                            f"   🔄 Fold {fold_idx + 1}: Group {group_name} using wrap-around (reusing subjects)"
+                        )
+
                 fold_subjects.extend(group_subjects)
-            
+
             # If we broke out of the loop due to cutoff, stop creating more folds
             if uneven_handling == "cutoff" and len(fold_subjects) < subjects_per_group:
-                print(f"   ⏹️  Stopping fold generation: insufficient subjects for complete fold")
+                print(
+                    f"   ⏹️  Stopping fold generation: insufficient subjects for complete fold"
+                )
                 break
-            
+
             all_folds.append(fold_subjects)
-        
+
         # Create metadata
         metadata = {
             "total_folds": len(all_folds),
             "subjects_per_group": subjects_per_group,
             "subjects_per_group_per_fold": subjects_per_group_per_fold,
-            "total_subjects": sum(len(subjects) for subjects in subjects_by_group.values()),
+            "total_subjects": sum(
+                len(subjects) for subjects in subjects_by_group.values()
+            ),
             "groups": list(groups.keys()),
             "num_groups": num_groups,
-            "fold_generation_method": "systematic_ordered"
+            "fold_generation_method": "systematic_ordered",
         }
-        
+
         return all_folds, metadata
 
 
 def select_test_subjects_automatically(
-    groups: Dict[str, List[str]], 
-    test_count: int, 
-    random_seed: int = 42
+    groups: Dict[str, List[str]], test_count: int, random_seed: int = 42
 ) -> Tuple[List[str], Dict[str, Any]]:
     """
     Automatically select test subjects with balanced group representation when possible.
-    
+
     Args:
         groups: Dictionary of group names to subject paths
         test_count: Number of test subjects to select
         random_seed: Random seed for reproducibility (default: 42)
-        
+
     Returns:
         Tuple of (selected_subject_paths, metadata_dict)
     """
     num_groups = len(groups)
-    
+
     # Collect all available subjects from groups
     all_subject_paths = []
     for group_name, paths in groups.items():
         all_subject_paths.extend(paths)
-    
+
     if not all_subject_paths:
-        raise ValueError("No subjects found in groups. Please check your data input configuration.")
-    
+        raise ValueError(
+            "No subjects found in groups. Please check your data input configuration."
+        )
+
     if test_count > len(all_subject_paths):
-        raise ValueError(f"Requested {test_count} test subjects but only {len(all_subject_paths)} subjects available.")
-    
+        raise ValueError(
+            f"Requested {test_count} test subjects but only {len(all_subject_paths)} subjects available."
+        )
+
     # Use fixed seed for reproducibility
     random.seed(random_seed)
-    
+
     # Select test subjects with balanced group representation when possible
     if test_count >= num_groups:
         # Try to select at least one subject from each group
         selected_test_subjects = []
         remaining_subjects = all_subject_paths.copy()
-        
+
         # First, select one subject from each group
         for group_name, group_paths in groups.items():
-            if remaining_subjects and any(path in remaining_subjects for path in group_paths):
+            if remaining_subjects and any(
+                path in remaining_subjects for path in group_paths
+            ):
                 # Find subjects from this group that are still available
-                available_from_group = [path for path in group_paths if path in remaining_subjects]
+                available_from_group = [
+                    path for path in group_paths if path in remaining_subjects
+                ]
                 if available_from_group:
                     selected = random.choice(available_from_group)
                     selected_test_subjects.append(selected)
                     remaining_subjects.remove(selected)
-        
+
         # Fill remaining slots with random selection from all remaining subjects
         remaining_needed = test_count - len(selected_test_subjects)
         if remaining_needed > 0 and remaining_subjects:
-            additional_subjects = random.sample(remaining_subjects, min(remaining_needed, len(remaining_subjects)))
+            additional_subjects = random.sample(
+                remaining_subjects, min(remaining_needed, len(remaining_subjects))
+            )
             selected_test_subjects.extend(additional_subjects)
-        
+
         # If we still don't have enough, add more from any available subjects
         if len(selected_test_subjects) < test_count:
-            all_available = [path for path in all_subject_paths if path not in selected_test_subjects]
+            all_available = [
+                path for path in all_subject_paths if path not in selected_test_subjects
+            ]
             if all_available:
                 additional_needed = test_count - len(selected_test_subjects)
-                additional = random.sample(all_available, min(additional_needed, len(all_available)))
+                additional = random.sample(
+                    all_available, min(additional_needed, len(all_available))
+                )
                 selected_test_subjects.extend(additional)
     else:
         # Simple random selection when we can't guarantee balance
         selected_test_subjects = random.sample(all_subject_paths, test_count)
-    
+
     # Extract subject IDs from paths for display
     selected_subject_ids = []
     for subject_path in selected_test_subjects:
-        path_parts = subject_path.split('/')
+        path_parts = subject_path.split("/")
         filename = path_parts[-1]
         # Remove common EEG file extensions and task suffixes
-        subject_id = filename.replace('_task-eyesclosed_eeg.set', '').replace('_eeg.set', '').replace('.set', '').replace('.fif', '')
+        subject_id = (
+            filename.replace("_task-eyesclosed_eeg.set", "")
+            .replace("_eeg.set", "")
+            .replace(".set", "")
+            .replace(".fif", "")
+        )
         selected_subject_ids.append(subject_id)
-    
+
     # Show group representation
     selected_groups = set()
     for subject_path in selected_test_subjects:
@@ -2594,10 +2729,10 @@ def select_test_subjects_automatically(
             if subject_path in group_paths:
                 selected_groups.add(group_name)
                 break
-    
+
     all_groups = set(groups.keys())
     missing_groups = all_groups - selected_groups
-    
+
     # Create metadata
     metadata = {
         "selected_subject_paths": selected_test_subjects,
@@ -2607,9 +2742,9 @@ def select_test_subjects_automatically(
         "all_groups_represented": len(missing_groups) == 0,
         "random_seed": random_seed,
         "test_count": test_count,
-        "num_groups": num_groups
+        "num_groups": num_groups,
     }
-    
+
     return selected_test_subjects, metadata
 
 
@@ -2619,3 +2754,4 @@ if __name__ == "__main__":
 
     config, config_name = build_config(target=target)
     save_config(config, config_name)
+

@@ -9,16 +9,17 @@ Author: Adel Sahuc
 
 import os
 import re
-import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
+
+import yaml
 
 
 class UnifiedConfigHandler:
     """
     Unified configuration management for the entire EEG pipeline.
     Handles both PySpark and Ray configurations with consistent validation.
-    
+
     Every validation method directly corresponds to a Part function in config-maker.py:
         - metadataPart0_validate() ← metadataPart0()
         - dataInputPart1_validate() ← dataInputPart1()
@@ -31,13 +32,12 @@ class UnifiedConfigHandler:
         - slurmOptionsPart6_validate() ← deploymentMethodPart6() (SLURM section)
 
     This ensures perfect synchronization between configuration creation and validation.
-    
-    Why: 
-    This class is useful because it allows consistent validation across the pipepline (the ray and pyspark sections). 
+
+    Why:
+    This class is useful because it allows consistent validation across the pipepline (the ray and pyspark sections).
     Before this class each function had its own validation logic which led to wild goose chases for dubugging validation errors and insuring consistent functionality accross runs.
     """
 
-    
     def __init__(self, config_path: str):
         """Initialize the unified configuration handler.
 
@@ -49,165 +49,168 @@ class UnifiedConfigHandler:
         self.config_path = config_path
         self.raw_config = None
         self._load_and_validate()
-    
+
     # ========================================
     # CORE LOADING AND VALIDATION
     # ========================================
-    
+
     def _load_and_validate(self) -> None:
         """Load and validate the configuration in one step."""
         self.raw_config = self._load_config()
         self._validate_config()
         print("✅ Configuration loaded and validated successfully!")
-    
+
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from YAML file."""
         print(f"🔧 Loading configuration from: {self.config_path}")
-        
+
         # Check if config file exists
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
-        
+
         try:
             with open(self.config_path, "r") as f:
                 config = cast(Dict[str, Any], yaml.safe_load(f))
-            
+
             if config is None:
                 raise ValueError("Configuration file is empty")
-            
+
             print("📋 Configuration loaded successfully!")
             return config
-            
+
         except yaml.YAMLError as e:
             print(f"❌ Error parsing YAML configuration: {e}")
             raise
         except Exception as e:
             print(f"❌ Error loading configuration: {e}")
             raise
-    
+
     def _validate_config(self) -> None:
         """Validate the entire configuration."""
         print("🔍 Validating configuration...")
-        
+
         # TODO edit this to only validate sections needed for the target container and/or setup
         # This could be enhanced to validate only sections needed based on:
         # - Container type (PySpark-only, Ray-only, or full)
         # - Experiment type (ML vs Analysis)
         # - Deployment method (Docker vs Singularity)
-        required_sections = ['project']
-        
+        required_sections = ["project"]
+
         # Check required sections exist
         for section in required_sections:
             if section not in self.raw_config:
                 raise ValueError(f"Missing required configuration section: {section}")
             if not self.raw_config[section]:
                 raise ValueError(f"Config section '{section}' is empty")
-        
+
         # Validate individual sections
         self.metadataPart0_validate()
-        
+
         # Conditional validation based on what's present
-        if 'data_input' in self.raw_config:
+        if "data_input" in self.raw_config:
             self.dataInputPart1_validate()
-        if 'preprocessing' in self.raw_config:
+        if "preprocessing" in self.raw_config:
             self.preprocessingPart2_validate()
-        if 'feature_extraction' in self.raw_config:
+        if "feature_extraction" in self.raw_config:
             self.featureCreationPart3_validate()
-        if 'feature_transformation' in self.raw_config:
+        if "feature_transformation" in self.raw_config:
             self.featureTransformationsPart4_validate()
-        if 'data_leakage_prevention' in self.raw_config:
+        if "data_leakage_prevention" in self.raw_config:
             self.dataLeakagePreventionPart5_validate()
-        if 'pyspark' in self.raw_config:
+        if "pyspark" in self.raw_config:
             self.deploymentMethodPart6_validate()
-        if 'ray' in self.raw_config:
+        if "ray" in self.raw_config:
             self.rayConfigurationPart7_validate()
-        
+
         # Validate SLURM options if present (created by config-maker.py)
-        if 'slurm_options' in self.raw_config:
+        if "slurm_options" in self.raw_config:
             self.slurmOptionsPart6_validate()
-        
+
         print("✅ Configuration validation completed!")
-    
+
     # ========================================
     # SECTION-SPECIFIC VALIDATION
     # ========================================
     # Each validation method directly corresponds to a Part function in config-maker.py:
-    # all the functions and names are at the top of the file 
-    
+    # all the functions and names are at the top of the file
+
     def metadataPart0_validate(self) -> None:
         """Validate project configuration (metadataPart0)."""
-        project_config = self.raw_config.get('project', {})
-        
+        project_config = self.raw_config.get("project", {})
+
         # Required project fields
-        required_project_fields = ['name', 'experiment_type', 'deployment_method']
+        required_project_fields = ["name", "experiment_type", "deployment_method"]
         for field in required_project_fields:
             if field not in project_config:
                 raise ValueError(f"Missing required project field: {field}")
             if not project_config[field]:
                 raise ValueError(f"Project field '{field}' is empty")
-        
+
         # Validate experiment type
         valid_experiment_types = [
             "ML (Classification)",
-            "ML (Clustering)", 
-            "Analysis (No Ray ML)"
+            "ML (Clustering)",
+            "Analysis (No Ray ML)",
         ]
-        
-        experiment_type = project_config['experiment_type']
+
+        experiment_type = project_config["experiment_type"]
         if experiment_type not in valid_experiment_types:
-            raise ValueError(f"Invalid experiment type: {experiment_type}. "
-                           f"Must be one of: {valid_experiment_types}")
-        
+            raise ValueError(
+                f"Invalid experiment type: {experiment_type}. "
+                f"Must be one of: {valid_experiment_types}"
+            )
+
         # Validate deployment method
         valid_deployment_methods = [
             "Docker",
             "Singularity with Slurm",
-            "Singularity without Slurm"
+            "Singularity without Slurm",
         ]
-        
-        deployment_method = project_config['deployment_method']
+
+        deployment_method = project_config["deployment_method"]
         if deployment_method not in valid_deployment_methods:
-            raise ValueError(f"Invalid deployment method: {deployment_method}. "
-                           f"Must be one of: {valid_deployment_methods}")
-        
+            raise ValueError(
+                f"Invalid deployment method: {deployment_method}. "
+                f"Must be one of: {valid_deployment_methods}"
+            )
+
         # Validate subjects_or_events if present
-        if 'subjects_or_events' in project_config:
-            subjects_or_events = project_config['subjects_or_events']
-            if subjects_or_events not in ['subjects', 'events']:
-                raise ValueError("subjects_or_events must be 'subjects' or 'events'")
-            
-            # Validate events_of_interest if analyzing events
-            if subjects_or_events == 'events':
-                if 'events_of_interest' not in project_config:
-                    raise ValueError("Missing events_of_interest for events analysis")
-                events_of_interest = project_config['events_of_interest']
-                if not isinstance(events_of_interest, list):
-                    raise ValueError("events_of_interest must be a list")
-        
+        if "subjects_or_events" in project_config:
+            subjects_or_events = project_config["subjects_or_events"]
+
+        if subjects_or_events not in ["subjects", "events"]:
+            raise ValueError("subjects_or_events must be 'subjects' or 'events'")
+
+        # Validate events_of_interest if analyzing events
+        if subjects_or_events == "events":
+            raise ValueError(
+                "Unfortunately support for events has not been created yet."
+            )
+
         # Validate output_dir if present
-        if 'output_dir' in project_config:
-            output_dir = project_config['output_dir']
+        if "output_dir" in project_config:
+            output_dir = project_config["output_dir"]
             if not isinstance(output_dir, str) or not output_dir.strip():
                 raise ValueError("output_dir must be a non-empty string")
-        
+
         # Validate config_name if present
-        if 'config_name' in project_config:
-            config_name = project_config['config_name']
+        if "config_name" in project_config:
+            config_name = project_config["config_name"]
             if not isinstance(config_name, str) or not config_name.strip():
                 raise ValueError("config_name must be a non-empty string")
-    
+
     def dataInputPart1_validate(self) -> None:
         """Validate data input configuration (dataInputPart1)."""
-        data_input_config = self.raw_config.get('data_input', {})
-        
+        data_input_config = self.raw_config.get("data_input", {})
+
         # Check groups
-        if 'groups' not in data_input_config:
+        if "groups" not in data_input_config:
             raise ValueError("Missing 'groups' in data_input section")
-        
-        groups = data_input_config['groups']
+
+        groups = data_input_config["groups"]
         if not groups:
             raise ValueError("Data input 'groups' section is empty")
-        
+
         # Check each group has files
         for group_name, file_paths in groups.items():
             if not file_paths:
@@ -216,338 +219,417 @@ class UnifiedConfigHandler:
                 raise ValueError(f"Group '{group_name}' file_paths must be a list")
             if len(file_paths) == 0:
                 raise ValueError(f"Group '{group_name}' has empty file paths list")
-    
+
     def preprocessingPart2_validate(self) -> None:
         """Validate preprocessing configuration (preprocessingPart2)."""
-        preprocessing_config = self.raw_config.get('preprocessing', {})
-        
+        preprocessing_config = self.raw_config.get("preprocessing", {})
+
         # Check required preprocessing fields
-        required_preprocessing_fields = ['window_size', 'sliding_window', 'reject_by_annotation']
+        required_preprocessing_fields = [
+            "window_size",
+            "sliding_window",
+            "reject_by_annotation",
+        ]
         for field in required_preprocessing_fields:
             if field not in preprocessing_config:
                 raise ValueError(f"Missing required preprocessing field: {field}")
             if preprocessing_config[field] is None:
                 raise ValueError(f"Preprocessing field '{field}' is None")
-        
+
         # Check bands if present
-        if 'bands' in preprocessing_config:
-            bands = preprocessing_config['bands']
+        if "bands" in preprocessing_config:
+            bands = preprocessing_config["bands"]
             if not bands:
                 raise ValueError("Preprocessing 'bands' section is empty")
-        
+
         # Validate downsampling if present
-        if 'downsampling' in preprocessing_config:
-            downsampling = preprocessing_config['downsampling']
+        if "downsampling" in preprocessing_config:
+            downsampling = preprocessing_config["downsampling"]
             if downsampling is not None and not isinstance(downsampling, (int, float)):
                 raise ValueError("Downsampling must be a number or None")
             if downsampling is not None and downsampling <= 0:
                 raise ValueError("Downsampling rate must be positive")
-        
+
         # Validate normalize_psd if present
-        if 'normalize_psd' in preprocessing_config:
-            normalize_psd = preprocessing_config['normalize_psd']
-            if normalize_psd not in ['Yes', 'No']:
+        if "normalize_psd" in preprocessing_config:
+            normalize_psd = preprocessing_config["normalize_psd"]
+            if normalize_psd not in ["Yes", "No"]:
                 raise ValueError("normalize_psd must be 'Yes' or 'No'")
-        
+
         # Validate epoch rejection if present
-        if 'epoch_rejection' in preprocessing_config:
-            epoch_rejection = preprocessing_config['epoch_rejection']
+        if "epoch_rejection" in preprocessing_config:
+            epoch_rejection = preprocessing_config["epoch_rejection"]
             if epoch_rejection is not None:
                 if not isinstance(epoch_rejection, dict):
                     raise ValueError("epoch_rejection must be a dictionary or None")
-                if 'reject' in epoch_rejection:
-                    reject = epoch_rejection['reject']
+                if "reject" in epoch_rejection:
+                    reject = epoch_rejection["reject"]
                     if not isinstance(reject, (int, float)) or reject <= 0:
-                        raise ValueError("epoch_rejection.reject must be a positive number")
-                if 'flat' in epoch_rejection:
-                    flat = epoch_rejection['flat']
+                        raise ValueError(
+                            "epoch_rejection.reject must be a positive number"
+                        )
+                if "flat" in epoch_rejection:
+                    flat = epoch_rejection["flat"]
                     if not isinstance(flat, (int, float)) or flat < 0:
-                        raise ValueError("epoch_rejection.flat must be a non-negative number")
-        
+                        raise ValueError(
+                            "epoch_rejection.flat must be a non-negative number"
+                        )
+
         # Validate use_epoch_rejection if present
-        if 'use_epoch_rejection' in preprocessing_config:
-            use_epoch_rejection = preprocessing_config['use_epoch_rejection']
-            if use_epoch_rejection not in ['Yes', 'No']:
+        if "use_epoch_rejection" in preprocessing_config:
+            use_epoch_rejection = preprocessing_config["use_epoch_rejection"]
+            if use_epoch_rejection not in ["Yes", "No"]:
                 raise ValueError("use_epoch_rejection must be 'Yes' or 'No'")
-    
+
     def featureCreationPart3_validate(self) -> None:
         """Validate feature extraction configuration (featureCreationPart3)."""
-        feature_extraction_config = self.raw_config.get('feature_extraction', {})
-        
+        feature_extraction_config = self.raw_config.get("feature_extraction", {})
+
         # Check required feature extraction fields
-        required_feature_extraction_fields = ['method', 'features', 'output_format']
+        required_feature_extraction_fields = ["method", "features", "output_format"]
         for field in required_feature_extraction_fields:
             if field not in feature_extraction_config:
                 raise ValueError(f"Missing required feature_extraction field: {field}")
             if feature_extraction_config[field] is None:
                 raise ValueError(f"Feature extraction field '{field}' is None")
-        
+
         # Validate method
-        method = feature_extraction_config['method']
-        valid_methods = ['welch', 'multitaper']
+        method = feature_extraction_config["method"]
+        valid_methods = ["welch", "multitaper"]
         if method not in valid_methods:
-            raise ValueError(f"Feature extraction method must be one of: {valid_methods}")
-        
+            raise ValueError(
+                f"Feature extraction method must be one of: {valid_methods}"
+            )
+
         # Validate output_format
-        output_format = feature_extraction_config['output_format']
-        valid_formats = ['ml', 'analysis']
+        output_format = feature_extraction_config["output_format"]
+        valid_formats = ["ml", "analysis"]
         if output_format not in valid_formats:
             raise ValueError(f"Output format must be one of: {valid_formats}")
-        
+
         # Validate features structure
-        features = feature_extraction_config['features']
+        features = feature_extraction_config["features"]
         if not isinstance(features, dict):
             raise ValueError("Features must be a dictionary")
-        
+
         # Check for required feature types
-        required_feature_types = ['per_channel_across_bands', 'per_channel_per_band']
+        required_feature_types = ["per_channel_across_bands", "per_channel_per_band"]
         for feature_type in required_feature_types:
             if feature_type not in features:
                 raise ValueError(f"Missing required feature type: {feature_type}")
             if not isinstance(features[feature_type], list):
                 raise ValueError(f"Feature type {feature_type} must be a list")
-    
+
     def featureTransformationsPart4_validate(self) -> None:
         """Validate feature transformation configuration (featureTransformationsPart4)."""
-        feature_transformation_config = self.raw_config.get('feature_transformation', {})
-        
+        feature_transformation_config = self.raw_config.get(
+            "feature_transformation", {}
+        )
+
         # Check required feature transformation fields
-        required_feature_transformation_fields = ['transformations', 'synthetic']
+        required_feature_transformation_fields = ["transformations", "synthetic"]
         for field in required_feature_transformation_fields:
             if field not in feature_transformation_config:
-                raise ValueError(f"Missing required feature_transformation field: {field}")
+                raise ValueError(
+                    f"Missing required feature_transformation field: {field}"
+                )
             if feature_transformation_config[field] is None:
                 raise ValueError(f"Feature transformation field '{field}' is None")
-        
+
         # Validate transformations
-        transformations = feature_transformation_config['transformations']
+        transformations = feature_transformation_config["transformations"]
         if not self._validate_transformation(transformations):
             raise ValueError(f"Unsupported transformation: {transformations}")
-        
+
         # Validate synthetic
-        synthetic = feature_transformation_config['synthetic']
-        valid_synthetic_options = ['None']  # Add more as they become available
+        synthetic = feature_transformation_config["synthetic"]
+        valid_synthetic_options = ["None"]  # Add more as they become available
         if synthetic not in valid_synthetic_options:
-            raise ValueError(f"Synthetic option must be one of: {valid_synthetic_options}")
-        
+            raise ValueError(
+                f"Synthetic option must be one of: {valid_synthetic_options}"
+            )
+
         # Validate transformer-specific configurations if transformations are selected
-        if transformations != ['None']:
+        if transformations != ["None"]:
             # PCA configuration
-            if 'PCA (manual count)' in transformations:
-                if 'pca_components' not in feature_transformation_config:
-                    raise ValueError("Missing pca_components for PCA (manual count) transformation")
-                pca_components = feature_transformation_config['pca_components']
+            if "PCA (manual count)" in transformations:
+                if "pca_components" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing pca_components for PCA (manual count) transformation"
+                    )
+                pca_components = feature_transformation_config["pca_components"]
                 if not isinstance(pca_components, int) or pca_components <= 0:
                     raise ValueError("pca_components must be a positive integer")
-            
+
             # SVD configuration
-            if 'SVD (k components)' in transformations:
-                if 'svd_components' not in feature_transformation_config:
-                    raise ValueError("Missing svd_components for SVD (k components) transformation")
-                svd_components = feature_transformation_config['svd_components']
+            if "SVD (k components)" in transformations:
+                if "svd_components" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing svd_components for SVD (k components) transformation"
+                    )
+                svd_components = feature_transformation_config["svd_components"]
                 if not isinstance(svd_components, int) or svd_components <= 0:
                     raise ValueError("svd_components must be a positive integer")
-            
+
             # MinMax scaler configuration
-            if 'MinMax scaler' in transformations:
-                if 'minmax_range' not in feature_transformation_config:
-                    raise ValueError("Missing minmax_range for MinMax scaler transformation")
-                minmax_range = feature_transformation_config['minmax_range']
+            if "MinMax scaler" in transformations:
+                if "minmax_range" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing minmax_range for MinMax scaler transformation"
+                    )
+                minmax_range = feature_transformation_config["minmax_range"]
                 if not isinstance(minmax_range, list) or len(minmax_range) != 2:
-                    raise ValueError("minmax_range must be a list with exactly 2 elements")
+                    raise ValueError(
+                        "minmax_range must be a list with exactly 2 elements"
+                    )
                 if not all(isinstance(x, (int, float)) for x in minmax_range):
                     raise ValueError("minmax_range elements must be numbers")
-            
+
             # Robust scaler configuration
-            if 'Robust scaler' in transformations:
-                if 'robust_scaler_with_centering' not in feature_transformation_config:
-                    raise ValueError("Missing robust_scaler_with_centering for Robust scaler transformation")
-                if 'robust_scaler_with_scaling' not in feature_transformation_config:
-                    raise ValueError("Missing robust_scaler_with_scaling for Robust scaler transformation")
-                if not isinstance(feature_transformation_config['robust_scaler_with_centering'], bool):
+            if "Robust scaler" in transformations:
+                if "robust_scaler_with_centering" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing robust_scaler_with_centering for Robust scaler transformation"
+                    )
+                if "robust_scaler_with_scaling" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing robust_scaler_with_scaling for Robust scaler transformation"
+                    )
+                if not isinstance(
+                    feature_transformation_config["robust_scaler_with_centering"], bool
+                ):
                     raise ValueError("robust_scaler_with_centering must be a boolean")
-                if not isinstance(feature_transformation_config['robust_scaler_with_scaling'], bool):
+                if not isinstance(
+                    feature_transformation_config["robust_scaler_with_scaling"], bool
+                ):
                     raise ValueError("robust_scaler_with_scaling must be a boolean")
-            
+
             # Normalizer configuration
-            if 'Normalizer' in transformations:
-                if 'normalizer_p' not in feature_transformation_config:
-                    raise ValueError("Missing normalizer_p for Normalizer transformation")
-                normalizer_p = feature_transformation_config['normalizer_p']
-                if not isinstance(normalizer_p, (int, float)) and normalizer_p != float('inf'):
+            if "Normalizer" in transformations:
+                if "normalizer_p" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing normalizer_p for Normalizer transformation"
+                    )
+                normalizer_p = feature_transformation_config["normalizer_p"]
+                if not isinstance(normalizer_p, (int, float)) and normalizer_p != float(
+                    "inf"
+                ):
                     raise ValueError("normalizer_p must be a number or float('inf')")
-            
+
             # Cohen test configuration
-            if 'Cohen test (manual count)' in transformations:
-                if 'cohen_components' not in feature_transformation_config:
-                    raise ValueError("Missing cohen_components for Cohen test (manual count) transformation")
-                cohen_components = feature_transformation_config['cohen_components']
+            if "Cohen test (manual count)" in transformations:
+                if "cohen_components" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing cohen_components for Cohen test (manual count) transformation"
+                    )
+                cohen_components = feature_transformation_config["cohen_components"]
                 if not isinstance(cohen_components, int) or cohen_components <= 0:
                     raise ValueError("cohen_components must be a positive integer")
-            
-            if 'Cohen test (limit to % for example 0.05)' in transformations:
-                if 'cohen_limit' not in feature_transformation_config:
-                    raise ValueError("Missing cohen_limit for Cohen test (limit to %) transformation")
-                cohen_limit = feature_transformation_config['cohen_limit']
-                if not isinstance(cohen_limit, (int, float)) or cohen_limit <= 0 or cohen_limit >= 1:
+
+            if "Cohen test (limit to % for example 0.05)" in transformations:
+                if "cohen_limit" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing cohen_limit for Cohen test (limit to %) transformation"
+                    )
+                cohen_limit = feature_transformation_config["cohen_limit"]
+                if (
+                    not isinstance(cohen_limit, (int, float))
+                    or cohen_limit <= 0
+                    or cohen_limit >= 1
+                ):
                     raise ValueError("cohen_limit must be a number between 0 and 1")
-    
+
     def dataLeakagePreventionPart5_validate(self) -> None:
         """Validate data leakage prevention configuration (dataLeakagePreventionPart5)."""
-        data_leakage_config = self.raw_config.get('data_leakage_prevention', {})
-        
+        data_leakage_config = self.raw_config.get("data_leakage_prevention", {})
+
         if not data_leakage_config:
             return  # Optional section
-        
+
         # Check required field
-        if 'strategy' not in data_leakage_config:
+        if "strategy" not in data_leakage_config:
             raise ValueError("Missing required data_leakage_prevention field: strategy")
-        
-        strategy = data_leakage_config['strategy']
+
+        strategy = data_leakage_config["strategy"]
         valid_strategies = [
             "1 test/1 train split with transforms applied to training set only (faster, single split)",
             "LOSO (Leave-One-Subject-Out) - systematic cross-validation (recommended for small datasets)",
-            "Transform all data together (no split - fastest, and potential data leakage)"
+            "Transform all data together (no split - fastest, and potential data leakage)",
         ]
-        
+
         if strategy not in valid_strategies:
-            raise ValueError(f"Data leakage prevention strategy must be one of: {valid_strategies}")
-        
+            raise ValueError(
+                f"Data leakage prevention strategy must be one of: {valid_strategies}"
+            )
+
         # Validate additional fields based on strategy
         if "LOSO (Leave-One-Subject-Out)" in strategy:
-            required_loso_fields = ['use_loso', 'loso_subjects_per_group', 'loso_folds', 'loso_metadata']
+            required_loso_fields = [
+                "use_loso",
+                "loso_subjects_per_group",
+                "loso_folds",
+                "loso_metadata",
+            ]
             for field in required_loso_fields:
                 if field not in data_leakage_config:
                     raise ValueError(f"Missing {field} for LOSO strategy")
-            
+
             # Validate LOSO-specific fields
-            if not isinstance(data_leakage_config['use_loso'], bool):
+            if not isinstance(data_leakage_config["use_loso"], bool):
                 raise ValueError("use_loso must be a boolean")
-            
-            if not isinstance(data_leakage_config['loso_subjects_per_group'], int):
+
+            if not isinstance(data_leakage_config["loso_subjects_per_group"], int):
                 raise ValueError("loso_subjects_per_group must be an integer")
-            
-            if not isinstance(data_leakage_config['loso_folds'], list):
+
+            if not isinstance(data_leakage_config["loso_folds"], list):
                 raise ValueError("loso_folds must be a list")
-            
-            if not isinstance(data_leakage_config['loso_metadata'], dict):
+
+            if not isinstance(data_leakage_config["loso_metadata"], dict):
                 raise ValueError("loso_metadata must be a dictionary")
-        
+
         elif "1 test/1 train split" in strategy:
-            if 'single_split_method' not in data_leakage_config:
-                raise ValueError("Missing single_split_method for 1 test/1 train split strategy")
-    
+            if "single_split_method" not in data_leakage_config:
+                raise ValueError(
+                    "Missing single_split_method for 1 test/1 train split strategy"
+                )
+
     def deploymentMethodPart6_validate(self) -> None:
         """Validate PySpark configuration (deploymentMethodPart6)."""
-        pyspark_config = self.raw_config.get('pyspark', {})
-        
+        pyspark_config = self.raw_config.get("pyspark", {})
+
         # Check required PySpark fields
-        required_pyspark_fields = ['master', 'driver_memory', 'executor_memory', 'executor_cores', 'shuffle_partitions']
+        required_pyspark_fields = [
+            "master",
+            "driver_memory",
+            "executor_memory",
+            "executor_cores",
+            "shuffle_partitions",
+        ]
         for field in required_pyspark_fields:
             if field not in pyspark_config:
                 raise ValueError(f"Missing required PySpark field: {field}")
             if pyspark_config[field] is None:
                 raise ValueError(f"PySpark field '{field}' is None")
-    
+
     def rayConfigurationPart7_validate(self) -> None:
         """Validate Ray configuration (rayConfigurationPart7)."""
-        ray_config = self.raw_config.get('ray', {})
-        
+        ray_config = self.raw_config.get("ray", {})
+
         # Basic validation - Ray config is more flexible
-        if 'models' in ray_config:
-            models = ray_config['models']
+        if "models" in ray_config:
+            models = ray_config["models"]
             if not isinstance(models, list):
                 raise ValueError("Ray models must be a list")
-        
+
         # Validate numeric fields if present
-        numeric_fields = ['num_trials', 'max_concurrent', 'cv_folds', 'random_state']
+        numeric_fields = ["num_trials", "max_concurrent", "cv_folds", "random_state"]
         for field in numeric_fields:
             if field in ray_config:
                 try:
                     int(ray_config[field])
                 except (ValueError, TypeError):
                     raise ValueError(f"Ray field '{field}' must be a valid integer")
-        
+
         # Validate Ray resources if present
-        if 'resources' in ray_config:
-            resources = ray_config['resources']
+        if "resources" in ray_config:
+            resources = ray_config["resources"]
             if resources is None:
                 raise ValueError("Ray resources must be a dictionary and not None")
             if not isinstance(resources, dict):
                 raise ValueError("Ray resources must be a dictionary and not None")
-                
+
                 # Validate required resource fields
-                required_resource_fields = ['num_cpus', 'memory_gb', 'object_store_memory_gb']
+                required_resource_fields = [
+                    "num_cpus",
+                    "memory_gb",
+                    "object_store_memory_gb",
+                ]
                 for field in required_resource_fields:
                     if field in resources:
                         try:
                             int(resources[field])
                         except (ValueError, TypeError):
-                            raise ValueError(f"Ray resource field '{field}' must be a valid integer")
-                
+                            raise ValueError(
+                                f"Ray resource field '{field}' must be a valid integer"
+                            )
+
                 # Validate GPU configuration
-                if 'num_gpus' in resources:
+                if "num_gpus" in resources:
                     try:
-                        gpu_count = int(resources['num_gpus'])
+                        gpu_count = int(resources["num_gpus"])
                         if gpu_count < 0:
-                            raise ValueError("Ray resource num_gpus must be non-negative")
+                            raise ValueError(
+                                "Ray resource num_gpus must be non-negative"
+                            )
                     except (ValueError, TypeError):
-                        raise ValueError("Ray resource num_gpus must be a valid integer")
-                
+                        raise ValueError(
+                            "Ray resource num_gpus must be a valid integer"
+                        )
+
                 # Validate dashboard port
-                if 'dashboard_port' in resources:
+                if "dashboard_port" in resources:
                     try:
-                        port = int(resources['dashboard_port'])
+                        port = int(resources["dashboard_port"])
                         if port < 1 or port > 65535:
-                            raise ValueError("Ray resource dashboard_port must be between 1 and 65535")
+                            raise ValueError(
+                                "Ray resource dashboard_port must be between 1 and 65535"
+                            )
                     except (ValueError, TypeError):
-                        raise ValueError("Ray resource dashboard_port must be a valid integer")
-        
+                        raise ValueError(
+                            "Ray resource dashboard_port must be a valid integer"
+                        )
+
         # Validate model_configs if present
-        if 'model_configs' in ray_config:
-            model_configs = ray_config['model_configs']
+        if "model_configs" in ray_config:
+            model_configs = ray_config["model_configs"]
             if not isinstance(model_configs, dict):
                 raise ValueError("Ray model_configs must be a dictionary")
-            
+
             # Validate each model configuration
             for model_name, model_config in model_configs.items():
                 if not isinstance(model_config, dict):
-                    raise ValueError(f"Ray model_config for {model_name} must be a dictionary")
-                
-                if 'use_default' in model_config:
-                    if not isinstance(model_config['use_default'], bool):
-                        raise ValueError(f"Ray model_config.use_default for {model_name} must be a boolean")
-                
-                if 'hyperparameters' in model_config:
-                    hyperparams = model_config['hyperparameters']
+                    raise ValueError(
+                        f"Ray model_config for {model_name} must be a dictionary"
+                    )
+
+                if "use_default" in model_config:
+                    if not isinstance(model_config["use_default"], bool):
+                        raise ValueError(
+                            f"Ray model_config.use_default for {model_name} must be a boolean"
+                        )
+
+                if "hyperparameters" in model_config:
+                    hyperparams = model_config["hyperparameters"]
                     if not isinstance(hyperparams, dict):
-                                                 raise ValueError(f"Ray model_config.hyperparameters for {model_name} must be a dictionary")
-    
+                        raise ValueError(
+                            f"Ray model_config.hyperparameters for {model_name} must be a dictionary"
+                        )
+
     def slurmOptionsPart6_validate(self) -> None:
         """Validate SLURM options configuration (slurmOptionsPart6)."""
-        slurm_config = self.raw_config.get('slurm_options', {})
-        
+        slurm_config = self.raw_config.get("slurm_options", {})
+
         if not isinstance(slurm_config, dict):
             raise ValueError("SLURM options must be a dictionary")
-        
+
         # Validate build options if present
-        if 'build' in slurm_config:
-            build_options = slurm_config['build']
+        if "build" in slurm_config:
+            build_options = slurm_config["build"]
             if not isinstance(build_options, str):
                 raise ValueError("SLURM build options must be a string")
-        
+
         # Validate PySpark options if present
-        if 'pyspark' in slurm_config:
-            pyspark_options = slurm_config['pyspark']
+        if "pyspark" in slurm_config:
+            pyspark_options = slurm_config["pyspark"]
             if not isinstance(pyspark_options, str):
                 raise ValueError("SLURM PySpark options must be a string")
-        
+
         # Validate Ray options if present
-        if 'ray' in slurm_config:
-            ray_options = slurm_config['ray']
+        if "ray" in slurm_config:
+            ray_options = slurm_config["ray"]
             if not isinstance(ray_options, str):
                 raise ValueError("SLURM Ray options must be a string")
-    
+
     def validate_all_sections(self) -> None:
         """
         Validate all configuration sections upfront.
@@ -555,21 +637,31 @@ class UnifiedConfigHandler:
         and should be called once in main.py before passing config to pipeline functions.
         """
         print("🔍 Validating all configuration sections...")
-        
+
         # Validate individual sections
         self.metadataPart0_validate()
-        
-        # Conditional validation based on what's present
-        sections_to_validate = ['data_input', 'preprocessing', 'feature_extraction', 'feature_transformation', 'data_leakage_prevention', 'pyspark', 'ray']
 
-        include_slurm = self.raw_config['project']['deployment_method'] == 'Singularity with Slurm'
+        # Conditional validation based on what's present
+        sections_to_validate = [
+            "data_input",
+            "preprocessing",
+            "feature_extraction",
+            "feature_transformation",
+            "data_leakage_prevention",
+            "pyspark",
+            "ray",
+        ]
+
+        include_slurm = (
+            self.raw_config["project"]["deployment_method"] == "Singularity with Slurm"
+        )
         if include_slurm:
-            sections_to_validate.append('slurm_options')
+            sections_to_validate.append("slurm_options")
         # Every section should be in self.raw_config
         for section in sections_to_validate:
             if section not in self.raw_config:
                 raise ValueError(f"Section {section} is missing from the configuration")
-        
+
         self.dataInputPart1_validate()
         self.preprocessingPart2_validate()
         self.featureCreationPart3_validate()
@@ -577,327 +669,362 @@ class UnifiedConfigHandler:
         self.dataLeakagePreventionPart5_validate()
         self.deploymentMethodPart6_validate()
         self.rayConfigurationPart7_validate()
-        
+
         if include_slurm:
             self.slurmOptionsPart6_validate()
-        
+
         print("✅ All configuration sections validated successfully!")
-     
+
     def _validate_transformation(self, transformations) -> bool:
         """
         Validate that the transformation(s) are supported.
-        
+
         Args:
             transformations: String or list of strings describing the transformation(s)
-            
+
         Returns:
             True if all transformations are supported
         """
         supported_transformations = [
-            'None',
-            'Dummy (+1)',
-            'MinMax scaler',
-            'Z-score standardization',
-            'Standard scaler',
-            'Robust scaler',
-            'Normalizer',
-            'Log transform (log1p)',
-            'PCA (retain 95% variance)',
-            'PCA (manual count)',
-            'SVD (k components)',
+            "None",
+            "Dummy (+1)",
+            "MinMax scaler",
+            "Z-score standardization",
+            "Standard scaler",
+            "Robust scaler",
+            "Normalizer",
+            "Log transform (log1p)",
+            "PCA (retain 95% variance)",
+            "PCA (manual count)",
+            "SVD (k components)",
             # 'Cohen test (manual count)', # not implemented (can be done with linear regression)
             # 'Cohen test (limit to % for example 0.05)'
         ]
-        
+
         # Handle both string and list formats for backward compatibility
         if isinstance(transformations, str):
             # Convert string to list (backward compatibility)
-            if transformations == 'None':
-                transformations = ['None']
+            if transformations == "None":
+                transformations = ["None"]
             else:
                 # Split by comma and clean up
-                transformations = [t.strip() for t in transformations.split(',') if t.strip()]
-        
+                transformations = [
+                    t.strip() for t in transformations.split(",") if t.strip()
+                ]
+
         # Validate each transformation
         for transformation in transformations:
             if transformation not in supported_transformations:
                 return False
-        
+
         return True
-    
+
     # ========================================
     # PROPERTY ACCESSORS - UNIFIED INTERFACE
     # ========================================
-    
+
     # Project Properties
     @property
     def project_name(self) -> str:
         """Get project name."""
-        return self.raw_config.get('project', {}).get('name', 'eeg_pipeline')
-    
+        return self.raw_config.get("project", {}).get("name", "eeg_pipeline")
+
     @property
     def experiment_type(self) -> str:
         """Get experiment type."""
-        return self.raw_config.get('project', {}).get('experiment_type', 'Analysis (No Ray ML)')
-    
+        return self.raw_config.get("project", {}).get(
+            "experiment_type", "Analysis (No Ray ML)"
+        )
+
     @property
     def deployment_method(self) -> str:
         """Get deployment method."""
-        return self.raw_config.get('project', {}).get('deployment_method', 'Docker')
-    
+        return self.raw_config.get("project", {}).get("deployment_method", "Docker")
+
     @property
     def base_output_dir(self) -> str:
         """Get base output directory."""
-        return self.raw_config.get('project', {}).get('output_dir', './data')
-    
+        return self.raw_config.get("project", {}).get("output_dir", "./data")
+
     @property
     def output_dir(self) -> Path:
         """Get full output directory path."""
         return Path(self.base_output_dir) / self.project_name
-    
+
     # Data Input Properties
     @property
     def groups(self) -> Dict[str, list]:
         """Get data groups."""
-        return self.raw_config.get('data_input', {}).get('groups', {})
-    
+        return self.raw_config.get("data_input", {}).get("groups", {})
+
     @property
     def reuse_processed_subjects(self) -> bool:
         """Get reuse_processed_subjects setting."""
-        return self.raw_config.get('data_input', {}).get('reuse_processed_subjects', 'No') == 'Yes'
-    
+        return (
+            self.raw_config.get("data_input", {}).get("reuse_processed_subjects", "No")
+            == "Yes"
+        )
+
     @property
     def save_processed_subjects(self) -> bool:
         """Get save_processed_subjects setting."""
-        return self.raw_config.get('data_input', {}).get('save_processed_subjects', 'No') == 'Yes'
-    
+        return (
+            self.raw_config.get("data_input", {}).get("save_processed_subjects", "No")
+            == "Yes"
+        )
+
     @property
     def reuse_transformed(self) -> bool:
         """Get reuse_transformed setting."""
-        return self.raw_config.get('data_input', {}).get('reuse_transformed', 'No') == 'Yes'
-    
+        return (
+            self.raw_config.get("data_input", {}).get("reuse_transformed", "No")
+            == "Yes"
+        )
+
     @property
     def save_transformed(self) -> bool:
         """Get save_transformed setting."""
-        return self.raw_config.get('data_input', {}).get('save_transformed', 'No') == 'Yes'
-    
+        return (
+            self.raw_config.get("data_input", {}).get("save_transformed", "No") == "Yes"
+        )
+
     # Preprocessing Properties
     @property
     def window_size(self) -> float:
         """Get window size setting."""
-        return self.raw_config.get('preprocessing', {}).get('window_size', 3.0)
-    
+        return self.raw_config.get("preprocessing", {}).get("window_size", 3.0)
+
     @property
     def sliding_window(self) -> float:
         """Get sliding window setting."""
-        return self.raw_config.get('preprocessing', {}).get('sliding_window', 0.5)
-    
+        return self.raw_config.get("preprocessing", {}).get("sliding_window", 0.5)
+
     @property
     def reject_by_annotation(self) -> bool:
         """Get reject_by_annotation setting."""
-        return self.raw_config.get('preprocessing', {}).get('reject_by_annotation', 'Yes') == 'Yes'
-    
+        return (
+            self.raw_config.get("preprocessing", {}).get("reject_by_annotation", "Yes")
+            == "Yes"
+        )
+
     @property
     def downsampling(self) -> Optional[float]:
         """Get downsampling rate setting."""
-        return self.raw_config.get('preprocessing', {}).get('downsampling', None)
-    
+        return self.raw_config.get("preprocessing", {}).get("downsampling", None)
+
     @property
     def normalize_psd(self) -> bool:
         """Get normalize_psd setting."""
-        return self.raw_config.get('preprocessing', {}).get('normalize_psd', 'Yes') == 'Yes'
-    
+        return (
+            self.raw_config.get("preprocessing", {}).get("normalize_psd", "Yes")
+            == "Yes"
+        )
+
     # Feature Extraction Properties
     @property
     def method(self) -> str:
         """Get feature extraction method."""
-        return self.raw_config.get('feature_extraction', {}).get('method', 'welch')
-    
+        return self.raw_config.get("feature_extraction", {}).get("method", "welch")
+
     @property
     def output_format(self) -> str:
         """Get output format setting."""
-        return self.raw_config.get('feature_extraction', {}).get('output_format', 'ml')
-    
+        return self.raw_config.get("feature_extraction", {}).get("output_format", "ml")
+
     @property
     def features(self) -> Dict[str, List[str]]:
         """Get features configuration."""
-        return self.raw_config.get('feature_extraction', {}).get('features', {})
-    
+        return self.raw_config.get("feature_extraction", {}).get("features", {})
+
     @property
     def show_intermediate_results(self) -> bool:
         """Get show_intermediate_results setting."""
-        return self.raw_config.get('feature_extraction', {}).get('show_intermediate_results', 'No') == 'Yes'
-    
+        return (
+            self.raw_config.get("feature_extraction", {}).get(
+                "show_intermediate_results", "No"
+            )
+            == "Yes"
+        )
+
     @property
     def show_intermediate_counts(self) -> bool:
         """Get show_intermediate_counts setting."""
-        return self.raw_config.get('feature_extraction', {}).get('show_intermediate_counts', 'No') == 'Yes'
-    
+        return (
+            self.raw_config.get("feature_extraction", {}).get(
+                "show_intermediate_counts", "No"
+            )
+            == "Yes"
+        )
+
     # Feature Transformation Properties
     @property
     def transform_features_flag(self) -> str:
         """Get transform_features_flag setting."""
-        return self.raw_config.get('feature_transformation', {}).get('transformations', 'None')
-    
+        return self.raw_config.get("feature_transformation", {}).get(
+            "transformations", "None"
+        )
+
     @property
     def synthetic(self) -> str:
         """Get synthetic data generation method."""
-        return self.raw_config.get('feature_transformation', {}).get('synthetic', 'None')
-    
+        return self.raw_config.get("feature_transformation", {}).get(
+            "synthetic", "None"
+        )
+
     # Data Leakage Prevention Properties
     @property
     def data_leakage_strategy(self) -> str:
         """Get data leakage prevention strategy."""
-        return self.raw_config.get('data_leakage_prevention', {}).get('strategy', 'Transform all data together (no split - fastest, and potential data leakage)')
-    
+        return self.raw_config.get("data_leakage_prevention", {}).get(
+            "strategy",
+            "Transform all data together (no split - fastest, and potential data leakage)",
+        )
+
     @property
     def uses_loso(self) -> bool:
         """Check if LOSO cross-validation is being used."""
-        dlp_config = self.raw_config.get('data_leakage_prevention', {})
-        strategy = dlp_config.get('strategy', '')
-        return 'LOSO' in strategy or dlp_config.get('use_loso', False)
-    
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        strategy = dlp_config.get("strategy", "")
+        return "LOSO" in strategy or dlp_config.get("use_loso", False)
+
     @property
     def loso_folds(self) -> Optional[List[List[str]]]:
         """Get LOSO folds if available."""
-        dlp_config = self.raw_config.get('data_leakage_prevention', {})
-        return dlp_config.get('loso_folds')
-    
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        return dlp_config.get("loso_folds")
+
     @property
     def test_subjects(self) -> Optional[List[str]]:
         """Get test subjects if available."""
-        dlp_config = self.raw_config.get('data_leakage_prevention', {})
-        return dlp_config.get('test_subjects_paths')
-    
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        return dlp_config.get("test_subjects_paths")
+
     # Ray Properties
     @property
     def selected_models(self) -> List[str]:
         """Get selected ML models from Ray configuration."""
-        ray_config = self.raw_config.get('ray', {})
-        return ray_config.get('models', [])
-    
+        ray_config = self.raw_config.get("ray", {})
+        return ray_config.get("models", [])
+
     @property
     def optimization_metric(self) -> str:
         """Get the optimization metric from Ray configuration."""
-        ray_config = self.raw_config.get('ray', {})
-        return ray_config.get('metric', 'accuracy')
-    
+        ray_config = self.raw_config.get("ray", {})
+        return ray_config.get("metric", "accuracy")
+
     @property
     def optimization_mode(self) -> str:
         """Get the optimization mode from Ray configuration."""
-        ray_config = self.raw_config.get('ray', {})
-        return ray_config.get('mode', 'max')
-    
+        ray_config = self.raw_config.get("ray", {})
+        return ray_config.get("mode", "max")
+
     @property
     def num_trials(self) -> int:
         """Get number of trials from Ray configuration."""
-        ray_config = self.raw_config.get('ray', {})
-        return int(ray_config.get('num_trials', 10))
-    
+        ray_config = self.raw_config.get("ray", {})
+        return int(ray_config.get("num_trials", 10))
+
     @property
     def max_concurrent_trials(self) -> int:
         """Get maximum concurrent trials from Ray configuration."""
-        ray_config = self.raw_config.get('ray', {})
-        return int(ray_config.get('max_concurrent', 2))
-    
+        ray_config = self.raw_config.get("ray", {})
+        return int(ray_config.get("max_concurrent", 2))
+
     @property
     def cv_folds(self) -> int:
         """Get number of CV folds from Ray configuration."""
-        ray_config = self.raw_config.get('ray', {})
-        return int(ray_config.get('cv_folds', 5))
-    
+        ray_config = self.raw_config.get("ray", {})
+        return int(ray_config.get("cv_folds", 5))
+
     @property
     def random_state(self) -> int:
         """Get random state from Ray configuration."""
-        ray_config = self.raw_config.get('ray', {})
-        return int(ray_config.get('random_state', 42))
-    
+        ray_config = self.raw_config.get("ray", {})
+        return int(ray_config.get("random_state", 42))
+
     @property
     def ray_resources(self) -> Optional[Dict[str, Any]]:
         """Get Ray resource configuration."""
-        ray_config = self.raw_config.get('ray', {})
-        return ray_config.get('resources')
-    
+        ray_config = self.raw_config.get("ray", {})
+        return ray_config.get("resources")
+
     @property
     def has_ray_resources(self) -> bool:
         """Check if Ray-specific resources are configured."""
         return self.ray_resources is not None
-    
+
     # Hash Keys for Stage Validation
     @property
     def processed_subjects_keys(self) -> List[str]:
         """Get processed subjects config keys for hash validation."""
         return ["feature_extraction", "preprocessing"]
-    
+
     @property
     def transformed_keys(self) -> List[str]:
         """Get transformed config keys for hash validation."""
         return ["feature_transformation", "feature_extraction"]
-    
+
     # ========================================
     # SECTION ACCESSORS
     # ========================================
-    
+
     def get_raw_config(self) -> Dict[str, Any]:
         """Get raw config dict for backward compatibility."""
         return self.raw_config
-    
+
     def get_project_config(self) -> Dict[str, Any]:
         """Get project configuration."""
-        return self.raw_config.get('project', {})
-    
+        return self.raw_config.get("project", {})
+
     def get_data_input_config(self) -> Dict[str, Any]:
         """Get data input configuration."""
-        return self.raw_config.get('data_input', {})
-    
+        return self.raw_config.get("data_input", {})
+
     def get_preprocessing_config(self) -> Dict[str, Any]:
         """Get preprocessing configuration."""
-        return self.raw_config.get('preprocessing', {})
-    
+        return self.raw_config.get("preprocessing", {})
+
     def get_feature_extraction_config(self) -> Dict[str, Any]:
         """Get feature extraction configuration."""
-        return self.raw_config.get('feature_extraction', {})
-    
+        return self.raw_config.get("feature_extraction", {})
+
     def get_feature_transformation_config(self) -> Dict[str, Any]:
         """Get feature transformation configuration."""
-        return self.raw_config.get('feature_transformation', {})
-    
+        return self.raw_config.get("feature_transformation", {})
+
     def get_data_leakage_prevention_config(self) -> Dict[str, Any]:
         """Get data leakage prevention configuration."""
-        return self.raw_config.get('data_leakage_prevention', {})
-    
+        return self.raw_config.get("data_leakage_prevention", {})
+
     def get_pyspark_config(self) -> Dict[str, Any]:
         """Get PySpark configuration."""
-        return self.raw_config.get('pyspark', {})
-    
+        return self.raw_config.get("pyspark", {})
+
     def get_ray_config(self) -> Dict[str, Any]:
         """Get Ray configuration."""
-        return self.raw_config.get('ray', {})
-    
+        return self.raw_config.get("ray", {})
+
     # ========================================
     # UTILITY METHODS
     # ========================================
-    
+
     def is_ml_experiment(self) -> bool:
         """Check if this is an ML experiment."""
-        return 'ML' in self.experiment_type
-    
+        return "ML" in self.experiment_type
+
     def is_classification_experiment(self) -> bool:
         """Check if this is a classification experiment."""
         return self.experiment_type == "ML (Classification)"
-    
+
     def is_clustering_experiment(self) -> bool:
         """Check if this is a clustering experiment."""
         return self.experiment_type == "ML (Clustering)"
-    
-    
-
 
 
 if __name__ == "__main__":
     # Example usage
     import sys
-    
+
     if len(sys.argv) > 1:
         config_path = sys.argv[1]
         try:
