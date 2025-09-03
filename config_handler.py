@@ -4,24 +4,6 @@ Unified Configuration Handler for EEG Full Pipeline
 This module provides a unified interface for configuration management across
 both PySpark and Ray components of the EEG processing pipeline.
 
-Combines functionality from:
-- eeg-pyspark-pipeline/eeg_spark_etl/core/config_loader.py (ConfigManager)
-- eeg-ray-tuner/config_handler.py (ConfigHandler)
-
-VALIDATION METHOD NAMING CONVENTION:
-Every validation method directly corresponds to a Part function in config-maker.py:
-- metadataPart0_validate() ← metadataPart0()
-- dataInputPart1_validate() ← dataInputPart1()
-- preprocessingPart2_validate() ← preprocessingPart2()
-- featureCreationPart3_validate() ← featureCreationPart3()
-- featureTransformationsPart4_validate() ← featureTransformationsPart4()
-- dataLeakagePreventionPart5_validate() ← dataLeakagePreventionPart5()
-- deploymentMethodPart6_validate() ← deploymentMethodPart6() (PySpark section)
-- rayConfigurationPart7_validate() ← rayConfigurationPart7()
-- slurmOptionsPart6_validate() ← deploymentMethodPart6() (SLURM section)
-
-This ensures perfect synchronization between configuration creation and validation.
-
 Author: Adel Sahuc
 """
 
@@ -36,15 +18,33 @@ class UnifiedConfigHandler:
     """
     Unified configuration management for the entire EEG pipeline.
     Handles both PySpark and Ray configurations with consistent validation.
+    
+    Every validation method directly corresponds to a Part function in config-maker.py:
+        - metadataPart0_validate() ← metadataPart0()
+        - dataInputPart1_validate() ← dataInputPart1()
+        - preprocessingPart2_validate() ← preprocessingPart2()
+        - featureCreationPart3_validate() ← featureCreationPart3()
+        - featureTransformationsPart4_validate() ← featureTransformationsPart4()
+        - dataLeakagePreventionPart5_validate() ← dataLeakagePreventionPart5()
+        - deploymentMethodPart6_validate() ← deploymentMethodPart6() (PySpark section)
+        - rayConfigurationPart7_validate() ← rayConfigurationPart7()
+        - slurmOptionsPart6_validate() ← deploymentMethodPart6() (SLURM section)
+
+    This ensures perfect synchronization between configuration creation and validation.
+    
+    Why: 
+    This class is useful because it allows consistent validation across the pipepline (the ray and pyspark sections). 
+    Before this class each function had its own validation logic which led to wild goose chases for dubugging validation errors and insuring consistent functionality accross runs.
     """
 
     
     def __init__(self, config_path: str):
-        """
-        Initialize the unified configuration handler.
-        
-        Args:
-            config_path: Path to the configuration YAML file
+        """Initialize the unified configuration handler.
+
+        Parameters
+        ----------
+        config_path : str
+            Path to the configuration YAML file
         """
         self.config_path = config_path
         self.raw_config = None
@@ -89,7 +89,7 @@ class UnifiedConfigHandler:
         """Validate the entire configuration."""
         print("🔍 Validating configuration...")
         
-        # Required sections #TODO edit this to only validate sections needed for the target container and/or setup
+        # TODO edit this to only validate sections needed for the target container and/or setup
         # This could be enhanced to validate only sections needed based on:
         # - Container type (PySpark-only, Ray-only, or full)
         # - Experiment type (ML vs Analysis)
@@ -132,15 +132,7 @@ class UnifiedConfigHandler:
     # SECTION-SPECIFIC VALIDATION
     # ========================================
     # Each validation method directly corresponds to a Part function in config-maker.py:
-    # - metadataPart0_validate() ← metadataPart0()
-    # - dataInputPart1_validate() ← dataInputPart1()
-    # - preprocessingPart2_validate() ← preprocessingPart2()
-    # - featureCreationPart3_validate() ← featureCreationPart3()
-    # - featureTransformationsPart4_validate() ← featureTransformationsPart4()
-    # - dataLeakagePreventionPart5_validate() ← dataLeakagePreventionPart5()
-    # - deploymentMethodPart6_validate() ← deploymentMethodPart6() (PySpark section)
-    # - rayConfigurationPart7_validate() ← rayConfigurationPart7()
-    # - slurmOptionsPart6_validate() ← deploymentMethodPart6() (SLURM section)
+    # all the functions and names are at the top of the file 
     
     def metadataPart0_validate(self) -> None:
         """Validate project configuration (metadataPart0)."""
@@ -568,23 +560,25 @@ class UnifiedConfigHandler:
         self.metadataPart0_validate()
         
         # Conditional validation based on what's present
-        if 'data_input' in self.raw_config:
-            self.dataInputPart1_validate()
-        if 'preprocessing' in self.raw_config:
-            self.preprocessingPart2_validate()
-        if 'feature_extraction' in self.raw_config:
-            self.featureCreationPart3_validate()
-        if 'feature_transformation' in self.raw_config:
-            self.featureTransformationsPart4_validate()
-        if 'data_leakage_prevention' in self.raw_config:
-            self.dataLeakagePreventionPart5_validate()
-        if 'pyspark' in self.raw_config:
-            self.deploymentMethodPart6_validate()
-        if 'ray' in self.raw_config:
-            self.rayConfigurationPart7_validate()
+        sections_to_validate = ['data_input', 'preprocessing', 'feature_extraction', 'feature_transformation', 'data_leakage_prevention', 'pyspark', 'ray']
+
+        include_slurm = self.raw_config['project']['deployment_method'] == 'Singularity with Slurm'
+        if include_slurm:
+            sections_to_validate.append('slurm_options')
+        # Every section should be in self.raw_config
+        for section in sections_to_validate:
+            if section not in self.raw_config:
+                raise ValueError(f"Section {section} is missing from the configuration")
         
-        # Validate SLURM options if present (created by config-maker.py)
-        if 'slurm_options' in self.raw_config:
+        self.dataInputPart1_validate()
+        self.preprocessingPart2_validate()
+        self.featureCreationPart3_validate()
+        self.featureTransformationsPart4_validate()
+        self.dataLeakagePreventionPart5_validate()
+        self.deploymentMethodPart6_validate()
+        self.rayConfigurationPart7_validate()
+        
+        if include_slurm:
             self.slurmOptionsPart6_validate()
         
         print("✅ All configuration sections validated successfully!")
@@ -896,121 +890,9 @@ class UnifiedConfigHandler:
         """Check if this is a clustering experiment."""
         return self.experiment_type == "ML (Clustering)"
     
-    def save_config(self, output_path: str) -> None:
-        """
-        Save the current configuration to a file.
-        
-        Args:
-            output_path: Path where to save the configuration
-        """
-        try:
-            with open(output_path, 'w') as file:
-                yaml.dump(self.raw_config, file, default_flow_style=False, sort_keys=False)
-            print(f"💾 Configuration saved to {output_path}")
-        except Exception as e:
-            print(f"❌ Error saving configuration: {e}")
-            raise
     
-    def print_summary(self) -> None:
-        """Print a comprehensive configuration summary."""
-        print("\n" + "="*80)
-        print("📋 UNIFIED CONFIGURATION SUMMARY")
-        print("="*80)
-        
-        # Project info
-        print(f"🎯 Project: {self.project_name}")
-        print(f"📊 Experiment Type: {self.experiment_type}")
-        print(f"🔧 Deployment: {self.deployment_method}")
-        print(f"📁 Output Directory: {self.output_dir}")
-        
-        # Data info
-        if self.groups:
-            print(f"📂 Data Groups: {len(self.groups)} groups")
-            for group_name, files in self.groups.items():
-                print(f"   - {group_name}: {len(files)} files")
-        
-        # Preprocessing info
-        if 'preprocessing' in self.raw_config:
-            print(f"⚙️  Window Size: {self.window_size}s")
-            print(f"⚙️  Sliding Window: {self.sliding_window}s")
-            print(f"⚙️  Reject by Annotation: {self.reject_by_annotation}")
-            if self.downsampling:
-                print(f"⚙️  Downsampling: {self.downsampling}Hz")
-        
-        # Feature extraction info
-        if 'feature_extraction' in self.raw_config:
-            print(f"🔍 Feature Extraction Method: {self.method}")
-            print(f"🔍 Output Format: {self.output_format}")
-        
-        # PySpark info
-        if 'pyspark' in self.raw_config:
-            pyspark_config = self.get_pyspark_config()
-            print(f"⚡ PySpark Master: {pyspark_config.get('master', 'N/A')}")
-            print(f"⚡ Driver Memory: {pyspark_config.get('driver_memory', 'N/A')}GB")
-            print(f"⚡ Executor Memory: {pyspark_config.get('executor_memory', 'N/A')}GB")
-        
-        # ML specific info
-        if self.is_ml_experiment() and 'ray' in self.raw_config:
-            print(f"🤖 Selected Models: {', '.join(self.selected_models) if self.selected_models else 'None'}")
-            print(f"📈 Optimization Metric: {self.optimization_metric}")
-            print(f"🔄 Number of Trials: {self.num_trials}")
-            print(f"⚡ Max Concurrent Trials: {self.max_concurrent_trials}")
-            
-            # Ray resource configuration
-            if self.has_ray_resources:
-                ray_resources = self.ray_resources
-                print(f"🔧 Ray Resources: {ray_resources.get('num_cpus', 'N/A')} CPUs, {ray_resources.get('memory_gb', 'N/A')}GB memory")
-                if int(ray_resources.get('num_gpus', 0)) > 0:
-                    print(f"🚀 GPU: {ray_resources['num_gpus']} GPU(s)")
-            
-            # Data leakage prevention
-            if self.uses_loso:
-                loso_folds = self.loso_folds
-                if loso_folds:
-                    print(f"🎯 LOSO Cross-Validation: {len(loso_folds)} folds")
-            else:
-                test_subjects = self.test_subjects
-                if test_subjects:
-                    print(f"🎯 Test Subjects: {len(test_subjects)} subjects")
-        
-        print("="*80)
 
 
-# ========================================
-# UTILITY FUNCTIONS FOR BACKWARD COMPATIBILITY
-# ========================================
-
-def load_config(path: str, verbose: bool = True) -> Dict[str, Any]:
-    """
-    Legacy function for loading configuration.
-    
-    Args:
-        path: Path to configuration file
-        verbose: Whether to print verbose output
-        
-    Returns:
-        Raw configuration dictionary
-    """
-    if verbose:
-        print(f"🔧 Loading configuration from: {path} (legacy function)")
-    
-    handler = UnifiedConfigHandler(path)
-    
-    if verbose:
-        handler.print_summary()
-    
-    return handler.get_raw_config()
-
-
-# ========================================
-# ALIASES FOR BACKWARD COMPATIBILITY
-# ========================================
-
-# Alias for existing code that uses ConfigManager
-ConfigManager = UnifiedConfigHandler
-
-# Alias for existing code that uses ConfigHandler
-ConfigHandler = UnifiedConfigHandler
 
 if __name__ == "__main__":
     # Example usage
