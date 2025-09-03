@@ -1728,10 +1728,10 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         else:
             config["ray"]["resources"]["num_gpus"] = 0
             
-        # Ask for Ray dashboard port
-        config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
-            "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
-        )
+        # # Ask for Ray dashboard port
+        # config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
+        #     "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
+        # )
         
         print("✅ Ray resource configuration completed")
     else: # 'No (use approximatley the same settings as PySpark)'
