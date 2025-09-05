@@ -51,10 +51,12 @@ CONTAINER_CONFIG = {
         # Spark-submit specific configurations (most Spark configs are in session_builder.py)
         "spark_configs": ["--conf", "spark.jars.ivy=/tmp/.ivy2"],
         "mounts": [
+            ("./config_handler.py", "/app/config_handler.py"),
             (
                 "./config/spark",
                 "/opt/bitnami/spark/conf",
             ),  # Spark configs (editable) - removing this puts spark logs in console
+            
             # Log mounts are now added dynamically based on config[project][config_name]
             # ("./logs/spark-events", "/opt/bitnami/spark/logs/"),  # Spark event logs - COMMENTED OUT: Added dynamically
             # Done through config file
@@ -73,6 +75,7 @@ CONTAINER_CONFIG = {
         "command": "python",
         "job_name": "ray-tuner",
         "mounts": [
+            ("./config_handler.py", "/app/config_handler.py"),
             # Log mounts are now added dynamically based on config[project][config_name]
             # ("./logs/ray-events", "/app/logs/ray-events"),  # Ray event logs - COMMENTED OUT: Added dynamically
             # Done through config file
