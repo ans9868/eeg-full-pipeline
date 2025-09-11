@@ -1769,14 +1769,14 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         print("  - 2-4 concurrent trials")
         print("This is optimized for ML workloads.")
 
-        config["ray"]["resources"] = {}
-        config["ray"]["resources"]["num_cpus"] = validate_integer_input(
+        config["ray"]["ray"] = {}
+        config["ray"]["ray"]["num_cpus"] = validate_integer_input(
             "7.9.2 Enter number of CPUs for Ray cluster:", default="4"
         )
-        config["ray"]["resources"]["memory_gb"] = validate_integer_input(
+        config["ray"]["ray"]["memory_gb"] = validate_integer_input(
             "7.9.3 Enter memory in GB for Ray:", default="8"
         )
-        config["ray"]["resources"]["object_store_memory_gb"] = validate_integer_input(
+        config["ray"]["ray"]["object_store_memory_gb"] = validate_integer_input(
             "7.9.4 Enter object store memory in GB (for data caching):", default="4"
         )
 
@@ -1787,14 +1787,14 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         ).ask()
 
         if use_gpu == "Yes":
-            config["ray"]["resources"]["num_gpus"] = validate_integer_input(
+            config["ray"]["ray"]["num_gpus"] = validate_integer_input(
                 "7.9.6 Enter number of GPUs to use:", default="0"
             )
         else:
-            config["ray"]["resources"]["num_gpus"] = 0
+            config["ray"]["ray"]["num_gpus"] = 0
 
         # # Ask for Ray dashboard port
-        # config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
+        # config["ray"]["ray"]["dashboard_port"] = validate_integer_input(
         #     "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
         # )
 
@@ -1819,7 +1819,7 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         )  # Object store is typically half of total memory
 
         # Set Ray resources based on PySpark fallback
-        config["ray"]["resources"] = {
+        config["ray"]["ray"] = {
             "num_cpus": str(ray_cpus),
             "memory_gb": str(ray_memory),
             "object_store_memory_gb": str(ray_object_store),
@@ -2091,14 +2091,14 @@ def configure_model_hyperparameters(model_name: str) -> dict:
         print("  - 2-4 concurrent trials")
         print("This is optimized for ML workloads.")
 
-        config["ray"]["resources"] = {}
-        config["ray"]["resources"]["num_cpus"] = validate_integer_input(
+        config["ray"]["ray"] = {}
+        config["ray"]["ray"]["num_cpus"] = validate_integer_input(
             "7.9.2 Enter number of CPUs for Ray cluster:", default="4"
         )
-        config["ray"]["resources"]["memory_gb"] = validate_integer_input(
+        config["ray"]["ray"]["memory_gb"] = validate_integer_input(
             "7.9.3 Enter memory in GB for Ray:", default="8"
         )
-        config["ray"]["resources"]["object_store_memory_gb"] = validate_integer_input(
+        config["ray"]["ray"]["object_store_memory_gb"] = validate_integer_input(
             "7.9.4 Enter object store memory in GB (for data caching):", default="4"
         )
 
@@ -2109,14 +2109,14 @@ def configure_model_hyperparameters(model_name: str) -> dict:
         ).ask()
 
         if use_gpu == "Yes":
-            config["ray"]["resources"]["num_gpus"] = validate_integer_input(
+            config["ray"]["ray"]["num_gpus"] = validate_integer_input(
                 "7.9.6 Enter number of GPUs to use:", default="1"
             )
         else:
-            config["ray"]["resources"]["num_gpus"] = 0
+            config["ray"]["ray"]["num_gpus"] = 0
 
         # Ask for Ray dashboard port
-        config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
+        config["ray"]["ray"]["dashboard_port"] = validate_integer_input(
             "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
         )
 

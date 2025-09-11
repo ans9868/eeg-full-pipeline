@@ -332,7 +332,10 @@ class UnifiedConfigHandler:
                 raise ValueError(
                     f"Missing required feature_transformation field: {field}"
                 )
-            if feature_transformation_config[field] is None:
+            # Allow None for transformations field (means no transformation)
+            if field == "transformations" and feature_transformation_config[field] is None:
+                continue
+            if field != "transformations" and feature_transformation_config[field] is None:
                 raise ValueError(f"Feature transformation field '{field}' is None")
 
         # Validate transformations
@@ -349,7 +352,7 @@ class UnifiedConfigHandler:
             )
 
         # Validate transformer-specific configurations if transformations are selected
-        if transformations != ["None"]:
+        if transformations is not None and transformations != ["None"]:
             # PCA configuration
             if "PCA (manual count)" in transformations:
                 if "pca_components" not in feature_transformation_config:
@@ -530,53 +533,53 @@ class UnifiedConfigHandler:
                     raise ValueError(f"Ray field '{field}' must be a valid integer")
 
         # Validate Ray resources if present
-        if "resources" in ray_config:
-            resources = ray_config["resources"]
+        if "ray" in ray_config:
+            resources = ray_config["ray"]
             if resources is None:
                 raise ValueError("Ray resources must be a dictionary and not None")
             if not isinstance(resources, dict):
                 raise ValueError("Ray resources must be a dictionary and not None")
 
-                # Validate required resource fields
-                required_resource_fields = [
-                    "num_cpus",
-                    "memory_gb",
-                    "object_store_memory_gb",
-                ]
-                for field in required_resource_fields:
-                    if field in resources:
-                        try:
-                            int(resources[field])
-                        except (ValueError, TypeError):
-                            raise ValueError(
-                                f"Ray resource field '{field}' must be a valid integer"
-                            )
-
-                # Validate GPU configuration
-                if "num_gpus" in resources:
+            # Validate required resource fields
+            required_resource_fields = [
+                "num_cpus",
+                "memory_gb",
+                "object_store_memory_gb",
+            ]
+            for field in required_resource_fields:
+                if field in resources:
                     try:
-                        gpu_count = int(resources["num_gpus"])
-                        if gpu_count < 0:
-                            raise ValueError(
-                                "Ray resource num_gpus must be non-negative"
-                            )
+                        int(resources[field])
                     except (ValueError, TypeError):
                         raise ValueError(
-                            "Ray resource num_gpus must be a valid integer"
+                            f"Ray resource field '{field}' must be a valid integer"
                         )
 
-                # Validate dashboard port
-                if "dashboard_port" in resources:
-                    try:
-                        port = int(resources["dashboard_port"])
-                        if port < 1 or port > 65535:
-                            raise ValueError(
-                                "Ray resource dashboard_port must be between 1 and 65535"
-                            )
-                    except (ValueError, TypeError):
+            # Validate GPU configuration
+            if "num_gpus" in resources:
+                try:
+                    gpu_count = int(resources["num_gpus"])
+                    if gpu_count < 0:
                         raise ValueError(
-                            "Ray resource dashboard_port must be a valid integer"
+                            "Ray resource num_gpus must be non-negative"
                         )
+                except (ValueError, TypeError):
+                    raise ValueError(
+                        "Ray resource num_gpus must be a valid integer"
+                    )
+
+            # Validate dashboard port
+            if "dashboard_port" in resources:
+                try:
+                    port = int(resources["dashboard_port"])
+                    if port < 1 or port > 65535:
+                        raise ValueError(
+                            "Ray resource dashboard_port must be between 1 and 65535"
+                        )
+                except (ValueError, TypeError):
+                    raise ValueError(
+                        "Ray resource dashboard_port must be a valid integer"
+                    )
 
         # Validate model_configs if present
         if "model_configs" in ray_config:
@@ -679,7 +682,7 @@ class UnifiedConfigHandler:
         Validate that the transformation(s) are supported.
 
         Args:
-            transformations: String or list of strings describing the transformation(s)
+            transformations: String, list of strings, or None describing the transformation(s)
 
         Returns:
             True if all transformations are supported
@@ -699,6 +702,10 @@ class UnifiedConfigHandler:
             # 'Cohen test (manual count)', # not implemented (can be done with linear regression)
             # 'Cohen test (limit to % for example 0.05)'
         ]
+
+        # Handle None case (no transformation)
+        if transformations is None:
+            return True
 
         # Handle both string and list formats for backward compatibility
         if isinstance(transformations, str):
@@ -898,6 +905,12 @@ class UnifiedConfigHandler:
         dlp_config = self.raw_config.get("data_leakage_prevention", {})
         return dlp_config.get("test_subjects_paths")
 
+    @property
+    def individual_loso(self) -> bool:
+        """Get individual_loso setting."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        return dlp_config.get("individual_loso", False)
+
     # Ray Properties
     @property
     def selected_models(self) -> List[str]:
@@ -945,7 +958,7 @@ class UnifiedConfigHandler:
     def ray_resources(self) -> Optional[Dict[str, Any]]:
         """Get Ray resource configuration."""
         ray_config = self.raw_config.get("ray", {})
-        return ray_config.get("resources")
+        return ray_config.get("ray")
 
     @property
     def has_ray_resources(self) -> bool:
