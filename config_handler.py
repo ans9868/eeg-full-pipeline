@@ -177,12 +177,11 @@ class UnifiedConfigHandler:
         # Validate subjects_or_events if present
         if "subjects_or_events" in project_config:
             subjects_or_events = project_config["subjects_or_events"]
-
-        if subjects_or_events not in ["subjects", "events"]:
-            raise ValueError("subjects_or_events must be 'subjects' or 'events'")
+            if subjects_or_events not in ["subjects", "events"]:
+                raise ValueError("subjects_or_events must be 'subjects' or 'events'")
 
         # Validate events_of_interest if analyzing events
-        if subjects_or_events == "events":
+        if "subjects_or_events" in project_config and project_config["subjects_or_events"] == "events":
             raise ValueError(
                 "Unfortunately support for events has not been created yet."
             )
