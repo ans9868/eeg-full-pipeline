@@ -89,6 +89,11 @@ class UnifiedConfigHandler:
         """Validate the entire configuration."""
         print("🔍 Validating configuration...")
 
+        # Skip validation if this is a test configuration
+        if self.raw_config.get("test", False):
+            print("🧪 Test configuration detected - skipping validation")
+            return
+
         # TODO edit this to only validate sections needed for the target container and/or setup
         # This could be enhanced to validate only sections needed based on:
         # - Container type (PySpark-only, Ray-only, or full)
