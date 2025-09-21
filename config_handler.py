@@ -970,6 +970,58 @@ class UnifiedConfigHandler:
         """Check if Ray-specific resources are configured."""
         return self.ray_resources is not None
 
+    @property
+    def model_configs(self) -> Dict[str, Any]:
+        """Get model configurations from Ray configuration."""
+        ray_config = self.raw_config.get("ray", {})
+        return ray_config.get("model_configs", {})
+
+    @property
+    def ray_resources_config(self) -> Optional[Dict[str, Any]]:
+        """Get Ray resources configuration (nested under 'resources' key)."""
+        ray_config = self.raw_config.get("ray", {})
+        return ray_config.get("resources")
+
+    @property
+    def ray_num_cpus(self) -> int:
+        """Get number of CPUs for Ray cluster."""
+        resources = self.ray_resources_config
+        if resources:
+            return int(resources.get("num_cpus", 4))
+        return 4
+
+    @property
+    def ray_memory_gb(self) -> int:
+        """Get memory in GB for Ray cluster."""
+        resources = self.ray_resources_config
+        if resources:
+            return int(resources.get("memory_gb", 8))
+        return 8
+
+    @property
+    def ray_object_store_memory_gb(self) -> int:
+        """Get object store memory in GB for Ray cluster."""
+        resources = self.ray_resources_config
+        if resources:
+            return int(resources.get("object_store_memory_gb", 4))
+        return 4
+
+    @property
+    def ray_num_gpus(self) -> int:
+        """Get number of GPUs for Ray cluster."""
+        resources = self.ray_resources_config
+        if resources:
+            return int(resources.get("num_gpus", 0))
+        return 0
+
+    @property
+    def ray_dashboard_port(self) -> int:
+        """Get dashboard port for Ray cluster."""
+        resources = self.ray_resources_config
+        if resources:
+            return int(resources.get("dashboard_port", 8265))
+        return 8265
+
     # Hash Keys for Stage Validation
     @property
     def processed_subjects_keys(self) -> List[str]:
