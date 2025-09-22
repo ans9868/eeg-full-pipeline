@@ -144,12 +144,19 @@ class UnifiedConfigHandler:
         project_config = self.raw_config.get("project", {})
 
         # Required project fields
-        required_project_fields = ["name", "experiment_type", "deployment_method"]
+        required_project_fields = ["name", "experiment_type", "deployment_method", "random_seed"]
         for field in required_project_fields:
             if field not in project_config:
                 raise ValueError(f"Missing required project field: {field}")
             if not project_config[field]:
                 raise ValueError(f"Project field '{field}' is empty")
+        
+        # Validate random_seed
+        random_seed = project_config["random_seed"]
+        if not isinstance(random_seed, int):
+            raise ValueError("random_seed must be an integer")
+        if random_seed < 0:
+            raise ValueError("random_seed must be non-negative")
 
         # Validate experiment type
         valid_experiment_types = [
@@ -460,6 +467,7 @@ class UnifiedConfigHandler:
         strategy = data_leakage_config["strategy"]
         valid_strategies = [
             "1 test/1 train split with transforms applied to training set only (faster, single split)",
+            "Within-subject train/test split (80/20 per subject) - each subject contributes to both train and test",
             "LOSO (Leave-One-Subject-Out) - systematic cross-validation (recommended for small datasets)",
             "Transform all data together (no split - fastest, and potential data leakage)",
         ]
@@ -493,6 +501,46 @@ class UnifiedConfigHandler:
 
             if not isinstance(data_leakage_config["loso_metadata"], dict):
                 raise ValueError("loso_metadata must be a dictionary")
+
+        elif "Within-subject train/test split" in strategy:
+            if "within_subject_split" not in data_leakage_config:
+                raise ValueError(
+                    "Missing within_subject_split configuration for within-subject split strategy"
+                )
+            
+            within_subject_config = data_leakage_config["within_subject_split"]
+            required_within_subject_fields = [
+                "train_ratio",
+                "test_ratio", 
+                "random_seed",
+                "split_method"
+            ]
+            
+            for field in required_within_subject_fields:
+                if field not in within_subject_config:
+                    raise ValueError(f"Missing {field} in within_subject_split configuration")
+            
+            # Validate train_ratio and test_ratio
+            train_ratio = within_subject_config["train_ratio"]
+            test_ratio = within_subject_config["test_ratio"]
+            
+            if not isinstance(train_ratio, (int, float)) or not (0.1 <= train_ratio <= 0.9):
+                raise ValueError("train_ratio must be a number between 0.1 and 0.9")
+            
+            if not isinstance(test_ratio, (int, float)) or not (0.1 <= test_ratio <= 0.9):
+                raise ValueError("test_ratio must be a number between 0.1 and 0.9")
+            
+            if abs((train_ratio + test_ratio) - 1.0) > 0.001:
+                raise ValueError("train_ratio + test_ratio must equal 1.0")
+            
+            # Validate random_seed
+            if not isinstance(within_subject_config["random_seed"], int):
+                raise ValueError("random_seed must be an integer")
+            
+            # Validate split_method
+            valid_split_methods = ["random", "stratified"]
+            if within_subject_config["split_method"] not in valid_split_methods:
+                raise ValueError(f"split_method must be one of: {valid_split_methods}")
 
         elif "1 test/1 train split" in strategy:
             if "single_split_method" not in data_leakage_config:
@@ -741,6 +789,11 @@ class UnifiedConfigHandler:
         return self.raw_config.get("project", {}).get("name", "eeg_pipeline")
 
     @property
+    def global_random_seed(self) -> int:
+        """Get global random seed."""
+        return self.raw_config.get("project", {}).get("random_seed", 42)
+
+    @property
     def experiment_type(self) -> str:
         """Get experiment type."""
         return self.raw_config.get("project", {}).get(
@@ -916,6 +969,39 @@ class UnifiedConfigHandler:
         dlp_config = self.raw_config.get("data_leakage_prevention", {})
         return dlp_config.get("individual_loso", False)
 
+    @property
+    def within_subject_train_ratio(self) -> float:
+        """Get within-subject train ratio."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        within_subject_config = dlp_config.get("within_subject_split", {})
+        return within_subject_config.get("train_ratio", 0.8)
+
+    @property
+    def within_subject_test_ratio(self) -> float:
+        """Get within-subject test ratio."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        within_subject_config = dlp_config.get("within_subject_split", {})
+        return within_subject_config.get("test_ratio", 0.2)
+
+    @property
+    def within_subject_split_seed(self) -> int:
+        """Get within-subject split random seed."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        within_subject_config = dlp_config.get("within_subject_split", {})
+        return within_subject_config.get("random_seed", self.global_random_seed)
+
+    @property
+    def within_subject_split_method(self) -> str:
+        """Get within-subject split method."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        within_subject_config = dlp_config.get("within_subject_split", {})
+        return within_subject_config.get("split_method", "random")
+
+    @property
+    def uses_within_subject_split(self) -> bool:
+        """Check if within-subject split is configured."""
+        return "Within-subject train/test split" in self.data_leakage_strategy
+
     # Ray Properties
     @property
     def selected_models(self) -> List[str]:
@@ -957,7 +1043,7 @@ class UnifiedConfigHandler:
     def random_state(self) -> int:
         """Get random state from Ray configuration."""
         ray_config = self.raw_config.get("ray", {})
-        return int(ray_config.get("random_state", 42))
+        return int(ray_config.get("random_state", self.global_random_seed))
 
     @property
     def ray_resources(self) -> Optional[Dict[str, Any]]:
@@ -1031,7 +1117,7 @@ class UnifiedConfigHandler:
     @property
     def transformed_keys(self) -> List[str]:
         """Get transformed config keys for hash validation."""
-        return ["feature_transformation", "feature_extraction"]
+        return ["feature_transformation", "feature_extraction", "data_leakage_prevention"]
 
     # ========================================
     # SECTION ACCESSORS

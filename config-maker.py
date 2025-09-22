@@ -160,6 +160,20 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
         choices=["Docker", "Singularity with Slurm", "Singularity without Slurm"],
     ).ask()
 
+    # 0.6 Global random seed (used throughout the pipeline for reproducibility)
+    while True:
+        random_seed_input = questionary.text(
+            "0.6 Enter global random seed for reproducibility (used for data splitting, ML training, etc.):",
+            default="42"
+        ).ask()
+        try:
+            random_seed = int(random_seed_input)
+            config["project"]["random_seed"] = random_seed
+            print(f"   ✅ Global random seed: {random_seed}")
+            break
+        except ValueError:
+            print("[ERROR] Please enter a valid integer.")
+
     # Use user-supplied project name and timestamp for config name
     project_name = config["project"]["name"] or "project"
     # Sanitize project name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore/dot
@@ -939,6 +953,7 @@ def dataLeakagePreventionPart5(
     experiment_type: str,
     feature_transformations: List[str],
     data_input_groups: Dict[str, List[str]],
+    project_config: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Section 5: Data Leakage Prevention
@@ -946,6 +961,7 @@ def dataLeakagePreventionPart5(
         experiment_type: The experiment type from project metadata
         feature_transformations: List of selected feature transformations
         data_input_groups: Dictionary of data input groups
+        project_config: Dictionary containing project configuration (including random_seed)
     Returns: Dictionary containing data_leakage_prevention configuration
     """
     print("\n[5] Data Leakage Prevention")
@@ -960,11 +976,22 @@ def dataLeakagePreventionPart5(
         "5.1 How would you like to handle data leakage during feature transformation?",
         choices=[
             # "Rotate test subjects and recompute transforms for each fold (slow, very storage heavy, most reliable ml results)",
-            "1 test/1 train split with transforms applied to training set only (faster, single split)",
-            "LOSO (Leave-One-Subject-Out) - systematic cross-validation (recommended for small datasets)",
-            "Transform all data together (no split - fastest, and potential data leakage)",
+            "Transform all data together (intra subject split) (no split - fastest, and potential data leakage)",
+            "Within-subject (intra subject split) train/test split (80/20 per subject) - each subject contributes to both train and test",
+            "1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)",
+            "LOSO (Leave-One-Subject-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)",
         ],
     ).ask()
+
+    # Reduce the strategy choice to a shorter version for storage
+    if "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
+        config["data_leakage_prevention"]["strategy"] = "Transform all data together (intra subject split)"
+    elif "Within-subject" in config["data_leakage_prevention"]["strategy"]:
+        config["data_leakage_prevention"]["strategy"] = "Within-subject (intra subject split)"
+    elif "1 test/1 train split" in config["data_leakage_prevention"]["strategy"]:
+        config["data_leakage_prevention"]["strategy"] = "1 test/1 train split (inter subject split)"
+    elif "LOSO" in config["data_leakage_prevention"]["strategy"]:
+        config["data_leakage_prevention"]["strategy"] = "LOSO (Leave-One-Subject-Out) (inter subject split)"
 
     # Question 2: Test subject definition (if rotation is selected)
     if "Rotate test subjects" in config["data_leakage_prevention"]["strategy"]:
@@ -1523,6 +1550,60 @@ def dataLeakagePreventionPart5(
                     print(f"❌ ERROR: {e}")
                     exit(1)
 
+    # Question 2: Within-subject split configuration (if within-subject split is selected)
+    elif "Within-subject train/test split" in config["data_leakage_prevention"]["strategy"]:
+        print("\n📊 Within-Subject Train/Test Split Configuration")
+        print("   This will split each subject's data 80/20 for train/test.")
+        print("   Each subject contributes to both training and testing sets.")
+        print("   This prevents data leakage while maximizing training data usage.")
+
+        # Ask for train/test ratio
+        while True:
+            train_ratio_input = questionary.text(
+                "5.2.1 Enter train ratio (e.g., 0.8 for 80% train, 20% test):"
+            ).ask()
+            try:
+                train_ratio = float(train_ratio_input)
+                if 0.1 <= train_ratio <= 0.9:
+                    test_ratio = (10.0 - train_ratio*10.0)/10.0 # to get rid of floating point errors
+                    config["data_leakage_prevention"]["within_subject_split"] = {
+                        "train_ratio": train_ratio,
+                        "test_ratio": test_ratio
+                    }
+                    print(f"   ✅ Train ratio: {train_ratio:.1%}, Test ratio: {test_ratio:.1%}")
+                    break
+                else:
+                    print("[ERROR] Train ratio must be between 0.1 and 0.9.")
+            except ValueError:
+                print("[ERROR] Please enter a valid decimal number (e.g., 0.8).")
+
+        # Use global random seed from project configuration
+        global_seed = project_config["random_seed"]
+        config["data_leakage_prevention"]["within_subject_split"]["random_seed"] = global_seed
+        print(f"   ✅ Using global random seed: {global_seed}")
+
+        # Ask for split method
+        # split_method = questionary.select(
+        #     "5.2.3 Select split method:",
+        #     choices=[
+        #         "random - Random split within each subject",
+        #         "stratified - Maintain label distribution within each subject",
+        #     ],
+        # ).ask()
+        
+        # For now, only support random split (stratified to be implemented later)
+        config["data_leakage_prevention"]["within_subject_split"]["split_method"] = "random"
+        print("   ✅ Using random split method (stratified option commented out for now)")
+        
+        # if "random" in split_method:
+        #     config["data_leakage_prevention"]["within_subject_split"]["split_method"] = "random"
+        #     print("   ✅ Using random split method")
+        # else:
+        #     config["data_leakage_prevention"]["within_subject_split"]["split_method"] = "stratified"
+        #     print("   ✅ Using stratified split method (maintains label distribution)")
+
+        print("   📊 Within-subject split configuration completed!")
+
     # Question 2: No split needed (if transform all data is selected)
     elif "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
         print("⚠️  WARNING: You selected to transform all data together.")
@@ -1661,9 +1742,11 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
     return config
 
 
-def rayConfigurationPart7() -> Dict[str, Any]:
+def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Section 7: Ray Configuration
+    Args:
+        project_config: Dictionary containing project configuration (including random_seed)
     Returns: Dictionary containing ray configuration
     """
     print("\n[7] Ray Configuration")
@@ -1745,9 +1828,10 @@ def rayConfigurationPart7() -> Dict[str, Any]:
         "7.7 Enter number of cross-validation folds:", default="5"
     )
 
-    config["ray"]["random_state"] = validate_integer_input(
-        "7.8 Enter random state for reproducibility:", default="42"
-    )
+    # Use global random seed from project configuration
+    global_seed = project_config["random_seed"]
+    config["ray"]["random_state"] = str(global_seed)
+    print(f"   ✅ Using global random seed: {global_seed}")
 
     # 7.9 Ray Resource Configuration
     print("\n[7.9] Ray Resource Configuration")
@@ -2169,6 +2253,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 config["project"]["experiment_type"],
                 config["feature_transformation"]["transformations"],
                 config["data_input"]["groups"],
+                config["project"],
             )
             config.update(data_leakage_prevention_config)
 
@@ -2207,7 +2292,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         "experiment_type"
     ] in ["ML (Classification)", "ML (Clustering)"]:
         ray_config = run_section_with_confirmation(
-            "Ray Configuration", rayConfigurationPart7
+            "Ray Configuration", rayConfigurationPart7, config["project"]
         )
         config.update(ray_config)
     else:
