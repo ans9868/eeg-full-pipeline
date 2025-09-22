@@ -466,10 +466,10 @@ class UnifiedConfigHandler:
 
         strategy = data_leakage_config["strategy"]
         valid_strategies = [
-            "1 test/1 train split with transforms applied to training set only (faster, single split)",
-            "Within-subject train/test split (80/20 per subject) - each subject contributes to both train and test",
-            "LOSO (Leave-One-Subject-Out) - systematic cross-validation (recommended for small datasets)",
-            "Transform all data together (no split - fastest, and potential data leakage)",
+            "1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)",
+            "Within-subject (intra subject split) train/test split (80/20 per subject) - each subject contributes to both train and test",
+            "LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)",
+            "Transform all data together (intra subject split) (no split - fastest, and potential data leakage)",
         ]
 
         if strategy not in valid_strategies:
@@ -478,29 +478,29 @@ class UnifiedConfigHandler:
             )
 
         # Validate additional fields based on strategy
-        if "LOSO (Leave-One-Subject-Out)" in strategy:
-            required_loso_fields = [
-                "use_loso",
-                "loso_subjects_per_group",
-                "loso_folds",
-                "loso_metadata",
+        if "LPSO (Leave-P-Subjects-Out)" in strategy:
+            required_lpso_fields = [
+                "use_lpso",
+                "lpso_subjects_per_group",
+                "lpso_folds",
+                "lpso_metadata",
             ]
-            for field in required_loso_fields:
+            for field in required_lpso_fields:
                 if field not in data_leakage_config:
-                    raise ValueError(f"Missing {field} for LOSO strategy")
+                    raise ValueError(f"Missing {field} for LPSO strategy")
 
-            # Validate LOSO-specific fields
-            if not isinstance(data_leakage_config["use_loso"], bool):
-                raise ValueError("use_loso must be a boolean")
+            # Validate LPSO-specific fields
+            if not isinstance(data_leakage_config["use_lpso"], bool):
+                raise ValueError("use_lpso must be a boolean")
 
-            if not isinstance(data_leakage_config["loso_subjects_per_group"], int):
-                raise ValueError("loso_subjects_per_group must be an integer")
+            if not isinstance(data_leakage_config["lpso_subjects_per_group"], int):
+                raise ValueError("lpso_subjects_per_group must be an integer")
 
-            if not isinstance(data_leakage_config["loso_folds"], list):
-                raise ValueError("loso_folds must be a list")
+            if not isinstance(data_leakage_config["lpso_folds"], list):
+                raise ValueError("lpso_folds must be a list")
 
-            if not isinstance(data_leakage_config["loso_metadata"], dict):
-                raise ValueError("loso_metadata must be a dictionary")
+            if not isinstance(data_leakage_config["lpso_metadata"], dict):
+                raise ValueError("lpso_metadata must be a dictionary")
 
         elif "Within-subject train/test split" in strategy:
             if "within_subject_split" not in data_leakage_config:
@@ -941,21 +941,21 @@ class UnifiedConfigHandler:
         """Get data leakage prevention strategy."""
         return self.raw_config.get("data_leakage_prevention", {}).get(
             "strategy",
-            "Transform all data together (no split - fastest, and potential data leakage)",
+            "Transform all data together (intra subject split) (no split - fastest, and potential data leakage)",
         )
 
     @property
-    def uses_loso(self) -> bool:
-        """Check if LOSO cross-validation is being used."""
+    def uses_lpso(self) -> bool:
+        """Check if LPSO cross-validation is being used."""
         dlp_config = self.raw_config.get("data_leakage_prevention", {})
         strategy = dlp_config.get("strategy", "")
-        return "LOSO" in strategy or dlp_config.get("use_loso", False)
+        return "LPSO" in strategy or dlp_config.get("use_lpso", False)
 
     @property
-    def loso_folds(self) -> Optional[List[List[str]]]:
-        """Get LOSO folds if available."""
+    def lpso_folds(self) -> Optional[List[List[str]]]:
+        """Get LPSO folds if available."""
         dlp_config = self.raw_config.get("data_leakage_prevention", {})
-        return dlp_config.get("loso_folds")
+        return dlp_config.get("lpso_folds")
 
     @property
     def test_subjects(self) -> Optional[List[str]]:
@@ -964,10 +964,10 @@ class UnifiedConfigHandler:
         return dlp_config.get("test_subjects_paths")
 
     @property
-    def individual_loso(self) -> bool:
-        """Get individual_loso setting."""
+    def individual_lpso(self) -> bool:
+        """Get individual_lpso setting."""
         dlp_config = self.raw_config.get("data_leakage_prevention", {})
-        return dlp_config.get("individual_loso", False)
+        return dlp_config.get("individual_lpso", False)
 
     @property
     def within_subject_train_ratio(self) -> float:

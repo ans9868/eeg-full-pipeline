@@ -979,19 +979,9 @@ def dataLeakagePreventionPart5(
             "Transform all data together (intra subject split) (no split - fastest, and potential data leakage)",
             "Within-subject (intra subject split) train/test split (80/20 per subject) - each subject contributes to both train and test",
             "1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)",
-            "LOSO (Leave-One-Subject-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)",
+            "LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)",
         ],
     ).ask()
-
-    # Reduce the strategy choice to a shorter version for storage
-    if "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
-        config["data_leakage_prevention"]["strategy"] = "Transform all data together (intra subject split)"
-    elif "Within-subject" in config["data_leakage_prevention"]["strategy"]:
-        config["data_leakage_prevention"]["strategy"] = "Within-subject (intra subject split)"
-    elif "1 test/1 train split" in config["data_leakage_prevention"]["strategy"]:
-        config["data_leakage_prevention"]["strategy"] = "1 test/1 train split (inter subject split)"
-    elif "LOSO" in config["data_leakage_prevention"]["strategy"]:
-        config["data_leakage_prevention"]["strategy"] = "LOSO (Leave-One-Subject-Out) (inter subject split)"
 
     # Question 2: Test subject definition (if rotation is selected)
     if "Rotate test subjects" in config["data_leakage_prevention"]["strategy"]:
@@ -1116,11 +1106,11 @@ def dataLeakagePreventionPart5(
                 except ValueError:
                     print("[ERROR] Please enter a valid integer.")
 
-    # Question 2: LOSO configuration (if LOSO is selected)
+    # Question 2: LPSO configuration (if LPSO is selected)
     elif (
-        "LOSO (Leave-One-Subject-Out)" in config["data_leakage_prevention"]["strategy"]
+        "LPSO (Leave-P-Subjects-Out)" in config["data_leakage_prevention"]["strategy"]
     ):
-        print("\n📊 LOSO (Leave-One-Subject-Out) Configuration")
+        print("\n📊 LPSO (Leave-P-Subjects-Out) Configuration")
         print("   This will systematically leave out subjects for cross-validation.")
         print("   Each subject will be used as test data exactly once.")
 
@@ -1134,8 +1124,8 @@ def dataLeakagePreventionPart5(
         num_groups = len(data_input_groups)
         default_subjects = num_groups  # Default is 1 subject per group per fold
 
-        loso_choice = questionary.select(
-            "5.2.1 LOSO configuration:",
+        lpso_choice = questionary.select(
+            "5.2.1 LPSO configuration:",
             choices=[
                 f"Default ({default_subjects} subjects - 1 per group per fold)",
                 f"Custom number of subjects",
@@ -1143,7 +1133,7 @@ def dataLeakagePreventionPart5(
             ],
         ).ask()
 
-        if "Default" in loso_choice:
+        if "Default" in lpso_choice:
             # Use default (1 subject per group per fold)
             count = default_subjects
             subjects_per_group_per_fold = 1
@@ -1166,18 +1156,18 @@ def dataLeakagePreventionPart5(
 
             if insufficient_groups:
                 print(
-                    f"❌ ERROR: The following groups don't have enough subjects for default LOSO:"
+                    f"❌ ERROR: The following groups don't have enough subjects for default LPSO:"
                 )
                 for group in insufficient_groups:
                     print(f"   {group}")
-                print(f"   Each group needs at least 1 subject for default LOSO.")
-                raise ValueError("Insufficient subjects for default LOSO")
+                print(f"   Each group needs at least 1 subject for default LPSO.")
+                raise ValueError("Insufficient subjects for default LPSO")
 
-            config["data_leakage_prevention"]["loso_subjects_per_group"] = count
+            config["data_leakage_prevention"]["lpso_subjects_per_group"] = count
 
-        elif "Leave-One-Subject-Out (Individual)" in loso_choice:
-            # Individual LOSO - each subject gets its own test fold
-            print(f"   ✅ Using Individual LOSO: each subject as test")
+        elif "Leave-P-Subjects-Out (Individual)" in lpso_choice:
+            # Individual LPSO - each subject gets its own test fold
+            print(f"   ✅ Using Individual LPSO: each subject as test")
 
             # Collect all subjects from all groups
             all_subjects = []
@@ -1189,12 +1179,12 @@ def dataLeakagePreventionPart5(
             print(f"   📊 Total subjects: {total_subjects}")
             print(f"   📈 You can generate {total_subjects} folds (one per subject)")
 
-            # Set up for individual LOSO
+            # Set up for individual SO
             count = total_subjects  # Each subject gets its own fold
             subjects_per_group_per_fold = 1  # Each fold has exactly 1 subject
 
-            config["data_leakage_prevention"]["loso_subjects_per_group"] = count
-            config["data_leakage_prevention"]["individual_loso"] = True
+            config["data_leakage_prevention"]["lpso_subjects_per_group"] = count
+            config["data_leakage_prevention"]["individual_lpso"] = True
 
         else:
             # Ask for custom number of subjects per group
@@ -1255,7 +1245,7 @@ def dataLeakagePreventionPart5(
                             continue
 
                         config["data_leakage_prevention"][
-                            "loso_subjects_per_group"
+                            "lpso_subjects_per_group"
                         ] = count
                         break
                     else:
@@ -1301,42 +1291,42 @@ def dataLeakagePreventionPart5(
             uneven_handling = "cutoff"
             config["data_leakage_prevention"]["uneven_handling"] = uneven_handling
 
-        # Generate LOSO folds
-        print(f"   🔄 Generating LOSO folds...")
+        # Generate LPSO folds
+        print(f"   🔄 Generating LPSO folds...")
         try:
-            # Check if individual LOSO is enabled
-            individual_loso = config["data_leakage_prevention"].get(
-                "individual_loso", False
+            # Check if individual LPSO is enabled
+            individual_lpso = config["data_leakage_prevention"].get(
+                "individual_lpso", False
             )
 
-            loso_folds, fold_metadata = generate_loso_folds(
+            lpso_folds, fold_metadata = generate_lpso_folds(
                 data_input_groups,
                 count,
-                individual_loso=individual_loso,
+                individual_lpso=individual_lpso,
                 uneven_handling=uneven_handling,
                 # random_seed=42
             )
 
             # Store the folds in config
-            config["data_leakage_prevention"]["loso_folds"] = loso_folds
-            config["data_leakage_prevention"]["loso_metadata"] = fold_metadata
+            config["data_leakage_prevention"]["lpso_folds"] = lpso_folds
+            config["data_leakage_prevention"]["lpso_metadata"] = fold_metadata
 
-            print(f"   ✅ Generated {len(loso_folds)} LOSO folds")
+            print(f"   ✅ Generated {len(lpso_folds)} LPSO folds")
             print(f"   📊 Each fold leaves out {count} subjects per group")
-            print(f"   🎯 Total unique test combinations: {len(loso_folds)}")
+            print(f"   🎯 Total unique test combinations: {len(lpso_folds)}")
 
             # Show example of first few folds
-            if len(loso_folds) > 0:
-                print(f"   📋 Example fold 1: {len(loso_folds[0])} subjects")
-                if len(loso_folds) > 1:
-                    print(f"   📋 Example fold 2: {len(loso_folds[1])} subjects")
+            if len(lpso_folds) > 0:
+                print(f"   📋 Example fold 1: {len(lpso_folds[0])} subjects")
+                if len(lpso_folds) > 1:
+                    print(f"   📋 Example fold 2: {len(lpso_folds[1])} subjects")
 
         except ValueError as e:
-            print(f"❌ ERROR generating LOSO folds: {e}")
+            print(f"❌ ERROR generating LPSO folds: {e}")
             exit(1)
 
-        # Set LOSO flag
-        config["data_leakage_prevention"]["use_loso"] = True
+        # Set LPSO flag
+        config["data_leakage_prevention"]["use_lpso"] = True
 
     # Question 2: Single train/test set definition (if single split is selected)
     elif "1 test/1 train split" in config["data_leakage_prevention"]["strategy"]:
@@ -2356,21 +2346,21 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
             ):
                 print(f"      {i}. {subject_id}: {path}")
 
-    # Show LOSO information if applicable
-    elif config.get("data_leakage_prevention", {}).get("use_loso"):
-        loso_metadata = config["data_leakage_prevention"]["loso_metadata"]
-        total_folds = loso_metadata.get("total_folds", "unknown")
-        subjects_per_group = loso_metadata.get("subjects_per_group", "unknown")
-        total_subjects = loso_metadata.get("total_subjects", "unknown")
+    # Show LPSO information if applicable
+    elif config.get("data_leakage_prevention", {}).get("use_lpso"):
+        lpso_metadata = config["data_leakage_prevention"]["lpso_metadata"]
+        total_folds = lpso_metadata.get("total_folds", "unknown")
+        subjects_per_group = lpso_metadata.get("subjects_per_group", "unknown")
+        total_subjects = lpso_metadata.get("total_subjects", "unknown")
 
-        print(f"🎯 LOSO Cross-Validation: {total_folds} folds")
+        print(f"🎯 LPSO Cross-Validation: {total_folds} folds")
         print(f"   📊 Leave out {subjects_per_group} subjects per group per fold")
         print(f"   📈 Total subjects: {total_subjects}")
         print(f"   🔄 Each subject used as test data exactly once")
 
         # Show example of first fold if available
-        if config.get("data_leakage_prevention", {}).get("loso_folds"):
-            first_fold = config["data_leakage_prevention"]["loso_folds"][0]
+        if config.get("data_leakage_prevention", {}).get("lpso_folds"):
+            first_fold = config["data_leakage_prevention"]["lpso_folds"][0]
             if first_fold:
                 # Extract subject IDs from first fold
                 first_fold_subject_ids = []
@@ -2510,21 +2500,21 @@ def check_paths_in_groups(
     return found_paths, missing_paths
 
 
-def generate_loso_folds(
+def generate_lpso_folds(
     groups: Dict[str, List[str]],
     subjects_per_group: int,
     random_seed: int = 42,
-    individual_loso: bool = False,
+    individual_lpso: bool = False,
     uneven_handling: str = "cutoff",
 ) -> Tuple[List[List[str]], Dict[str, Any]]:
     """
-    Generate LOSO (Leave-One-Subject-Out) folds with systematic, ordered selection.
+    Generate LPSO (Leave-P-Subjects-Out) folds with systematic, ordered selection.
 
     Args:
         groups: Dictionary of group names to subject paths
         subjects_per_group: Number of subjects to leave out per group per fold
         random_seed: Random seed for reproducibility (default: 42) - not used for ordering
-        individual_loso: If True, each subject gets its own test fold regardless of group
+        individual_lpso: If True, each subject gets its own test fold regardless of group
         uneven_handling: How to handle uneven group sizes - "cutoff" (stop when any group runs out)
                         or "wrap_around" (reuse subjects from beginning when group runs out)
 
@@ -2532,9 +2522,9 @@ def generate_loso_folds(
         Tuple of (list_of_test_subject_lists, metadata_dict)
     """
 
-    if individual_loso:
-        # Individual LOSO: each subject gets its own test fold
-        print(f"   🎯 Generating Individual LOSO folds (one per subject)")
+    if individual_lpso:
+        # Individual LPSO: each subject gets its own test fold
+        print(f"   🎯 Generating Individual LPSO folds (one per subject)")
 
         # Collect all subjects from all groups
         all_subjects = []
@@ -2547,7 +2537,7 @@ def generate_loso_folds(
         for subject_path in all_subjects:
             all_folds.append([subject_path])  # Each fold contains exactly one subject
 
-        # Create metadata for individual LOSO
+        # Create metadata for individual LPSO
         metadata = {
             "total_folds": len(all_folds),
             "subjects_per_group": len(all_subjects),
@@ -2555,13 +2545,13 @@ def generate_loso_folds(
             "total_subjects": len(all_subjects),
             "groups": list(groups.keys()),
             "num_groups": len(groups),
-            "fold_generation_method": "individual_loso",
+            "fold_generation_method": "individual_lpso",
         }
 
         return all_folds, metadata
 
     else:
-        # Standard LOSO: systematic selection per group
+        # Standard LPSO: systematic selection per group
         num_groups = len(groups)
 
         # Check if subjects_per_group is evenly divisible by number of groups
@@ -2619,7 +2609,7 @@ def generate_loso_folds(
         total_subjects = sum(len(subjects) for subjects in subjects_by_group.values())
         if subjects_per_group >= total_subjects:
             raise ValueError(
-                f"❌ Invalid LOSO configuration: {subjects_per_group} subjects per group >= {total_subjects} total subjects. "
+                f"❌ Invalid LPSO configuration: {subjects_per_group} subjects per group >= {total_subjects} total subjects. "
                 f"This would leave no training subjects, preventing transformers from fitting. "
                 f"Please ensure at least one subject remains for training."
             )

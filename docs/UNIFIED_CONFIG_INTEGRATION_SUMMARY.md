@@ -16,7 +16,7 @@ This document summarizes the comprehensive integration of `UnifiedConfigHandler`
   - `config_handler.reuse_transformed` instead of dict access
   - `config_handler.transformed_keys` for hash validation
 - Updated `create_output_directory()` to accept `UnifiedConfigHandler`
-- Updated `validate_loso_config()` to use property accessors
+- Updated `validate_lpso_config()` to use property accessors
 
 **Benefits:**
 - Type safety and validation at entry point
@@ -47,7 +47,7 @@ This document summarizes the comprehensive integration of `UnifiedConfigHandler`
   - `config_handler.show_intermediate_results` and `config_handler.show_intermediate_counts`
   - `config_handler.reuse_processed_subjects` and `config_handler.save_processed_subjects`
   - `config_handler.transform_features_flag` instead of nested dict access
-  - `config_handler.uses_loso` and `config_handler.loso_folds`
+  - `config_handler.uses_lpso` and `config_handler.lpso_folds`
   - `config_handler.save_transformed`
 
 **Benefits:**
@@ -93,8 +93,8 @@ This document summarizes the comprehensive integration of `UnifiedConfigHandler`
 **Changes Made:**
 - Updated all functions to accept `UnifiedConfigHandler` or legacy dict:
   - `check_mounted_data()`: Use `config_handler.groups` instead of nested dict access
-  - `load_stage_data()`: Use `config_handler.data_leakage_strategy` and `config_handler.uses_loso`
-  - `_load_loso_transformed_data()`: Use `config_handler.loso_folds`
+  - `load_stage_data()`: Use `config_handler.data_leakage_strategy` and `config_handler.uses_lpso`
+  - `_load_lpso_transformed_data()`: Use `config_handler.lpso_folds`
   - `_load_standard_transformed_data()`: Use property accessors for strategy detection
   - `check_stage_reuse_robust()`: Accept UnifiedConfigHandler parameter
 
