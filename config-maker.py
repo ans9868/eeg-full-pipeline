@@ -106,6 +106,10 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
     experiment_type_choice = questionary.select(
         "0.3 Experiment Type:",
         choices=[
+            # ! TODO: support ML fingerprinting in config handler and ray ,
+            # ! comment out clustering 
+            # ! format ML {classification, clustering, fingerprinting} and update accordingly 
+            # "ML Fingerprinting - Predict EEG subject ID's from EEG data (only intra subject splits are supported)",
             "ML (Classification) - Predict categories (e.g., patient vs control, disease stages)",
             "ML (Clustering) - Find patterns/groups in data with labels",
             "Analysis (No Ray ML) - Process data for manual analysis, no automated ML",
@@ -972,16 +976,25 @@ def dataLeakagePreventionPart5(
     config["data_leakage_prevention"] = {}
 
     # Question 1: Data leakage prevention strategy
-    config["data_leakage_prevention"]["strategy"] = questionary.select(
+    data_leakage_prevention_choice = questionary.select(
         "5.1 How would you like to handle data leakage during feature transformation?",
-        choices=[
-            # "Rotate test subjects and recompute transforms for each fold (slow, very storage heavy, most reliable ml results)",
-            "Transform all data together (intra subject split) (no split - fastest, and potential data leakage)",
-            "Within-subject (intra subject split) train/test split (80/20 per subject) - each subject contributes to both train and test",
-            "1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)",
-            "LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)",
+        choices=["
+            "Transform all data together (intra subject) (no split - fastest, and potential data leakage)",
+            "Within-subject (intra subject) train/test split (example: 80/20 per subject) - each subject contributes to both train and test",
+            "1 test/1 train split (inter subject) with transforms applied to training set only (faster, single split)",
+            "LPSO (Leave-P-Subjects-Out) (inter subject) - systematic cross-validation (recommended for small datasets)",
         ],
     ).ask()
+    
+    # Map the choice to the full strategy string expected by config_handler.py
+    data_leakage_prevention_mapping = {
+        "Transform all data together (intra subject) (no split - fastest, and potential data leakage)": "Transform all data together (intra subject split) (no split - fastest, and potential data leakage)",
+        "Within-subject (intra subject) train/test split (example: 80/20 per subject) - each subject contributes to both train and test": "Within-subject (intra subject split) train/test split (80/20 per subject) - each subject contributes to both train and test",
+        "1 test/1 train split (inter subject) with transforms applied to training set only (faster, single split)": "1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)",
+        "LPSO (Leave-P-Subjects-Out) (inter subject) - systematic cross-validation (recommended for small datasets)": "LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)"
+    }
+    
+    config["data_leakage_prevention"]["strategy"] = data_leakage_prevention_mapping[data_leakage_prevention_choice]
 
     # Question 2: Test subject definition (if rotation is selected)
     if "Rotate test subjects" in config["data_leakage_prevention"]["strategy"]:

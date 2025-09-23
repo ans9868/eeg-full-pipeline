@@ -502,7 +502,7 @@ class UnifiedConfigHandler:
             if not isinstance(data_leakage_config["lpso_metadata"], dict):
                 raise ValueError("lpso_metadata must be a dictionary")
 
-        elif "Within-subject train/test split" in strategy:
+        elif "Within-subject" in strategy and "train/test split" in strategy:
             if "within_subject_split" not in data_leakage_config:
                 raise ValueError(
                     "Missing within_subject_split configuration for within-subject split strategy"
@@ -1000,7 +1000,7 @@ class UnifiedConfigHandler:
     @property
     def uses_within_subject_split(self) -> bool:
         """Check if within-subject split is configured."""
-        return "Within-subject train/test split" in self.data_leakage_strategy
+        return "Within-subject" in self.data_leakage_strategy and "train/test split" in self.data_leakage_strategy
 
     # Ray Properties
     @property
