@@ -160,8 +160,9 @@ class UnifiedConfigHandler:
 
         # Validate experiment type
         valid_experiment_types = [
-            "ML (Classification)",
-            "ML (Clustering)",
+            "ML Classification",
+            "ML Clustering", 
+            "ML Fingerprinting",
             "Analysis (No Ray ML)",
         ]
 
@@ -476,6 +477,21 @@ class UnifiedConfigHandler:
             raise ValueError(
                 f"Data leakage prevention strategy must be one of: {valid_strategies}"
             )
+
+        # ML Fingerprinting can only use intra-subject splits (same subjects in train/test)
+        experiment_type = self.raw_config.get("project", {}).get("experiment_type", "")
+        if experiment_type == "ML Fingerprinting":
+            inter_subject_strategies = [
+                "1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)",
+                "LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)",
+            ]
+            if strategy in inter_subject_strategies:
+                raise ValueError(
+                    f"ML Fingerprinting cannot use inter-subject splits. "
+                    f"Strategy '{strategy}' is not allowed for ML Fingerprinting. "
+                    f"Please use 'Transform all data together (intra subject split)' or "
+                    f"'Within-subject (intra subject split) train/test split' instead."
+                )
 
         # Validate additional fields based on strategy
         if "LPSO (Leave-P-Subjects-Out)" in strategy:
@@ -817,6 +833,11 @@ class UnifiedConfigHandler:
 
     # Data Input Properties
     @property
+    def data_input(self) -> Dict[str, Any]:
+        """Get complete data input configuration."""
+        return self.raw_config.get("data_input", {})
+    
+    @property
     def groups(self) -> Dict[str, list]:
         """Get data groups."""
         return self.raw_config.get("data_input", {}).get("groups", {})
@@ -1107,6 +1128,23 @@ class UnifiedConfigHandler:
         if resources:
             return int(resources.get("dashboard_port", 8265))
         return 8265
+    
+    @property 
+    def data_directory(self) -> str:
+        """Get the data directory path for the project."""
+        return str(self.output_dir)
+    
+    @property
+    def experiment_config(self) -> Dict[str, Any]:
+        """Get complete experiment configuration for Ray workers."""
+        return {
+            'experiment_type': self.experiment_type,
+            'random_seed': self.global_random_seed,
+            'data_leakage_strategy': self.data_leakage_strategy,
+            'selected_models': self.selected_models,
+            'optimization_metric': self.optimization_metric,
+            'optimization_mode': self.optimization_mode
+        }
 
     # Hash Keys for Stage Validation
     @property
@@ -1169,11 +1207,15 @@ class UnifiedConfigHandler:
 
     def is_classification_experiment(self) -> bool:
         """Check if this is a classification experiment."""
-        return self.experiment_type == "ML (Classification)"
+        return self.experiment_type == "ML Classification"
 
     def is_clustering_experiment(self) -> bool:
         """Check if this is a clustering experiment."""
-        return self.experiment_type == "ML (Clustering)"
+        return self.experiment_type == "ML Clustering"
+    
+    def is_fingerprinting_experiment(self) -> bool:
+        """Check if this is a fingerprinting experiment."""
+        return self.experiment_type == "ML Fingerprinting"
 
 
 if __name__ == "__main__":

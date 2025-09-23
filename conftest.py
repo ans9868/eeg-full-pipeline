@@ -77,7 +77,7 @@ def temp_config_file(project_root):
     test_config = {
         'project': {
             'name': 'test_integration',
-            'experiment_type': 'ML (Classification)',
+            'experiment_type': 'ML Classification',
             'deployment_method': 'Docker'
         },
         'data_input': {

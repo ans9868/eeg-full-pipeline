@@ -106,25 +106,22 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
     experiment_type_choice = questionary.select(
         "0.3 Experiment Type:",
         choices=[
-            # ! TODO: support ML fingerprinting in config handler and ray ,
-            # ! comment out clustering 
-            # ! format ML {classification, clustering, fingerprinting} and update accordingly 
-            # "ML Fingerprinting - Predict EEG subject ID's from EEG data (only intra subject splits are supported)",
-            "ML (Classification) - Predict categories (e.g., patient vs control, disease stages)",
-            "ML (Clustering) - Find patterns/groups in data with labels",
+            "ML Fingerprinting - Predict EEG subject ID's from EEG data (only intra subject splits are supported)",
+            "ML Classification - Predict categories (e.g., patient vs control, disease stages)",
+            "ML Clustering - Find patterns/groups in data with labels",
             "Analysis (No Ray ML) - Process data for manual analysis, no automated ML",
         ],
     ).ask()
 
     # Extract simplified experiment type from the choice
-    if experiment_type_choice and "ML (Classification)" in experiment_type_choice:
-        config["project"]["experiment_type"] = "ML (Classification)"
-    elif "ML (Clustering)" in experiment_type_choice:
-        config["project"]["experiment_type"] = "ML (Clustering)"
+    if experiment_type_choice and "ML Classification" in experiment_type_choice:
+        config["project"]["experiment_type"] = "ML Classification"
+    elif "ML Clustering" in experiment_type_choice:
+        config["project"]["experiment_type"] = "ML Clustering"
     elif "Analysis (No Ray ML)" in experiment_type_choice:
         config["project"]["experiment_type"] = "Analysis (No Ray ML)"
     else:
-        config["project"]["experiment_type"] = "ML (Classification)"  # Default fallback
+        config["project"]["experiment_type"] = "ML Classification"  # Default fallback
 
     config["project"]["subjects_or_events"] = questionary.select(
         "0.4 Are we analyzing subjects or events: (events are not currently supported)",
@@ -976,15 +973,29 @@ def dataLeakagePreventionPart5(
     config["data_leakage_prevention"] = {}
 
     # Question 1: Data leakage prevention strategy
-    data_leakage_prevention_choice = questionary.select(
+    # For ML Fingerprinting, only allow intra-subject splits (same subjects in train/test)
+    if experiment_type == "ML Fingerprinting":
+        print("ML Fingerprinting detected - only intra-subject splits are allowed")
+        print("   This is because fingerprinting predicts subject IDs, requiring same subjects in train/test")
+        
+        data_leakage_prevention_choice = questionary.select(
+            "5.1 How would you like to handle data leakage during feature transformation?",
+            choices=[
+                "Transform all data together (intra subject) (no split - fastest, and potential data leakage)",
+                "Within-subject (intra subject) train/test split (example: 80/20 per subject) - each subject contributes to both train and test",
+            ],
+        ).ask()
+    else:
+        data_leakage_prevention_choice = questionary.select(
         "5.1 How would you like to handle data leakage during feature transformation?",
-        choices=["
+        choices=[
             "Transform all data together (intra subject) (no split - fastest, and potential data leakage)",
             "Within-subject (intra subject) train/test split (example: 80/20 per subject) - each subject contributes to both train and test",
             "1 test/1 train split (inter subject) with transforms applied to training set only (faster, single split)",
             "LPSO (Leave-P-Subjects-Out) (inter subject) - systematic cross-validation (recommended for small datasets)",
         ],
     ).ask()
+    
     
     # Map the choice to the full strategy string expected by config_handler.py
     data_leakage_prevention_mapping = {
@@ -2247,7 +2258,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         config.update(feature_transformation_config)
 
         # 5. Data Leakage Prevention (only if ML Classification and Feature Transformation are enabled)
-        if config["project"]["experiment_type"] == "ML (Classification)" and config[
+        if config["project"]["experiment_type"] == "ML Classification" and config[
             "feature_transformation"
         ]["transformations"] != ["None"]:
             data_leakage_prevention_config = run_section_with_confirmation(
@@ -2293,7 +2304,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     # 7. Ray Configuration (only if target is ray-only or full AND experiment type is ML)
     if (target == "ray-only" or target == "full") and config["project"][
         "experiment_type"
-    ] in ["ML (Classification)", "ML (Clustering)"]:
+    ] in ["ML Classification", "ML Clustering"]:
         ray_config = run_section_with_confirmation(
             "Ray Configuration", rayConfigurationPart7, config["project"]
         )
