@@ -177,10 +177,8 @@ graph TD
     %% Data Input Section
     subgraph "Data Input Section"
         B1[groups]
-        B2[reuse_raw: Yes]
-        B3[save_raw: Yes]
-        B4[reuse_processed_features: Yes]
-        B5[save_processed_features: Yes]
+        B2[reuse_processed_subjects: Yes]
+        B3[save_processed_subjects: Yes]
         B6[reuse_transformed: Yes]
         B7[save_transformed: Yes]
     end
@@ -372,12 +370,10 @@ graph TB
     
     %% Reuse Options
     subgraph "Reuse Options"
-        I[reuse_raw: Yes/No]
-        J[reuse_processed_features: Yes/No]
-        K[reuse_transformed: Yes/No]
-        L[save_raw: Yes/No]
-        M[save_processed_features: Yes/No]
-        N[save_transformed: Yes/No]
+        I[reuse_processed_subjects: Yes/No]
+        J[reuse_transformed: Yes/No]
+        K[save_processed_subjects: Yes/No]
+        L[save_transformed: Yes/No]
     end
     
     %% Cache Files

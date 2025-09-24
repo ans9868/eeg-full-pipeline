@@ -57,8 +57,7 @@ def check_stage_reuse(output_dir: Path, stage: str, config: Dict[str, Any], keys
 
 | Stage | Reuse Flag | Save Flag | Config Keys | Hash File Location |
 |-------|------------|-----------|-------------|-------------------|
-| `raw` | `reuse_raw` | `save_raw` | `["preprocessing", "data_input"]` | `{output_dir}/raw/.config_hash.txt` |
-| `processed_features` | `reuse_processed_features` | `save_processed_features` | `["feature_extraction", "preprocessing"]` | `{output_dir}/processed_features/.config_hash.txt` |
+| `processed_subjects` | `reuse_processed_subjects` | `save_processed_subjects` | `["feature_extraction", "preprocessing"]` | `{output_dir}/processed_subjects/.config_hash.txt` |
 | `transformed` | `reuse_transformed` | `save_transformed` | `["transformation", "feature_extraction"]` | `{output_dir}/transformed/.config_hash.txt` |
 
 ## 🔄 Usage Flow
@@ -79,8 +78,8 @@ def check_stage_reuse(output_dir: Path, stage: str, config: Dict[str, Any], keys
 The hashing system is integrated into the main pipeline flow with hierarchical checking:
 
 - **`main.py`**: Checks `transformed` stage hash and returns early if matches
-- **`process_subjects()`**: Checks `processed_features` stage hash before processing subjects using DataFrames
-- **`process_subject()`**: TODO - Will check `raw` stage hash (to be implemented)
+- **`process_subjects()`**: Checks `processed_subjects` stage hash before processing subjects using DataFrames
+- **`process_subject()`**: Processes individual subjects with feature extraction
 - **Configuration system**: YAML config loading and validation
 
 ### Example: Hierarchical Hash Checking with DataFrames
@@ -95,10 +94,10 @@ def main():
     # Continue with processing if no transformed data exists
     result = process_subjects(spark, config)
 
-# process_subjects.py - checks processed_features stage using DataFrames
+# process_subjects.py - checks processed_subjects stage using DataFrames
 def process_subjects(spark: SparkSession, config: Dict[str, Any]) -> Dict[str, str]:
-    if check_stage_reuse(output_dir, "processed_features", config, processed_keys, reuse_processed_features):
-        return {"status": "completed", "message": "reused existing processed_features data"}
+    if check_stage_reuse(output_dir, "processed_subjects", config, processed_keys, reuse_processed_subjects):
+        return {"status": "completed", "message": "reused existing processed_subjects data"}
     
     # Process subjects using DataFrames
     subjects_df = spark.createDataFrame(subjects, "subject string")
@@ -109,15 +108,14 @@ def process_subjects(spark: SparkSession, config: Dict[str, Any]) -> Dict[str, s
     
     # Union all subject DataFrames
     combined_df = feature_dfs[0].union(feature_dfs[1:])
-    return {"status": "completed", "message": "processed and saved new processed_features data"}
+    return {"status": "completed", "message": "processed and saved new processed_subjects data"}
 
-# process_subject.py - TODO: will check raw stage
+# process_subject.py - processes individual subjects
 def process_subject(subject_id: str, spark: SparkSession) -> DataFrame:
-    # TODO: Check for existing raw data with hash validation
-    # - Check if reuse_raw flag is enabled
-    # - Validate hash for raw stage (preprocessing, data_input keys)
-    # - Load existing raw data if hash matches
-    # - Process raw data if no reuse possible
+    # Process individual subject with feature extraction
+    # - Load EEG data from file paths
+    # - Apply preprocessing and feature extraction
+    # - Return feature DataFrame for this subject
     
     # Process epochs and return DataFrame
     all_features = []

@@ -285,13 +285,6 @@ def dataInputPart1() -> Dict[str, Any]:
                 # Continue the inner loop to ask for paths again
                 continue
 
-    # This was to expand the EEG data into spark dataframes
-    # config["data_input"]["reuse_raw"] = questionary.select(
-    #     "Reuse raw data processing if it exists?", choices=["Yes", "No"]
-    # ).ask()
-    # config["data_input"]["save_raw"] = questionary.select(
-    #     "Save raw data processing for reuse?", choices=["Yes", "No"]
-    # ).ask()
 
     config["data_input"]["reuse_processed_subjects"] = questionary.select(
         "1.3 Reuse processed features (bandpower, entropy etc.) if they exist?",

@@ -97,17 +97,12 @@ def check_stage_reuse(output_dir: Path, stage: str, config: Dict[str, Any], keys
 
 Each processing stage tracks only the configuration keys that affect its output:
 
-### Raw Stage
-- **Keys**: `["preprocessing", "data_input"]`
-- **Reuse Flag**: `config["data_input"]["reuse_raw"]`
-- **Save Flag**: `config["data_input"]["save_raw"]`
-- **Hash File**: `{output_dir}/raw/.config_hash.txt`
 
-### Processed Features Stage  
+### Processed Subjects Stage  
 - **Keys**: `["feature_extraction", "preprocessing"]`
-- **Reuse Flag**: `config["data_input"]["reuse_processed_features"]`
-- **Save Flag**: `config["data_input"]["save_processed_features"]`
-- **Hash File**: `{output_dir}/processed_features/.config_hash.txt`
+- **Reuse Flag**: `config["data_input"]["reuse_processed_subjects"]`
+- **Save Flag**: `config["data_input"]["save_processed_subjects"]`
+- **Hash File**: `{output_dir}/processed_subjects/.config_hash.txt`
 
 ### Transformed Stage
 - **Keys**: `["transformation", "feature_extraction"]`
@@ -132,13 +127,13 @@ def main():
     # Continue with processing if no transformed data exists
     result = process_subjects(spark, config)
 
-# process_subjects.py - checks processed_features stage using DataFrames
+# process_subjects.py - checks processed_subjects stage using DataFrames
 def process_subjects(spark: SparkSession, config: Dict[str, Any]) -> Dict[str, str]:
-    reuse_processed_features = config.get('data_input', {}).get('reuse_processed_features', 'No')
-    processed_features_keys = ["feature_extraction", "preprocessing"]
+    reuse_processed_subjects = config.get('data_input', {}).get('reuse_processed_subjects', 'No')
+    processed_subjects_keys = ["feature_extraction", "preprocessing"]
     
-    if check_stage_reuse(output_dir, "processed_features", config, processed_features_keys, reuse_processed_features):
-        return {"status": "completed", "message": "reused existing processed_features data"}
+    if check_stage_reuse(output_dir, "processed_subjects", config, processed_subjects_keys, reuse_processed_subjects):
+        return {"status": "completed", "message": "reused existing processed_subjects data"}
     
     # Process subjects using DataFrames
     subjects_df = spark.createDataFrame(subjects, "subject string")
@@ -149,15 +144,14 @@ def process_subjects(spark: SparkSession, config: Dict[str, Any]) -> Dict[str, s
     
     # Union all subject DataFrames
     combined_df = feature_dfs[0].union(feature_dfs[1:])
-    return {"status": "completed", "message": "processed and saved new processed_features data"}
+    return {"status": "completed", "message": "processed and saved new processed_subjects data"}
 
-# process_subject.py - TODO: will check raw stage
+# process_subject.py - processes individual subjects
 def process_subject(subject_id: str, spark: SparkSession) -> DataFrame:
-    # TODO: Check for existing raw data with hash validation
-    # - Check if reuse_raw flag is enabled
-    # - Validate hash for raw stage (preprocessing, data_input keys)
-    # - Load existing raw data if hash matches
-    # - Process raw data if no reuse possible
+    # Process individual subject with feature extraction
+    # - Load EEG data from file paths
+    # - Apply preprocessing and feature extraction
+    # - Return feature DataFrame for this subject
     
     # Process epochs and return DataFrame
     all_features = []
@@ -201,10 +195,10 @@ def process_epoch(epoch_id: int, subject_id: str) -> List[Row]:
 ```python
 from eeg_spark_etl.core.data_io import save_stage_hash
 
-# After processing processed_features stage
+# After processing processed_subjects stage
 save_stage_hash(
     output_dir=output_dir,
-    stage="processed_features", 
+    stage="processed_subjects", 
     config=config,
     keys=["feature_extraction", "preprocessing"]
 )
@@ -240,8 +234,7 @@ hash3 = hash_stage_config(config3, ["preprocessing"])
 ### Check Hash Files
 ```bash
 # View saved hashes
-cat ./data/my_project/raw/.config_hash.txt
-cat ./data/my_project/processed_features/.config_hash.txt
+cat ./data/my_project/processed_subjects/.config_hash.txt
 cat ./data/my_project/transformed/.config_hash.txt
 ```
 
@@ -263,9 +256,7 @@ with open("./data/my_project/raw/.config_hash.txt", "r") as f:
 ### Hash File Structure
 ```
 ./data/my_project/
-├── raw/
-│   └── .config_hash.txt          # Hash of preprocessing + data_input
-├── processed_features/
+├── processed_subjects/
 │   └── .config_hash.txt          # Hash of feature_extraction + preprocessing  
 └── transformed/
     └── .config_hash.txt          # Hash of transformation + feature_extraction
@@ -286,8 +277,8 @@ with open("./data/my_project/raw/.config_hash.txt", "r") as f:
 The hashing system integrates with:
 
 - **`main.py`**: Checks `transformed` stage hash and returns early if matches
-- **`process_subjects()`**: Checks `processed_features` stage hash before processing subjects using DataFrames
-- **`process_subject()`**: TODO - Will check `raw` stage hash (to be implemented)
+- **`process_subjects()`**: Checks `processed_subjects` stage hash before processing subjects using DataFrames
+- **`process_subject()`**: Processes individual subjects with feature extraction
 - **`process_epoch()`**: Generates features matching the defined schema
 - **Configuration system**: YAML config loading and validation
 

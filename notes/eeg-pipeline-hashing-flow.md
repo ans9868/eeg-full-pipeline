@@ -20,7 +20,6 @@ graph TB
     CHECK_STAGE_REUSE[✅ check_stage_reuse<br/>Main reuse logic]
     
     %% Stage-specific checks
-    PROCESSED_FEATURES_CHECK[🔍 Check processed_features<br/>reuse_processed_features]
     PROCESSED_SUBJECTS_CHECK[🔍 Check processed_subjects<br/>reuse_processed_subjects]
     
     %% Data Processing Components
@@ -31,7 +30,6 @@ graph TB
     %% File System Operations
     OUTPUT_DIR[📁 Output Directory<br/>./data/testLaptop]
     PROCESSED_SUBJECTS_PATH[📁 processed_subjects/<br/>.config_hash.txt + *.parquet]
-    PROCESSED_FEATURES_PATH[📁 processed_features/<br/>.config_hash.txt + *.parquet]
     
     %% Processing Functions
     PROCESS_SUBJECT[🔄 process_subject<br/>Individual subject processing]
@@ -50,13 +48,13 @@ graph TB
     PROCESS_SUBJECTS --> PROJECT_CONFIG
     PROCESS_SUBJECTS --> DATA_INPUT_CONFIG
     
-    %% Initial processed_features check
-    PROCESS_SUBJECTS --> PROCESSED_FEATURES_CHECK
-    PROCESSED_FEATURES_CHECK --> CHECK_STAGE_REUSE
+    %% Initial processed_subjects check
+    PROCESS_SUBJECTS --> PROCESSED_SUBJECTS_CHECK
+    PROCESSED_SUBJECTS_CHECK --> CHECK_STAGE_REUSE
     CHECK_STAGE_REUSE --> CONFIG_MATCHES
     CONFIG_MATCHES --> HASH_STAGE_CONFIG
-    PROCESSED_FEATURES_KEYS --> HASH_STAGE_CONFIG
-    PROCESSED_FEATURES_PATH --> CONFIG_MATCHES
+    PROCESSED_SUBJECTS_KEYS --> HASH_STAGE_CONFIG
+    PROCESSED_SUBJECTS_PATH --> CONFIG_MATCHES
     
     %% Subject processing flow
     PROCESS_SUBJECTS --> SUBJECTS_DF
@@ -117,12 +115,6 @@ graph TB
 
 ### **3. Stage-Specific Processing**
 
-#### **Processed Features Stage**
-- **Keys**: `["feature_extraction", "preprocessing"]`
-- **Reuse Flag**: `reuse_processed_features`
-- **Save Flag**: `save_processed_features`
-- **Path**: `./data/testLaptop/processed_features/`
-
 #### **Processed Subjects Stage**
 - **Keys**: `["feature_extraction", "preprocessing"]`
 - **Reuse Flag**: `reuse_processed_subjects`
@@ -143,8 +135,8 @@ graph TB
 ├── processed_subjects/
 │   ├── .config_hash.txt    # Hash of feature_extraction + preprocessing
 │   └── *.parquet          # Processed subjects data
-└── processed_features/
-    ├── .config_hash.txt    # Hash of feature_extraction + preprocessing
+└── transformed/
+    ├── .config_hash.txt    # Hash of feature_transformation + feature_extraction
     └── *.parquet          # Transformed features data
 ```
 
