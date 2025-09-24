@@ -1128,6 +1128,15 @@ def main() -> None:
     deployment_method = config.get("project", {}).get("deployment_method", "Docker")
     pipeline_mode = infer_pipeline_mode()
 
+    # Check if experiment type supports Ray pipeline
+    experiment_type = config.get("project", {}).get("experiment_type", "")
+    if "Analysis (No Ray ML)" in experiment_type:
+        if pipeline_mode == "ray-only":
+            raise ValueError("Ray pipeline is not supported for Analysis (No Ray ML) experiments")
+        
+        print(f"{EMOJI_INFO} Analysis experiment detected - limiting to PySpark pipeline only")
+        pipeline_mode = "pyspark-only"
+
     print(
         f"{EMOJI_RUNNING} Starting pipeline with deployment method: {deployment_method}"
     )

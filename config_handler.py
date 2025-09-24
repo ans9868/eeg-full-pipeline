@@ -712,22 +712,30 @@ class UnifiedConfigHandler:
         # Validate individual sections
         self.metadataPart0_validate()
 
-        # Conditional validation based on what's present
+      # Conditional validation based on experiment type and what's present
+        experiment_type = self.raw_config.get("project", {}).get("experiment_type", "")
+        
+        # Base sections that should always be present
         sections_to_validate = [
             "data_input",
-            "preprocessing",
+            "preprocessing", 
             "feature_extraction",
             "feature_transformation",
-            "data_leakage_prevention",
             "pyspark",
-            "ray",
         ]
-
+        
+        # Add ML-specific sections only for ML experiments (not Analysis)
+        if experiment_type.startswith("ML "):
+            sections_to_validate.append("data_leakage_prevention")
+            sections_to_validate.append("ray")
+        
+        # Add SLURM section if using Singularity with Slurm
         include_slurm = (
             self.raw_config["project"]["deployment_method"] == "Singularity with Slurm"
         )
         if include_slurm:
             sections_to_validate.append("slurm_options")
+            
         # Every section should be in self.raw_config
         for section in sections_to_validate:
             if section not in self.raw_config:

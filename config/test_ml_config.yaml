@@ -1,0 +1,60 @@
+data_input:
+  groups:
+    alz:
+    - /Users/user/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+    - /Users/user/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+    cntrl:
+    - /Users/user/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+    - /Users/user/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+  reuse_processed_subjects: 'Yes'
+  reuse_transformed: 'Yes'
+  save_processed_subjects: 'Yes'
+  save_transformed: 'Yes'
+feature_extraction:
+  features:
+    per_channel_across_bands:
+    - none
+    - band_power
+    per_channel_per_band:
+    - band_power
+  method: welch
+  output_format: ml
+  show_intermediate_counts: 'No'
+  show_intermediate_results: 'No'
+feature_transformation:
+  minmax_range:
+  - -1.0
+  - 1.0
+  synthetic: None
+  transformations:
+  - MinMax scaler
+  - PCA (retain 95% variance)
+  - MinMax scaler
+preprocessing:
+  bands:
+    Delta:
+    - 0.5
+    - 4
+  epoch_rejection:
+    flat: 0.3
+    reject: 600.0
+  extreme_datapoint_removal: null
+  normalize_psd: 'Yes'
+  reject_by_annotation: 'Yes'
+  sliding_window: 0.0
+  use_epoch_rejection: 'Yes'
+  window_size: 3.0
+project:
+  config_name: config_analysis_23-09-2025_2056.yaml
+  deployment_method: Docker
+  experiment_type: ML Classification
+  name: analysis
+  output_dir: ./data
+  random_seed: 42
+  subjects_or_events: subjects
+pyspark:
+  driver_memory: '6'
+  executor_cores: '2'
+  executor_memory: '6'
+  master: '6'
+  shuffle_partitions: '8'
