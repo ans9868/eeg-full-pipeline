@@ -118,6 +118,8 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
         config["project"]["experiment_type"] = "ML Classification"
     elif "ML Clustering" in experiment_type_choice:
         config["project"]["experiment_type"] = "ML Clustering"
+    elif "ML Fingerprinting" in experiment_type_choice:
+        config["project"]["experiment_type"] = "ML Fingerprinting"
     elif "Analysis (No Ray ML)" in experiment_type_choice:
         config["project"]["experiment_type"] = "Analysis (No Ray ML)"
     else:
@@ -737,6 +739,7 @@ def featureTransformationsPart4() -> Dict[str, Any]:
     Section 4: Feature Transformation
     Returns: Dictionary containing feature_transformation configuration
     """
+    # ! TODO: ask follow up questions for PCA and SVD
     print("\n[4] Feature Transformation")
     print("📊 Available Transformers:")
     print("   • Dummy (+1): Simple test transformer (adds +1 to all features)")
@@ -789,17 +792,8 @@ def featureTransformationsPart4() -> Dict[str, Any]:
             print(f"   Current selections: {', '.join(selected_transformations)}")
             print()
 
-        # Create choices list with remaining transformations plus 'done'
-        remaining_choices = [
-            choice
-            for choice in available_transformations
-            if choice not in selected_transformations
-        ]
-        choices = remaining_choices + ["done"]
-
-        if not remaining_choices:
-            print("   ✅ All transformations have been selected!")
-            break
+        # Create choices list with all transformations plus 'done' (allow duplicates)
+        choices = available_transformations + ["done"]
 
         # Ask for next transformation
         next_transformation = questionary.select(
@@ -966,7 +960,7 @@ def dataLeakagePreventionPart5(
     Returns: Dictionary containing data_leakage_prevention configuration
     """
     print("\n[5] Data Leakage Prevention")
-    print("⚠️  WARNING: You selected Classification with Feature Transformation.")
+    print(f"⚠️  WARNING: You selected {experiment_type} with Feature Transformation.")
     print("   This can cause data leakage if test data influences training transforms.")
 
     config = {}
@@ -1565,7 +1559,7 @@ def dataLeakagePreventionPart5(
                     exit(1)
 
     # Question 2: Within-subject split configuration (if within-subject split is selected)
-    elif "Within-subject train/test split" in config["data_leakage_prevention"]["strategy"]:
+    elif "Within-subject" in config["data_leakage_prevention"]["strategy"] and "train/test split" in config["data_leakage_prevention"]["strategy"]:
         print("\n📊 Within-Subject Train/Test Split Configuration")
         print("   This will split each subject's data 80/20 for train/test.")
         print("   Each subject contributes to both training and testing sets.")
@@ -2257,8 +2251,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         )
         config.update(feature_transformation_config)
 
-        # 5. Data Leakage Prevention (only if ML Classification and Feature Transformation are enabled)
-        if config["project"]["experiment_type"] == "ML Classification" and config[
+        # 5. Data Leakage Prevention (only if ML experiment and Feature Transformation are enabled)
+        if config["project"]["experiment_type"] in ["ML Classification", "ML Fingerprinting"] and config[
             "feature_transformation"
         ]["transformations"] != ["None"]:
             data_leakage_prevention_config = run_section_with_confirmation(
@@ -2304,23 +2298,29 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     # 7. Ray Configuration (only if target is ray-only or full AND experiment type is ML)
     if (target == "ray-only" or target == "full") and config["project"][
         "experiment_type"
-    ] in ["ML Classification", "ML Clustering"]:
+    ] in ["ML Classification", "ML Clustering", "ML Fingerprinting"]:
         ray_config = run_section_with_confirmation(
             "Ray Configuration", rayConfigurationPart7, config["project"]
         )
         config.update(ray_config)
     else:
-        # Skip Ray configuration for Analysis mode
+        # Skip Ray configuration for Analysis mode or unsupported experiment types
         if target == "ray-only" or target == "full":
+            experiment_type = config["project"]["experiment_type"]
             print("\n[7] Ray Configuration - SKIPPED")
-            print(
-                "   ℹ️  Ray ML configuration skipped because you selected 'Analysis (No Ray ML)'"
-            )
-            print("   📊 Your data will be processed and saved for manual analysis")
-            print("   🔧 You can run your own ML analysis on the processed data")
-            print(
-                "   📁 Output: Parquet files ready for pandas, R, or other analysis tools"
-            )
+            if experiment_type == "Analysis (No Ray ML)":
+                print(
+                    "   ℹ️  Ray ML configuration skipped because you selected 'Analysis (No Ray ML)'"
+                )
+                print("   📊 Your data will be processed and saved for manual analysis")
+                print("   🔧 You can run your own ML analysis on the processed data")
+                print(
+                    "   📁 Output: Parquet files ready for pandas, R, or other analysis tools"
+                )
+            else:
+                print(
+                    f"   ℹ️  Ray ML configuration skipped because experiment type '{experiment_type}' is not supported for Ray tuning"
+                )
 
     # Configuration summary
     print("\n" + "=" * 60)
