@@ -367,6 +367,7 @@ class UnifiedConfigHandler:
         # Validate transformer-specific configurations if transformations are selected
         if transformations is not None and transformations != ["None"]:
             # PCA configuration
+
             if "PCA (manual count)" in transformations:
                 if "pca_components" not in feature_transformation_config:
                     raise ValueError(
@@ -517,6 +518,29 @@ class UnifiedConfigHandler:
 
             if not isinstance(data_leakage_config["lpso_metadata"], dict):
                 raise ValueError("lpso_metadata must be a dictionary")
+            
+            # Get data input groups to calculate total subjects
+            groups = self.groups
+
+            if not groups:
+                return  # No groups configured, validation will happen later
+
+            # Calculate total subjects
+            total_subjects = sum(len(paths) for paths in groups.values())
+
+            # Check each fold to ensure it doesn't leave out all subjects
+            for fold_idx, fold_subjects in enumerate(self.lpso_folds):
+                if len(fold_subjects) >= total_subjects:
+                    raise ValueError(
+                        f"❌ Invalid LPSO configuration detected! "
+                        f"Fold {fold_idx + 1} leaves out {len(fold_subjects)} subjects >= {total_subjects} total subjects. "
+                        f"This would leave no training subjects, preventing transformers from fitting. "
+                        f"Please ensure at least one subject remains for training."
+                    )
+
+            print(
+                f"✅ LPSO configuration validation passed: {len(self.lpso_folds)} folds, {total_subjects} total subjects"
+            )
 
         elif "Within-subject" in strategy and "train/test split" in strategy:
             if "within_subject_split" not in data_leakage_config:
@@ -753,6 +777,8 @@ class UnifiedConfigHandler:
             self.slurmOptionsPart6_validate()
 
         print("✅ All configuration sections validated successfully!")
+
+
 
     def _validate_transformation(self, transformations) -> bool:
         """
