@@ -1237,6 +1237,12 @@ class UnifiedConfigHandler:
         return ray_config.get("graph_data_visualization", {})
     
     @property
+    def save_prediction_outputs(self) -> bool:
+        """Get save prediction outputs configuration."""
+        graph_config = self.get_graph_visualization_config()
+        return graph_config.get("save_prediction_outputs", "No") == "Yes"
+
+    @property
     def graphs_wanted(self) -> bool:
         """Check if graph visualization is enabled."""
         graph_config = self.get_graph_visualization_config()
@@ -1247,6 +1253,16 @@ class UnifiedConfigHandler:
         """Get which models to generate graphs for."""
         graph_config = self.get_graph_visualization_config()
         return graph_config.get("which_models", "All")
+    
+    @property
+    def visualization_enabled(self) -> bool:
+        """Check if visualization is enabled."""
+        return self.graphs_wanted
+    
+    @property
+    def individual_config_visualizations_enabled(self) -> bool:
+        """Check if individual configuration visualizations are enabled."""
+        return self.graphs_wanted and self.which_models_for_graphs == "All"
 
     # ========================================
     # UTILITY METHODS

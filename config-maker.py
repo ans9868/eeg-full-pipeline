@@ -1835,7 +1835,7 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
 
     print("\n[7.8] Graph Data Visualization")
     
-    config["ray"]["graph_data_visualization"]["save_testing_outputs"] = questionary.select(
+    config["ray"]["graph_data_visualization"]["save_prediction_outputsuts"] = questionary.select(
         "7.8.1 Do you want to save the testing for each hyper-parameter combination as pandas dataframes?",
         choices=["Yes", "No"],
     ).ask()
