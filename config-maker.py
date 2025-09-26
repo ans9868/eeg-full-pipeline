@@ -1833,6 +1833,27 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
     config["ray"]["random_state"] = str(global_seed)
     print(f"   ✅ Using global random seed: {global_seed}")
 
+    print("\n[7.8] Graph Data Visualization")
+    
+    config["ray"]["graph_data_visualization"]["save_testing_outputs"] = questionary.select(
+        "7.8.1 Do you want to save the testing for each hyper-parameter combination as pandas dataframes?",
+        choices=["Yes", "No"],
+    ).ask()
+
+    # 7.8 graph data visualization
+    config["ray"]["graph_data_visualization"]["graphs_wanted"] = questionary.select(
+        "7.8.2 Do you want automatic graph generation?",
+        choices=["Yes", "No"],
+    ).ask()
+
+    config["ray"]["graph_data_visualization"]["which_models"] = questionary.select(
+        "7.8.3 Which models do you want to graph?",
+        choices=["All", "Best models only"],
+    ).ask()
+
+
+    # TODO: 7.8.4 specifywhat graph visualization do we want to do?
+
     # 7.9 Ray Resource Configuration
     print("\n[7.9] Ray Resource Configuration")
     print(

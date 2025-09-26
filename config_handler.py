@@ -1230,6 +1230,23 @@ class UnifiedConfigHandler:
     def get_ray_config(self) -> Dict[str, Any]:
         """Get Ray configuration."""
         return self.raw_config.get("ray", {})
+    
+    def get_graph_visualization_config(self) -> Dict[str, Any]:
+        """Get graph visualization configuration."""
+        ray_config = self.get_ray_config()
+        return ray_config.get("graph_data_visualization", {})
+    
+    @property
+    def graphs_wanted(self) -> bool:
+        """Check if graph visualization is enabled."""
+        graph_config = self.get_graph_visualization_config()
+        return graph_config.get("graphs_wanted", "No") == "Yes"
+    
+    @property
+    def which_models_for_graphs(self) -> str:
+        """Get which models to generate graphs for."""
+        graph_config = self.get_graph_visualization_config()
+        return graph_config.get("which_models", "All")
 
     # ========================================
     # UTILITY METHODS
