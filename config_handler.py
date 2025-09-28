@@ -543,50 +543,93 @@ class UnifiedConfigHandler:
             )
 
         elif "Within-subject" in strategy and "train/test split" in strategy:
-            if "within_subject_split" not in data_leakage_config:
+            # Check for new unified intra_test_train_split configuration
+            if "intra_test_train_split" in data_leakage_config:
+                self._validate_intra_test_train_split(data_leakage_config["intra_test_train_split"])
+            # Check for deprecated within_subject_split configuration
+            elif "within_subject_split" in data_leakage_config:
+                print("⚠️  DEPRECATION WARNING: 'within_subject_split' is deprecated. Please use 'intra_test_train_split' instead.")
+                self._validate_within_subject_split_deprecated(data_leakage_config["within_subject_split"])
+            else:
                 raise ValueError(
-                    "Missing within_subject_split configuration for within-subject split strategy"
+                    "Missing intra_test_train_split configuration for within-subject split strategy. "
+                    "Please add 'intra_test_train_split' section to your configuration."
                 )
-            
-            within_subject_config = data_leakage_config["within_subject_split"]
-            required_within_subject_fields = [
-                "train_ratio",
-                "test_ratio", 
-                "random_seed",
-                "split_method"
-            ]
-            
-            for field in required_within_subject_fields:
-                if field not in within_subject_config:
-                    raise ValueError(f"Missing {field} in within_subject_split configuration")
-            
-            # Validate train_ratio and test_ratio
-            train_ratio = within_subject_config["train_ratio"]
-            test_ratio = within_subject_config["test_ratio"]
-            
-            if not isinstance(train_ratio, (int, float)) or not (0.1 <= train_ratio <= 0.9):
-                raise ValueError("train_ratio must be a number between 0.1 and 0.9")
-            
-            if not isinstance(test_ratio, (int, float)) or not (0.1 <= test_ratio <= 0.9):
-                raise ValueError("test_ratio must be a number between 0.1 and 0.9")
-            
-            if abs((train_ratio + test_ratio) - 1.0) > 0.001:
-                raise ValueError("train_ratio + test_ratio must equal 1.0")
-            
-            # Validate random_seed
-            if not isinstance(within_subject_config["random_seed"], int):
-                raise ValueError("random_seed must be an integer")
-            
-            # Validate split_method
-            valid_split_methods = ["random", "stratified"]
-            if within_subject_config["split_method"] not in valid_split_methods:
-                raise ValueError(f"split_method must be one of: {valid_split_methods}")
+
+        elif "Transform all data together" in strategy:
+            # Check for optional intra_test_train_split configuration
+            if "intra_test_train_split" in data_leakage_config:
+                self._validate_intra_test_train_split(data_leakage_config["intra_test_train_split"])
+                print("✅ Intra-test-train split configuration found for 'Transform all data together' strategy")
 
         elif "1 test/1 train split" in strategy:
             if "single_split_method" not in data_leakage_config:
                 raise ValueError(
                     "Missing single_split_method for 1 test/1 train split strategy"
                 )
+
+    def _validate_intra_test_train_split(self, intra_test_train_split_config: Dict[str, Any]) -> None:
+        """Validate the new unified intra_test_train_split configuration."""
+        required_fields = [
+            "train_ratio",
+            "random_seed",
+            "split_method"
+        ]
+        
+        for field in required_fields:
+            if field not in intra_test_train_split_config:
+                raise ValueError(f"Missing {field} in intra_test_train_split configuration")
+        
+        # Validate train_ratio
+        train_ratio = intra_test_train_split_config["train_ratio"]
+        if not isinstance(train_ratio, (int, float)) or not (0.1 <= train_ratio <= 1.0):
+            raise ValueError("train_ratio must be a number between 0.1 and 1.0")
+        
+        # Validate random_seed
+        if not isinstance(intra_test_train_split_config["random_seed"], int):
+            raise ValueError("random_seed must be an integer")
+        
+        # Validate split_method
+        valid_split_methods = ["start", "middle", "end", "random"]
+        if intra_test_train_split_config["split_method"] not in valid_split_methods:
+            raise ValueError(f"split_method must be one of: {valid_split_methods}")
+        
+        print(f"✅ Intra-test-train split validation passed: {train_ratio} train ratio, {intra_test_train_split_config['split_method']} method")
+
+    def _validate_within_subject_split_deprecated(self, within_subject_config: Dict[str, Any]) -> None:
+        """Validate the deprecated within_subject_split configuration."""
+        required_fields = [
+            "train_ratio",
+            "test_ratio", 
+            "random_seed",
+            "split_method"
+        ]
+        
+        for field in required_fields:
+            if field not in within_subject_config:
+                raise ValueError(f"Missing {field} in within_subject_split configuration")
+        
+        # Validate train_ratio and test_ratio
+        train_ratio = within_subject_config["train_ratio"]
+        test_ratio = within_subject_config["test_ratio"]
+        
+        if not isinstance(train_ratio, (int, float)) or not (0.1 <= train_ratio <= 0.9):
+            raise ValueError("train_ratio must be a number between 0.1 and 0.9")
+        
+        if not isinstance(test_ratio, (int, float)) or not (0.1 <= test_ratio <= 0.9):
+            raise ValueError("test_ratio must be a number between 0.1 and 0.9")
+        
+        if abs((train_ratio + test_ratio) - 1.0) > 0.001:
+            raise ValueError("train_ratio + test_ratio must equal 1.0")
+        
+        # Validate random_seed
+        if not isinstance(within_subject_config["random_seed"], int):
+            raise ValueError("random_seed must be an integer")
+        
+        # Validate split_method
+        valid_split_methods = ["random", "stratified"]
+        if within_subject_config["split_method"] not in valid_split_methods:
+            raise ValueError(f"split_method must be one of: {valid_split_methods}")
 
     def deploymentMethodPart6_validate(self) -> None:
         """Validate PySpark configuration (deploymentMethodPart6)."""
@@ -699,6 +742,33 @@ class UnifiedConfigHandler:
                         raise ValueError(
                             f"Ray model_config.hyperparameters for {model_name} must be a dictionary"
                         )
+
+        # Validate graph data visualization configuration
+        """Validate graph data visualization configuration."""
+        graph_config = ray_config.get("graph_data_visualization", {})
+        
+        # Check if any graph options are enabled
+        graph_options = [
+            "best_models_graph",
+            "per_model_accross_hyperparameters_graph", 
+            "per_model_per_hyperparameter_across_folds_graph"
+        ]
+        
+        any_graph_enabled = any(
+            graph_config.get(option, "No") == "Yes" 
+            for option in graph_options
+        )
+        
+        # If any graph is enabled, save_prediction_outputs must also be enabled
+        if any_graph_enabled:
+            save_outputs = graph_config.get("save_prediction_outputs", "No")
+            if save_outputs != "Yes":
+                raise ValueError(
+                    "Graph visualization options require 'save_prediction_outputs' to be set to 'Yes'. "
+                    f"Current value: '{save_outputs}'. "
+                    "Please enable 'save_prediction_outputs' in your configuration."
+                )
+
 
     def slurmOptionsPart6_validate(self) -> None:
         """Validate SLURM options configuration (slurmOptionsPart6)."""
@@ -1025,32 +1095,54 @@ class UnifiedConfigHandler:
         return dlp_config.get("individual_lpso", False)
 
     @property
-    def within_subject_train_ratio(self) -> float:
-        """Get within-subject train ratio."""
+    def intra_test_train_split_train_ratio(self) -> float:
+        """Get intra-test-train split train ratio."""
         dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        intra_split_config = dlp_config.get("intra_test_train_split", {})
+        return intra_split_config.get("train_ratio", 0.8)
+
+    @property
+    def intra_test_train_split_seed(self) -> int:
+        """Get intra-test-train split random seed."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        intra_split_config = dlp_config.get("intra_test_train_split", {})
+        return intra_split_config.get("random_seed", self.global_random_seed)
+
+    @property
+    def intra_test_train_split_method(self) -> str:
+        """Get intra-test-train split method."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        intra_split_config = dlp_config.get("intra_test_train_split", {})
+        return intra_split_config.get("split_method", "random")
+
+    # Deprecated properties for backward compatibility
+    @property
+    def within_subject_train_ratio(self) -> float:
+        """Get within-subject train ratio (deprecated - use intra_test_train_split_train_ratio)."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        # Try new unified config first
+        intra_split_config = dlp_config.get("intra_test_train_split", {})
+        if intra_split_config:
+            return intra_split_config.get("train_ratio", 0.8)
+        # Fallback to deprecated config
         within_subject_config = dlp_config.get("within_subject_split", {})
         return within_subject_config.get("train_ratio", 0.8)
 
     @property
     def within_subject_test_ratio(self) -> float:
-        """Get within-subject test ratio."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
-        within_subject_config = dlp_config.get("within_subject_split", {})
-        return within_subject_config.get("test_ratio", 0.2)
+        """Get within-subject test ratio (deprecated - calculated from train_ratio)."""
+        train_ratio = self.intra_test_train_split_train_ratio
+        return (10*1.0 - 10*train_ratio)/10.0
 
     @property
     def within_subject_split_seed(self) -> int:
-        """Get within-subject split random seed."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
-        within_subject_config = dlp_config.get("within_subject_split", {})
-        return within_subject_config.get("random_seed", self.global_random_seed)
+        """Get within-subject split random seed (deprecated - use intra_test_train_split_seed)."""
+        return self.intra_test_train_split_seed
 
     @property
     def within_subject_split_method(self) -> str:
-        """Get within-subject split method."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
-        within_subject_config = dlp_config.get("within_subject_split", {})
-        return within_subject_config.get("split_method", "random")
+        """Get within-subject split method (deprecated - use intra_test_train_split_method)."""
+        return self.intra_test_train_split_method
 
     @property
     def uses_within_subject_split(self) -> bool:
@@ -1263,6 +1355,24 @@ class UnifiedConfigHandler:
     def individual_config_visualizations_enabled(self) -> bool:
         """Check if individual configuration visualizations are enabled."""
         return self.graphs_wanted and self.which_models_for_graphs == "All"
+    
+    @property
+    def best_models_graph(self) -> bool:
+        """Check if best models graph is enabled."""
+        graph_config = self.get_graph_visualization_config()
+        return graph_config.get("best_models_graph", "No") == "Yes"
+    
+    @property
+    def per_model_across_hyperparameters_graph(self) -> bool:
+        """Check if per model across hyperparameters graph is enabled."""
+        graph_config = self.get_graph_visualization_config()
+        return graph_config.get("per_model_accross_hyperparameters_graph", "No") == "Yes"
+    
+    @property
+    def per_model_per_hyperparameter_across_folds_graph(self) -> bool:
+        """Check if per model per hyperparameter across folds graph is enabled."""
+        graph_config = self.get_graph_visualization_config()
+        return graph_config.get("per_model_per_hyperparameter_across_folds_graph", "No") == "Yes"
 
     # ========================================
     # UTILITY METHODS

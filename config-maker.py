@@ -1550,69 +1550,135 @@ def dataLeakagePreventionPart5(
                     print(f"❌ ERROR: {e}")
                     exit(1)
 
-    # Question 2: Within-subject split configuration (if within-subject split is selected)
+    # Question 2: Intra-test-train split configuration (if within-subject split is selected)
     elif "Within-subject train/test split" in config["data_leakage_prevention"]["strategy"]:
-        print("\n📊 Within-Subject Train/Test Split Configuration")
-        print("   This will split each subject's data 80/20 for train/test.")
+        print("\n📊 Intra-Test-Train Split Configuration")
+        print("   This will split each subject's data for train/test.")
         print("   Each subject contributes to both training and testing sets.")
         print("   This prevents data leakage while maximizing training data usage.")
 
-        # Ask for train/test ratio
+        # Ask for train ratio
         while True:
             train_ratio_input = questionary.text(
                 "5.2.1 Enter train ratio (e.g., 0.8 for 80% train, 20% test):"
             ).ask()
             try:
                 train_ratio = float(train_ratio_input)
-                if 0.1 <= train_ratio <= 0.9:
-                    test_ratio = (10.0 - train_ratio*10.0)/10.0 # to get rid of floating point errors
-                    config["data_leakage_prevention"]["within_subject_split"] = {
-                        "train_ratio": train_ratio,
-                        "test_ratio": test_ratio
+                if 0.1 <= train_ratio <= 1.0:
+                    test_ratio = 1.0 - train_ratio
+                    config["data_leakage_prevention"]["intra_test_train_split"] = {
+                        "train_ratio": train_ratio
                     }
                     print(f"   ✅ Train ratio: {train_ratio:.1%}, Test ratio: {test_ratio:.1%}")
                     break
                 else:
-                    print("[ERROR] Train ratio must be between 0.1 and 0.9.")
+                    print("[ERROR] Train ratio must be between 0.1 and 1.0.")
             except ValueError:
                 print("[ERROR] Please enter a valid decimal number (e.g., 0.8).")
 
         # Use global random seed from project configuration
         global_seed = project_config["random_seed"]
-        config["data_leakage_prevention"]["within_subject_split"]["random_seed"] = global_seed
+        config["data_leakage_prevention"]["intra_test_train_split"]["random_seed"] = global_seed
         print(f"   ✅ Using global random seed: {global_seed}")
 
         # Ask for split method
-        # split_method = questionary.select(
-        #     "5.2.3 Select split method:",
-        #     choices=[
-        #         "random - Random split within each subject",
-        #         "stratified - Maintain label distribution within each subject",
-        #     ],
-        # ).ask()
+        split_method = questionary.select(
+            "5.2.2 Select split method:",
+            choices=[
+                "random - Random split within each subject",
+                "start - First portion of each subject's data for training",
+                "middle - Middle portion of each subject's data for training", 
+                "end - Last portion of each subject's data for training",
+            ],
+        ).ask()
         
-        # For now, only support random split (stratified to be implemented later)
-        config["data_leakage_prevention"]["within_subject_split"]["split_method"] = "random"
-        print("   ✅ Using random split method (stratified option commented out for now)")
+        # Map the choice to the method name
+        split_method_mapping = {
+            "random - Random split within each subject": "random",
+            "start - First portion of each subject's data for training": "start",
+            "middle - Middle portion of each subject's data for training": "middle",
+            "end - Last portion of each subject's data for training": "end"
+        }
         
-        # if "random" in split_method:
-        #     config["data_leakage_prevention"]["within_subject_split"]["split_method"] = "random"
-        #     print("   ✅ Using random split method")
-        # else:
-        #     config["data_leakage_prevention"]["within_subject_split"]["split_method"] = "stratified"
-        #     print("   ✅ Using stratified split method (maintains label distribution)")
+        config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = split_method_mapping[split_method]
+        print(f"   ✅ Using {split_method_mapping[split_method]} split method")
 
-        print("   📊 Within-subject split configuration completed!")
+        print("   📊 Intra-test-train split configuration completed!")
 
-    # Question 2: No split needed (if transform all data is selected)
+    # Question 2: Optional intra-test-train split (if transform all data is selected)
     elif "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
         print("⚠️  WARNING: You selected to transform all data together.")
         print(
             "   This may cause data leakage as test data will influence training transforms."
         )
         print(
-            "   No additional configuration needed - all data will be transformed together."
+            "   However, you can optionally add a split after transformation for evaluation."
         )
+        
+        # Ask if they want to add optional split
+        add_split = questionary.select(
+            "5.2.1 Do you want to add an optional intra-test-train split after transformation?",
+            choices=[
+                "No - Transform all data together (fastest, potential data leakage)",
+                "Yes - Add split after transformation for evaluation",
+            ],
+        ).ask()
+        
+        if "Yes" in add_split:
+            print("\n📊 Optional Intra-Test-Train Split Configuration")
+            print("   This will split the transformed data for train/test evaluation.")
+            print("   The split happens AFTER transformation, so there's still data leakage.")
+            print("   This is useful for comparing model performance on the same transformed data.")
+
+            # Ask for train ratio
+            while True:
+                train_ratio_input = questionary.text(
+                    "5.2.2 Enter train ratio (e.g., 0.8 for 80% train, 20% test):"
+                ).ask()
+                try:
+                    train_ratio = float(train_ratio_input)
+                    if 0.1 <= train_ratio <= 1.0:
+                        test_ratio = 1.0 - train_ratio
+                        config["data_leakage_prevention"]["intra_test_train_split"] = {
+                            "train_ratio": train_ratio
+                        }
+                        print(f"   ✅ Train ratio: {train_ratio:.1%}, Test ratio: {test_ratio:.1%}")
+                        break
+                    else:
+                        print("[ERROR] Train ratio must be between 0.1 and 1.0.")
+                except ValueError:
+                    print("[ERROR] Please enter a valid decimal number (e.g., 0.8).")
+
+            # Use global random seed from project configuration
+            global_seed = project_config["random_seed"]
+            config["data_leakage_prevention"]["intra_test_train_split"]["random_seed"] = global_seed
+            print(f"   ✅ Using global random seed: {global_seed}")
+
+            # Ask for split method
+            split_method = questionary.select(
+                "5.2.3 Select split method:",
+                choices=[
+                    "random - Random split of transformed data",
+                    "start - First portion of transformed data for training",
+                    "middle - Middle portion of transformed data for training", 
+                    "end - Last portion of transformed data for training",
+                ],
+            ).ask()
+            
+            # Map the choice to the method name
+            split_method_mapping = {
+                "random - Random split of transformed data": "random",
+                "start - First portion of transformed data for training": "start",
+                "middle - Middle portion of transformed data for training": "middle",
+                "end - Last portion of transformed data for training": "end"
+            }
+            
+            config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = split_method_mapping[split_method]
+            print(f"   ✅ Using {split_method_mapping[split_method]} split method")
+
+            print("   📊 Optional intra-test-train split configuration completed!")
+        else:
+            print("   ✅ No split configuration - all data will be transformed together.")
 
     return config
 
@@ -1835,21 +1901,29 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
 
     print("\n[7.8] Graph Data Visualization")
     
-    config["ray"]["graph_data_visualization"]["save_prediction_outputsuts"] = questionary.select(
-        "7.8.1 Do you want to save the testing for each hyper-parameter combination as pandas dataframes?",
+    config["ray"]["graph_data_visualization"]["save_prediction_outputs"] = questionary.select(
+        "7.8.1 Do you want to save the training and testing final ml predictions for each hyper-parameter combination as pandas dataframes? (required for automatic graph generation)",
         choices=["Yes", "No"],
     ).ask()
 
     # 7.8 graph data visualization
-    config["ray"]["graph_data_visualization"]["graphs_wanted"] = questionary.select(
-        "7.8.2 Do you want automatic graph generation?",
-        choices=["Yes", "No"],
-    ).ask()
+    if config["ray"]["graph_data_visualization"]["save_prediction_outputs"] == "Yes":
+   
 
-    config["ray"]["graph_data_visualization"]["which_models"] = questionary.select(
-        "7.8.3 Which models do you want to graph?",
-        choices=["All", "Best models only"],
-    ).ask()
+       config["ray"]["graph_data_visualization"]["best_models_graph"] = questionary.select(
+           "7.8.2 Do you want to get a graph of best model of each machine learning model (best KNN, best SVM, etc.)?",
+           choices=["Yes", "No"],
+       ).ask()
+
+       config["ray"]["graph_data_visualization"]["per_model_accross_hyperparameters_graph"] = questionary.select(
+           "7.8.3 Do you want to get a graph of per model accross hyperparameters (KNN euclidean, KNN manhattan, etc.)?",
+           choices=["Yes", "No"],
+       ).ask()
+
+       config["ray"]["graph_data_visualization"]["per_model_per_hyperparameter_across_folds_graph"] = questionary.select(
+           "7.8.4 Do you want to get a graph of per model per hyperparameter across folds (KNN euclidean fold 1, KNN manhattan, etc.)?",
+           choices=["Yes", "No"],
+       ).ask()
 
 
     # TODO: 7.8.4 specifywhat graph visualization do we want to do?
