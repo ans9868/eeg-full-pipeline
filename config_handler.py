@@ -923,7 +923,7 @@ class UnifiedConfigHandler:
     @property
     def deployment_method(self) -> str:
         """Get deployment method."""
-        return self.raw_config.get("project", {}).get("deployment_method", "Docker")
+        return self.raw_config.get("project", {}).get("deployment_method")
 
     @property
     def base_output_dir(self) -> str:
@@ -981,12 +981,12 @@ class UnifiedConfigHandler:
     @property
     def window_size(self) -> float:
         """Get window size setting."""
-        return self.raw_config.get("preprocessing", {}).get("window_size", 3.0)
+        return self.raw_config.get("preprocessing", {}).get("window_size")
 
     @property
     def sliding_window(self) -> float:
         """Get sliding window setting."""
-        return self.raw_config.get("preprocessing", {}).get("sliding_window", 0.5)
+        return self.raw_config.get("preprocessing", {}).get("sliding_window")
 
     @property
     def reject_by_annotation(self) -> bool:
@@ -1099,8 +1099,13 @@ class UnifiedConfigHandler:
         """Get intra-test-train split train ratio."""
         dlp_config = self.raw_config.get("data_leakage_prevention", {})
         intra_split_config = dlp_config.get("intra_test_train_split", {})
-        return intra_split_config.get("train_ratio", 0.8)
+        return intra_split_config.get("train_ratio")
 
+    @property
+    def intra_test_train_split_test_ratio(self) -> float:
+        """Get intra-test-train split test ratio."""
+        return (10.0*1.0 - self.intra_test_train_split_train_ratio*10.0)/10.0
+        
     @property
     def intra_test_train_split_seed(self) -> int:
         """Get intra-test-train split random seed."""
@@ -1123,10 +1128,10 @@ class UnifiedConfigHandler:
         # Try new unified config first
         intra_split_config = dlp_config.get("intra_test_train_split", {})
         if intra_split_config:
-            return intra_split_config.get("train_ratio", 0.8)
+            return intra_split_config.get("train_ratio")
         # Fallback to deprecated config
         within_subject_config = dlp_config.get("within_subject_split", {})
-        return within_subject_config.get("train_ratio", 0.8)
+        return within_subject_config.get("train_ratio")
 
     @property
     def within_subject_test_ratio(self) -> float:

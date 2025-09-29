@@ -1550,102 +1550,60 @@ def dataLeakagePreventionPart5(
                     print(f"❌ ERROR: {e}")
                     exit(1)
 
-    # Question 2: Intra-test-train split configuration (if within-subject split is selected)
-    elif "Within-subject train/test split" in config["data_leakage_prevention"]["strategy"]:
-        print("\n📊 Intra-Test-Train Split Configuration")
-        print("   This will split each subject's data for train/test.")
-        print("   Each subject contributes to both training and testing sets.")
-        print("   This prevents data leakage while maximizing training data usage.")
-
-        # Ask for train ratio
-        while True:
-            train_ratio_input = questionary.text(
-                "5.2.1 Enter train ratio (e.g., 0.8 for 80% train, 20% test):"
+    # Question 2: Intra-test-train split configuration (for both strategies)
+    elif ("Within-subject" in config["data_leakage_prevention"]["strategy"] and "train/test split" in config["data_leakage_prevention"]["strategy"]) or "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
+        
+        # Determine strategy type for messaging
+        is_within_subject = "Within-subject" in config["data_leakage_prevention"]["strategy"] and "train/test split" in config["data_leakage_prevention"]["strategy"]
+        is_transform_all = "Transform all data together" in config["data_leakage_prevention"]["strategy"]
+        
+        if is_within_subject:
+            print("\n📊 Within-Subject Train/Test Split Configuration")
+            print("   This will split each subject's data 80/20 for train/test.")
+            print("   Each subject contributes to both training and testing sets.")
+            print("   This prevents data leakage while maximizing training data usage.")
+            print("   Transformations will be fitted on training data only, then applied to both train and test.")
+            should_ask_for_split = True
+        elif is_transform_all:
+            print("\n📊 Transform All Data Together Configuration")
+            print("⚠️  WARNING: You selected to transform all data together.")
+            print("   This may cause data leakage as test data will influence training transforms.")
+            print("   However, you can optionally add an intra-test-train split AFTER transformation.")
+            
+            # Ask if user wants to add optional split after transformation
+            add_split = questionary.select(
+                "5.2.1 Do you want to add an optional intra-test-train split after transformation?",
+                choices=[
+                    "No - Transform all data together (no split - fastest, and potential data leakage)",
+                    "Yes - Add split after transformation (prevents data leakage, slower)",
+                ],
             ).ask()
-            try:
-                train_ratio = float(train_ratio_input)
-                if 0.1 <= train_ratio <= 1.0:
-                    test_ratio = 1.0 - train_ratio
-                    config["data_leakage_prevention"]["intra_test_train_split"] = {
-                        "train_ratio": train_ratio
-                    }
-                    print(f"   ✅ Train ratio: {train_ratio:.1%}, Test ratio: {test_ratio:.1%}")
-                    break
-                else:
-                    print("[ERROR] Train ratio must be between 0.1 and 1.0.")
-            except ValueError:
-                print("[ERROR] Please enter a valid decimal number (e.g., 0.8).")
-
-        # Use global random seed from project configuration
-        global_seed = project_config["random_seed"]
-        config["data_leakage_prevention"]["intra_test_train_split"]["random_seed"] = global_seed
-        print(f"   ✅ Using global random seed: {global_seed}")
-
-        # Ask for split method
-        split_method = questionary.select(
-            "5.2.2 Select split method:",
-            choices=[
-                "random - Random split within each subject",
-                "start - First portion of each subject's data for training",
-                "middle - Middle portion of each subject's data for training", 
-                "end - Last portion of each subject's data for training",
-            ],
-        ).ask()
+            
+            should_ask_for_split = "Yes" in add_split
+            
+            if should_ask_for_split:
+                print("   ✅ Adding intra-test-train split after transformation")
+            else:
+                print("   ⚠️  No split configured - all data will be transformed together (potential data leakage)")
+                print("   📊 Transform all data together configuration completed!")
         
-        # Map the choice to the method name
-        split_method_mapping = {
-            "random - Random split within each subject": "random",
-            "start - First portion of each subject's data for training": "start",
-            "middle - Middle portion of each subject's data for training": "middle",
-            "end - Last portion of each subject's data for training": "end"
-        }
-        
-        config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = split_method_mapping[split_method]
-        print(f"   ✅ Using {split_method_mapping[split_method]} split method")
-
-        print("   📊 Intra-test-train split configuration completed!")
-
-    # Question 2: Optional intra-test-train split (if transform all data is selected)
-    elif "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
-        print("⚠️  WARNING: You selected to transform all data together.")
-        print(
-            "   This may cause data leakage as test data will influence training transforms."
-        )
-        print(
-            "   However, you can optionally add a split after transformation for evaluation."
-        )
-        
-        # Ask if they want to add optional split
-        add_split = questionary.select(
-            "5.2.1 Do you want to add an optional intra-test-train split after transformation?",
-            choices=[
-                "No - Transform all data together (fastest, potential data leakage)",
-                "Yes - Add split after transformation for evaluation",
-            ],
-        ).ask()
-        
-        if "Yes" in add_split:
-            print("\n📊 Optional Intra-Test-Train Split Configuration")
-            print("   This will split the transformed data for train/test evaluation.")
-            print("   The split happens AFTER transformation, so there's still data leakage.")
-            print("   This is useful for comparing model performance on the same transformed data.")
-
-            # Ask for train ratio
+        # Ask for split parameters if needed
+        if should_ask_for_split:
+            # Ask for train/test ratio
+            ratio_prompt = "5.2.1 Enter train ratio (e.g., 0.8 for 80% train, 20% test):" if is_within_subject else "5.2.2 Enter train ratio (e.g., 0.8 for 80% train, 20% test):"
             while True:
-                train_ratio_input = questionary.text(
-                    "5.2.2 Enter train ratio (e.g., 0.8 for 80% train, 20% test):"
-                ).ask()
+                train_ratio_input = questionary.text(ratio_prompt).ask()
                 try:
                     train_ratio = float(train_ratio_input)
-                    if 0.1 <= train_ratio <= 1.0:
-                        test_ratio = 1.0 - train_ratio
+                    if 0.1 <= train_ratio <= 0.9:
                         config["data_leakage_prevention"]["intra_test_train_split"] = {
-                            "train_ratio": train_ratio
+                            "train_ratio": train_ratio,
+                            "random_seed": project_config["random_seed"]
                         }
-                        print(f"   ✅ Train ratio: {train_ratio:.1%}, Test ratio: {test_ratio:.1%}")
+                        print(f"   ✅ Train ratio: {train_ratio:.1%}, Test ratio: {1.0-train_ratio:.1%}")
                         break
                     else:
-                        print("[ERROR] Train ratio must be between 0.1 and 1.0.")
+                        print("[ERROR] Train ratio must be between 0.1 and 0.9.")
                 except ValueError:
                     print("[ERROR] Please enter a valid decimal number (e.g., 0.8).")
 
@@ -1655,30 +1613,36 @@ def dataLeakagePreventionPart5(
             print(f"   ✅ Using global random seed: {global_seed}")
 
             # Ask for split method
+            method_prompt = "5.2.2 Select split method:" if is_within_subject else "5.2.3 Select split method:"
             split_method = questionary.select(
-                "5.2.3 Select split method:",
+                method_prompt,
                 choices=[
-                    "random - Random split of transformed data",
-                    "start - First portion of transformed data for training",
-                    "middle - Middle portion of transformed data for training", 
-                    "end - Last portion of transformed data for training",
+                    "random - Random split within each subject",
+                    "start - First portion of epochs for training",
+                    "middle - Middle portion of epochs for training", 
+                    "end - Last portion of epochs for training",
                 ],
             ).ask()
             
-            # Map the choice to the method name
-            split_method_mapping = {
-                "random - Random split of transformed data": "random",
-                "start - First portion of transformed data for training": "start",
-                "middle - Middle portion of transformed data for training": "middle",
-                "end - Last portion of transformed data for training": "end"
-            }
+            # Map selection to config value
+            if "random" in split_method:
+                config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = "random"
+                print("   ✅ Using random split method")
+            elif "start" in split_method:
+                config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = "start"
+                print("   ✅ Using start split method (first portion for training)")
+            elif "middle" in split_method:
+                config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = "middle"
+                print("   ✅ Using middle split method (middle portion for training)")
+            elif "end" in split_method:
+                config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = "end"
+                print("   ✅ Using end split method (last portion for training)")
             
-            config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = split_method_mapping[split_method]
-            print(f"   ✅ Using {split_method_mapping[split_method]} split method")
-
-            print("   📊 Optional intra-test-train split configuration completed!")
-        else:
-            print("   ✅ No split configuration - all data will be transformed together.")
+            # Final completion message
+            if is_within_subject:
+                print("   📊 Within-subject split configuration completed!")
+            elif is_transform_all:
+                print("   📊 Transform all data together with post-transformation split configuration completed!")
 
     return config
 
