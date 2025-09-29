@@ -1889,8 +1889,10 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
            choices=["Yes", "No"],
        ).ask()
 
-
-    # TODO: 7.8.4 specifywhat graph visualization do we want to do?
+       config["ray"]["graph_data_visualization"]["per_subject_analysis_graph"] = questionary.select(
+           "7.8.5 Do you want to get a per-subject analysis graph showing accuracy for each subject (e.g., sub-001, sub-002, etc.)?",
+           choices=["Yes", "No"],
+       ).ask()
 
     # 7.9 Ray Resource Configuration
     print("\n[7.9] Ray Resource Configuration")

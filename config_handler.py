@@ -751,7 +751,8 @@ class UnifiedConfigHandler:
         graph_options = [
             "best_models_graph",
             "per_model_accross_hyperparameters_graph", 
-            "per_model_per_hyperparameter_across_folds_graph"
+            "per_model_per_hyperparameter_across_folds_graph",
+            "per_subject_analysis_graph"
         ]
         
         any_graph_enabled = any(
@@ -1341,9 +1342,17 @@ class UnifiedConfigHandler:
 
     @property
     def graphs_wanted(self) -> bool:
-        """Check if graph visualization is enabled."""
+        """Check if graph visualization is enabled by inferring from the four graph options."""
         graph_config = self.get_graph_visualization_config()
-        return graph_config.get("graphs_wanted", "No") == "Yes"
+        
+        # Check if any of the four graph options are enabled
+        best_models_enabled = graph_config.get("best_models_graph", "No") == "Yes"
+        hyperparam_enabled = graph_config.get("per_model_accross_hyperparameters_graph", "No") == "Yes"
+        folds_enabled = graph_config.get("per_model_per_hyperparameter_across_folds_graph", "No") == "Yes"
+        per_subject_enabled = graph_config.get("per_subject_analysis_graph", "No") == "Yes"
+        
+        # If any graph option is enabled, then graphs are wanted
+        return best_models_enabled or hyperparam_enabled or folds_enabled or per_subject_enabled
     
     @property
     def which_models_for_graphs(self) -> str:
@@ -1378,6 +1387,12 @@ class UnifiedConfigHandler:
         """Check if per model per hyperparameter across folds graph is enabled."""
         graph_config = self.get_graph_visualization_config()
         return graph_config.get("per_model_per_hyperparameter_across_folds_graph", "No") == "Yes"
+    
+    @property
+    def per_subject_analysis_graph(self) -> bool:
+        """Check if per subject analysis graph is enabled."""
+        graph_config = self.get_graph_visualization_config()
+        return graph_config.get("per_subject_analysis_graph", "No") == "Yes"
 
     # ========================================
     # UTILITY METHODS
