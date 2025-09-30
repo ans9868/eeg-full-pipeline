@@ -669,8 +669,8 @@ class UnifiedConfigHandler:
                     raise ValueError(f"Ray field '{field}' must be a valid integer")
 
         # Validate Ray resources if present
-        if "ray" in ray_config:
-            resources = ray_config["ray"]
+        if "resources" in ray_config:
+            resources = ray_config["resources"]
             if resources is None:
                 raise ValueError("Ray resources must be a dictionary and not None")
             if not isinstance(resources, dict):
@@ -1261,10 +1261,10 @@ class UnifiedConfigHandler:
             return int(resources.get("dashboard_port", 8265))
         return 8265
     
-    @property 
-    def data_directory(self) -> str:
-        """Get the data directory path for the project."""
-        return str(self.output_dir)
+    # @property 
+    # def data_directory(self) -> str:
+    #     """Get the data directory path for the project."""
+    #     return str(self.output_dir)
     
     @property
     def experiment_config(self) -> Dict[str, Any]:
@@ -1413,6 +1413,21 @@ class UnifiedConfigHandler:
     def is_fingerprinting_experiment(self) -> bool:
         """Check if this is a fingerprinting experiment."""
         return self.experiment_type == "ML Fingerprinting"
+
+    def print_summary(self) -> None:
+        """Print a summary of the configuration."""
+        print(f"\n📋 Configuration Summary for: {self.project_name}")
+        print(f"🔬 Experiment Type: {self.experiment_type}")
+        print(f"🚀 Deployment Method: {self.deployment_method}")
+        print(f"📁 Output Directory: {self.output_dir}")
+        print(f"🎲 Random Seed: {self.global_random_seed}")
+        
+        if self.is_ml_experiment():
+            print(f"🤖 Selected Models: {', '.join(self.selected_models)}")
+            print(f"📊 Data Leakage Strategy: {self.data_leakage_strategy}")
+            print(f"🔧 Transformations: {self.transform_features_flag}")
+        
+        print(f"✅ Configuration is valid and ready to use!")
 
 
 if __name__ == "__main__":
