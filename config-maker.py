@@ -2351,7 +2351,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
     # 7. Ray Configuration (only if target is ray-only or full AND experiment type is ML)
     if (target == "ray-only" or target == "full") and config["project"][
         "experiment_type"
-    ] in ["ML Classification", "ML Clustering"]:
+    ] in ["ML Classification", "ML Clustering", "ML Fingerprinting"]:
         ray_config = run_section_with_confirmation(
             "Ray Configuration", rayConfigurationPart7, config["project"]
         )
