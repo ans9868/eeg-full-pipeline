@@ -128,7 +128,9 @@ class UnifiedConfigHandler:
             self.rayConfigurationPart7_validate()
 
         # Validate SLURM options if present (created by config-maker.py)
-        if "slurm_options" in self.raw_config:
+        # SLURM options are stored inside the project section
+        project_config = self.raw_config.get("project", {})
+        if "slurm_options" in project_config:
             self.slurmOptionsPart6_validate()
 
         print("✅ Configuration validation completed!")
@@ -773,7 +775,9 @@ class UnifiedConfigHandler:
 
     def slurmOptionsPart6_validate(self) -> None:
         """Validate SLURM options configuration (slurmOptionsPart6)."""
-        slurm_config = self.raw_config.get("slurm_options", {})
+        # SLURM options are stored inside the project section
+        project_config = self.raw_config.get("project", {})
+        slurm_config = project_config.get("slurm_options", {})
 
         if not isinstance(slurm_config, dict):
             raise ValueError("SLURM options must be a dictionary")
@@ -829,9 +833,12 @@ class UnifiedConfigHandler:
             self.raw_config["project"]["deployment_method"] == "Singularity with Slurm"
         )
         if include_slurm:
-            sections_to_validate.append("slurm_options")
+            # SLURM options are stored inside the project section, not at root level
+            project_config = self.raw_config.get("project", {})
+            if "slurm_options" not in project_config:
+                raise ValueError("Section slurm_options is missing from the project configuration")
             
-        # Every section should be in self.raw_config
+        # Every section should be in self.raw_config (except slurm_options which is in project)
         for section in sections_to_validate:
             if section not in self.raw_config:
                 raise ValueError(f"Section {section} is missing from the configuration")

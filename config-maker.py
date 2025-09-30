@@ -1865,6 +1865,9 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
 
     print("\n[7.8] Graph Data Visualization")
     
+    # Initialize graph_data_visualization dictionary
+    config["ray"]["graph_data_visualization"] = {}
+    
     config["ray"]["graph_data_visualization"]["save_prediction_outputs"] = questionary.select(
         "7.8.1 Do you want to save the training and testing final ml predictions for each hyper-parameter combination as pandas dataframes? (required for automatic graph generation)",
         choices=["Yes", "No"],
@@ -2304,8 +2307,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         )
         config.update(feature_transformation_config)
 
-        # 5. Data Leakage Prevention (only if ML Classification and Feature Transformation are enabled)
-        if config["project"]["experiment_type"] == "ML Classification" and config[
+        # 5. Data Leakage Prevention (only if ML experiment type and Feature Transformation are enabled)
+        if config["project"]["experiment_type"] in ["ML Classification", "ML Fingerprinting"] and config[
             "feature_transformation"
         ]["transformations"] != ["None"]:
             data_leakage_prevention_config = run_section_with_confirmation(
