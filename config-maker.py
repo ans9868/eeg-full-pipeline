@@ -762,8 +762,8 @@ def featureTransformationsPart4() -> Dict[str, Any]:
         "Normalizer",
         "Log transform (log1p)",
         # "Polynomial expansion", # coming soon
-        # "Cohen test (manual count)", # not implemented (can be done with linear regression)
-        # "Cohen test (limit to % for example 0.05)", # not implemented (can be done with linear regression)
+        # "Cohen test (manual count)", # not implemented (can be done with logistic regression)
+        # "Cohen test (limit to % for example 0.05)", # not implemented (can be done with logistic regression)
         # "SPCA (manual count)", # not in spark
         # "ICA", # not in spark
         # "ICA (manual count)", # not in spark
@@ -1793,7 +1793,7 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
             "MLP (Neural Network)",
             "KNN",
             "SVM",
-            "Linear Regression",
+            "Logistic Regression",
             "Logistic Regression",
             "Decision Tree",
             "Gradient Boosting",
@@ -1896,6 +1896,14 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
            "7.8.5 Do you want to get a per-subject analysis graph showing accuracy for each subject (e.g., sub-001, sub-002, etc.)?",
            choices=["Yes", "No"],
        ).ask()
+       
+       # If per-subject analysis is enabled, ask for number of top models
+       if config["ray"]["graph_data_visualization"]["per_subject_analysis_graph"] == "Yes":
+           config["ray"]["graph_data_visualization"]["per_subject_top_n_models"] = validate_integer_input(
+               "7.8.6 How many top-performing models should be included in per-subject analysis? (default: 3)",
+               default="3",
+               min_value=1
+           )
 
     # 7.9 Ray Resource Configuration
     print("\n[7.9] Ray Resource Configuration")
@@ -2082,7 +2090,7 @@ def configure_model_hyperparameters(model_name: str) -> dict:
     elif model_name == "KNN":
         print("\nKNN Hyperparameters:")
         config["hyperparameters"]["n_neighbors"] = get_hyperparameter_with_custom(
-            "n_neighbors", ["3", "5", "7", "9", "11", "15", "21"]
+            "n_neighbors", ["1", "2", "3", "5", "7", "9", "11", "15", "21"]
         )
 
         config["hyperparameters"]["weights"] = get_hyperparameter_with_custom(
@@ -2201,7 +2209,7 @@ def configure_model_hyperparameters(model_name: str) -> dict:
             "algorithm", ["SAMME", "SAMME.R"]
         )
 
-    elif model_name in ["Linear Regression", "Logistic Regression"]:
+    elif model_name in ["Logistic Regression", "Logistic Regression"]:
         print(f"\n{model_name} Hyperparameters:")
         config["hyperparameters"]["C"] = get_hyperparameter_with_custom(
             "C (inverse regularization strength)",

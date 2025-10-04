@@ -880,7 +880,7 @@ class UnifiedConfigHandler:
             "PCA (retain 95% variance)",
             "PCA (manual count)",
             "SVD (k components)",
-            # 'Cohen test (manual count)', # not implemented (can be done with linear regression)
+            # 'Cohen test (manual count)', # not implemented (can be done with logistic regression)
             # 'Cohen test (limit to % for example 0.05)'
         ]
 
@@ -1400,6 +1400,12 @@ class UnifiedConfigHandler:
         """Check if per subject analysis graph is enabled."""
         graph_config = self.get_graph_visualization_config()
         return graph_config.get("per_subject_analysis_graph", "No") == "Yes"
+    
+    @property
+    def per_subject_top_n_models(self) -> int:
+        """Get the number of top models to include in per-subject analysis."""
+        graph_config = self.get_graph_visualization_config()
+        return int(graph_config.get("per_subject_top_n_models", "3"))
 
     # ========================================
     # UTILITY METHODS
