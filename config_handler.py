@@ -543,6 +543,23 @@ class UnifiedConfigHandler:
             print(
                 f"✅ LPSO configuration validation passed: {len(self.lpso_folds)} folds, {total_subjects} total subjects"
             )
+            
+            # Validate leaky LPSO configuration if present
+            if "leaky_lpso" in data_leakage_config:
+                if not isinstance(data_leakage_config["leaky_lpso"], bool):
+                    raise ValueError("leaky_lpso must be a boolean")
+                
+                if data_leakage_config["leaky_lpso"]:
+                    print("⚠️  LEAKY LPSO ENABLED: This will cause data leakage!")
+                    print("   📊 Transformers will be fitted on ALL subjects (including test)")
+                    print("   🎯 Use only for research experiments studying data leakage effects")
+                    print("   ⚠️  This may lead to overly optimistic performance estimates")
+                else:
+                    print("✅ Standard LPSO: No data leakage (recommended)")
+            else:
+                # Default to False if not specified
+                data_leakage_config["leaky_lpso"] = False
+                print("✅ Standard LPSO: No data leakage (default)")
 
         elif "Within-subject" in strategy and "train/test split" in strategy:
             # Check for new unified intra_test_train_split configuration
@@ -1101,6 +1118,12 @@ class UnifiedConfigHandler:
         """Get individual_lpso setting."""
         dlp_config = self.raw_config.get("data_leakage_prevention", {})
         return dlp_config.get("individual_lpso", False)
+
+    @property
+    def leaky_lpso(self) -> bool:
+        """Get leaky_lpso setting (data leakage experiment)."""
+        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        return dlp_config.get("leaky_lpso", False)
 
     @property
     def intra_test_train_split_train_ratio(self) -> float:

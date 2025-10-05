@@ -1337,6 +1337,30 @@ def dataLeakagePreventionPart5(
 
         # Set LPSO flag
         config["data_leakage_prevention"]["use_lpso"] = True
+        
+        # Ask about leaky LPSO (data leakage experiment)
+        print("\n⚠️  LEAKY LPSO OPTION (Data Leakage Experiment)")
+        print("   Standard LPSO: Transformers fit on train data only (no data leakage)")
+        print("   Leaky LPSO: Transformers fit on ALL data including test subjects (causes data leakage)")
+        print("   ⚠️  WARNING: Leaky LPSO will cause data leakage and may lead to overly optimistic results!")
+        print("   Use only for research experiments where you understand the implications.")
+        
+        leaky_lpso_choice = questionary.select(
+            "5.2.4 Do you want to enable Leaky LPSO (data leakage experiment)?",
+            choices=[
+                "No - Standard LPSO (no data leakage, recommended)",
+                "Yes - Leaky LPSO (data leakage experiment, research only)",
+            ],
+        ).ask()
+        
+        if "Yes" in leaky_lpso_choice:
+            config["data_leakage_prevention"]["leaky_lpso"] = True
+            print("   ⚠️  LEAKY LPSO ENABLED: This will cause data leakage!")
+            print("   📊 Transformers will be fitted on ALL subjects (including test)")
+            print("   🎯 Use only for research experiments studying data leakage effects")
+        else:
+            config["data_leakage_prevention"]["leaky_lpso"] = False
+            print("   ✅ Standard LPSO: No data leakage (recommended)")
 
     # Question 2: Single train/test set definition (if single split is selected)
     elif "1 test/1 train split" in config["data_leakage_prevention"]["strategy"]:
@@ -1793,7 +1817,6 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
             "MLP (Neural Network)",
             "KNN",
             "SVM",
-            "Logistic Regression",
             "Logistic Regression",
             "Decision Tree",
             "Gradient Boosting",
