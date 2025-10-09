@@ -106,8 +106,8 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
     experiment_type_choice = questionary.select(
         "0.3 Experiment Type:",
         choices=[
-            "ML Fingerprinting - Predict EEG subject ID's from EEG data (only intra subject splits are supported)",
             "ML Classification - Predict categories (e.g., patient vs control, disease stages)",
+            "ML Fingerprinting - Predict EEG subject ID's from EEG data (only intra subject splits are supported)",
             "ML Clustering - Find patterns/groups in data with labels",
             "Analysis (No Ray ML) - Process data for manual analysis, no automated ML",
         ],
@@ -335,6 +335,13 @@ def preprocessingPart2() -> Dict[str, Any]:
     for band_display in selected_bands_display:
         if band_display in band_ranges:
             config["preprocessing"]["bands"].update(band_ranges[band_display])
+    
+    # Store band count for later validation
+    bands_count = len(config["preprocessing"]["bands"])
+    if bands_count < 2:
+        print("⚠️  WARNING: You selected only 1 frequency band.")
+        print("   💡 Relative band power requires 2+ bands to calculate ratios.")
+        print("   📊 Consider selecting more bands if you want to use relative band power features.")
 
     # Ask for window size
     while True:
@@ -514,6 +521,23 @@ def preprocessingPart2() -> Dict[str, Any]:
     #         break
     # config["preprocessing"]["downsampling"] = downsampling_rate
 
+    # Final band count check and warning
+    final_bands_count = len(config["preprocessing"]["bands"])
+    print("\n" + "="*60)
+    print("📊 PREPROCESSING CONFIGURATION SUMMARY")
+    print("="*60)
+    print(f"🎯 Selected frequency bands: {final_bands_count}")
+    for band_name, band_range in config["preprocessing"]["bands"].items():
+        print(f"   • {band_name}: {band_range[0]}-{band_range[1]} Hz")
+    
+    if final_bands_count < 2:
+        print("\n⚠️  IMPORTANT: You selected less than 2 frequency bands!")
+        print("   🚫 Relative band power features will NOT be available in feature extraction")
+        print("   💡 Consider selecting more bands if you want to use relative band power")
+    else:
+        print(f"\n✅ Great! With {final_bands_count} bands, relative band power features are available")
+    print("="*60)
+
     return config
 
 
@@ -547,10 +571,7 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
     print("rms: 1/5 - Simple calculation")
     print("\nModerate Complexity (Good Balance):")
     print("hjorth_mobility: 2/5 - Good feature, reasonable computation")
-    print("spectral_entropy: 2/5 - Informative, moderate cost")
-    print(
-        "   ⚠️  WARNING!!!: spectral_entropy may produce NA values, especially for per_channel_across_bands"
-    )
+
     print("\nComputationally Expensive (Use Sparingly):")
     print("hjorth_complexity: 3/5 - More complex but valuable")
     print("skewness: 4/5 - Very expensive, consider carefully")
@@ -626,8 +647,18 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
     psd_feature_choices = [  # for per channel_per_band
         "none",
         "band_power",
+        "relative_band_power",
         "spectral_entropy",
     ]
+    
+    # For per_channel_across_bands, we can have some spectral features but NOT relative_band_power
+    # because relative_band_power requires comparing individual bands, which doesn't make sense across all bands
+    psd_feature_choices_across_bands = [  # for per_channel_across_bands
+        "none",
+        "band_power",  # Total power across all bands
+        "spectral_entropy",  # Spectral entropy across all bands
+    ]
+    
     time_domain_feature_choices = (
         [  # for per channel_per_band and per_channel_across_bands
             "none",
@@ -661,7 +692,7 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
 
     get_feature_selection(
         "3.2.3 Which features to compute (per channel across bands)?",
-        psd_feature_choices,
+        psd_feature_choices_across_bands,
         time_domain_feature_choices,
         "per_channel_across_bands",
     )
@@ -675,6 +706,9 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
         print(
             "      💡 Note: Time domain features not available for per-channel-per-band analysis"
         )
+        
+        # Show contextual help for relative band power
+        print("      💡 TIP: 'relative_band_power' requires 2+ frequency bands to calculate ratios")
 
         while True:
             selected_features = questionary.checkbox(
@@ -761,6 +795,7 @@ def featureTransformationsPart4() -> Dict[str, Any]:
         "Robust scaler",
         "Normalizer",
         "Log transform (log1p)",
+        "ANOVA F-test",
         # "Polynomial expansion", # coming soon
         # "Cohen test (manual count)", # not implemented (can be done with logistic regression)
         # "Cohen test (limit to % for example 0.05)", # not implemented (can be done with logistic regression)
@@ -932,6 +967,67 @@ def featureTransformationsPart4() -> Dict[str, Any]:
                             print("[ERROR] Please enter a value between 0 and 1.")
                     except ValueError:
                         print("[ERROR] Please enter a valid decimal number.")
+
+        # ANOVA F-test configuration
+        if "ANOVA F-test" in config["feature_transformation"]["transformations"]:
+            # Ask for use case (both are categorical)
+            use_case = questionary.select(
+                "4.3.9 ANOVA F-test use case:",
+                choices=[
+                    "Group classification (control vs patient)",
+                    "Subject fingerprinting (sub-001 vs sub-002)"
+                ]
+            ).ask()
+            
+            config["feature_transformation"]["anova_label_type"] = "categorical"
+            config["feature_transformation"]["anova_use_case"] = use_case
+            
+            # Part 1: Ask for selection mode (statistical method)
+            selection_mode = questionary.select(
+                "4.3.10 ANOVA F-test selection mode:",
+                choices=[
+                    "numTopFeatures - Choose a fixed number of top features",
+                    "percentile - Choose a fraction of all features", 
+                    "fpr - Choose features with p-values below threshold (False Positive Rate)",
+                    "fdr - Choose features with p-values below threshold (False Discovery Rate)",
+                    "fwe - Choose features with p-values below threshold (Family-wise Error Rate)"
+                ]
+            ).ask()
+            
+            # Extract the mode name
+            if "numTopFeatures" in selection_mode:
+                config["feature_transformation"]["anova_selection_mode"] = "numTopFeatures"
+            elif "percentile" in selection_mode:
+                config["feature_transformation"]["anova_selection_mode"] = "percentile"
+            elif "fpr" in selection_mode:
+                config["feature_transformation"]["anova_selection_mode"] = "fpr"
+            elif "fdr" in selection_mode:
+                config["feature_transformation"]["anova_selection_mode"] = "fdr"
+            elif "fwe" in selection_mode:
+                config["feature_transformation"]["anova_selection_mode"] = "fwe"
+            
+            # Part 2: Ask for threshold based on selection mode
+            if config["feature_transformation"]["anova_selection_mode"] == "numTopFeatures":
+                threshold = validate_integer_input(
+                    "4.3.11 Enter number of top features to keep:",
+                    default="10"
+                )
+                config["feature_transformation"]["anova_selection_threshold"] = int(threshold)
+                
+            else:  # percentile, fpr, fdr, fwe all use float threshold
+                while True:
+                    threshold_input = questionary.text(
+                        "4.3.11 Enter threshold value (0.0-1.0, e.g., 0.05):"
+                    ).ask()
+                    try:
+                        threshold = float(threshold_input)
+                        if 0.0 < threshold <= 1.0:
+                            config["feature_transformation"]["anova_selection_threshold"] = threshold
+                            break
+                        else:
+                            print("[ERROR] Threshold must be between 0.0 and 1.0")
+                    except ValueError:
+                        print("[ERROR] Please enter a valid decimal number")
 
     return config
 
@@ -1927,6 +2023,12 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
                default="3",
                min_value=1
            )
+           
+           # Ask for hyperparameter-specific per-subject analysis
+           config["ray"]["graph_data_visualization"]["per_subject_hyperparameter_analysis"] = questionary.select(
+               "7.8.7 Do you want hyperparameter-specific per-subject analysis showing each subject's accuracy for each hyperparameter combination with fold boundaries?",
+               choices=["Yes", "No"],
+           ).ask()
 
     # 7.9 Ray Resource Configuration
     print("\n[7.9] Ray Resource Configuration")

@@ -334,6 +334,9 @@ class UnifiedConfigHandler:
             if not isinstance(features[feature_type], list):
                 raise ValueError(f"Feature type {feature_type} must be a list")
 
+        # Validate relative band power requirements
+        self._validate_relative_band_power_requirements(features)
+
     def featureTransformationsPart4_validate(self) -> None:
         """Validate feature transformation configuration (featureTransformationsPart4)."""
         feature_transformation_config = self.raw_config.get(
@@ -771,7 +774,8 @@ class UnifiedConfigHandler:
             "best_models_graph",
             "per_model_accross_hyperparameters_graph", 
             "per_model_per_hyperparameter_across_folds_graph",
-            "per_subject_analysis_graph"
+            "per_subject_analysis_graph",
+            "per_subject_hyperparameter_analysis"
         ]
         
         any_graph_enabled = any(
@@ -922,6 +926,52 @@ class UnifiedConfigHandler:
                 return False
 
         return True
+
+    def _validate_relative_band_power_requirements(self, features: Dict[str, List[str]]) -> None:
+        """
+        Validate relative band power requirements.
+        
+        Args:
+            features: Features configuration dictionary
+        """
+        # Check if relative_band_power is selected
+        per_channel_per_band_features = features.get('per_channel_per_band', [])
+        has_relative_band_power = 'relative_band_power' in per_channel_per_band_features
+        
+        if not has_relative_band_power:
+            return  # No validation needed if relative_band_power is not selected
+        
+        # Get frequency bands from preprocessing config
+        preprocessing_config = self.raw_config.get("preprocessing", {})
+        bands = preprocessing_config.get('bands', {})
+        bands_count = len(bands)
+        
+        # Validate that we have at least 2 bands for relative power calculation
+        if bands_count < 2:
+            raise ValueError(
+                f"relative_band_power requires 2+ frequency bands, but only {bands_count} band(s) selected. "
+                f"Please select more bands in the preprocessing configuration."
+            )
+        
+        # Validate that bands are properly configured
+        if not bands:
+            raise ValueError(
+                "relative_band_power requires frequency bands to be configured in preprocessing. "
+                "Please add 'bands' section to 'preprocessing' config."
+            )
+        
+        # Validate band structure
+        for band_name, band_range in bands.items():
+            if not isinstance(band_range, list) or len(band_range) != 2:
+                raise ValueError(
+                    f"Invalid frequency band format for '{band_name}'. "
+                    f"Expected [low, high] but got {band_range}"
+                )
+            if band_range[0] >= band_range[1]:
+                raise ValueError(
+                    f"Invalid frequency range for '{band_name}': "
+                    f"low ({band_range[0]}) must be less than high ({band_range[1]})"
+                )
 
     # ========================================
     # PROPERTY ACCESSORS - UNIFIED INTERFACE
@@ -1084,6 +1134,26 @@ class UnifiedConfigHandler:
         return self.raw_config.get("feature_transformation", {}).get(
             "synthetic", "None"
         )
+
+    @property
+    def anova_selection_mode(self) -> str:
+        """Get ANOVA F-test selection mode."""
+        return self.raw_config.get("feature_transformation", {}).get("anova_selection_mode", "numTopFeatures")
+
+    @property
+    def anova_selection_threshold(self) -> Union[int, float]:
+        """Get ANOVA F-test selection threshold."""
+        return self.raw_config.get("feature_transformation", {}).get("anova_selection_threshold", 10)
+
+    @property
+    def anova_label_type(self) -> str:
+        """Get ANOVA F-test label type."""
+        return self.raw_config.get("feature_transformation", {}).get("anova_label_type", "categorical")
+
+    @property
+    def anova_use_case(self) -> str:
+        """Get ANOVA F-test use case."""
+        return self.raw_config.get("feature_transformation", {}).get("anova_use_case", "Group classification")
 
     # Data Leakage Prevention Properties
     @property
@@ -1372,17 +1442,18 @@ class UnifiedConfigHandler:
 
     @property
     def graphs_wanted(self) -> bool:
-        """Check if graph visualization is enabled by inferring from the four graph options."""
+        """Check if graph visualization is enabled by inferring from the graph options."""
         graph_config = self.get_graph_visualization_config()
         
-        # Check if any of the four graph options are enabled
+        # Check if any of the graph options are enabled
         best_models_enabled = graph_config.get("best_models_graph", "No") == "Yes"
         hyperparam_enabled = graph_config.get("per_model_accross_hyperparameters_graph", "No") == "Yes"
         folds_enabled = graph_config.get("per_model_per_hyperparameter_across_folds_graph", "No") == "Yes"
         per_subject_enabled = graph_config.get("per_subject_analysis_graph", "No") == "Yes"
+        per_subject_hyperparam_enabled = graph_config.get("per_subject_hyperparameter_analysis", "No") == "Yes"
         
         # If any graph option is enabled, then graphs are wanted
-        return best_models_enabled or hyperparam_enabled or folds_enabled or per_subject_enabled
+        return best_models_enabled or hyperparam_enabled or folds_enabled or per_subject_enabled or per_subject_hyperparam_enabled
     
     @property
     def which_models_for_graphs(self) -> str:
@@ -1423,6 +1494,12 @@ class UnifiedConfigHandler:
         """Check if per subject analysis graph is enabled."""
         graph_config = self.get_graph_visualization_config()
         return graph_config.get("per_subject_analysis_graph", "No") == "Yes"
+    
+    @property
+    def per_subject_hyperparameter_analysis(self) -> bool:
+        """Check if hyperparameter-specific per-subject analysis is enabled."""
+        graph_config = self.get_graph_visualization_config()
+        return graph_config.get("per_subject_hyperparameter_analysis", "No") == "Yes"
     
     @property
     def per_subject_top_n_models(self) -> int:
