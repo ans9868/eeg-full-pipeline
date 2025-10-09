@@ -437,6 +437,46 @@ class UnifiedConfigHandler:
                 ):
                     raise ValueError("normalizer_p must be a number or float('inf')")
 
+            # ANOVA F-test configuration
+            if "ANOVA F-test" in transformations:
+                # Check required ANOVA fields
+                required_anova_fields = [
+                    "anova_label_column", 
+                    "anova_label_type", 
+                    "anova_selection_mode", 
+                    "anova_selection_threshold"
+                ]
+                for field in required_anova_fields:
+                    if field not in feature_transformation_config:
+                        raise ValueError(f"Missing required ANOVA field: {field}")
+
+                # Validate anova_label_column
+                anova_label_column = feature_transformation_config["anova_label_column"]
+                valid_label_columns = ["Group", "SubjectID"]
+                if anova_label_column not in valid_label_columns:
+                    raise ValueError(f"anova_label_column must be one of: {valid_label_columns}")
+
+                # Validate anova_label_type
+                anova_label_type = feature_transformation_config["anova_label_type"]
+                valid_label_types = ["categorical"]
+                if anova_label_type not in valid_label_types:
+                    raise ValueError(f"anova_label_type must be one of: {valid_label_types}")
+
+                # Validate anova_selection_mode
+                anova_selection_mode = feature_transformation_config["anova_selection_mode"]
+                valid_selection_modes = ["numTopFeatures", "percentile"]
+                if anova_selection_mode not in valid_selection_modes:
+                    raise ValueError(f"anova_selection_mode must be one of: {valid_selection_modes}")
+
+                # Validate anova_selection_threshold based on selection mode
+                anova_selection_threshold = feature_transformation_config["anova_selection_threshold"]
+                if anova_selection_mode == "numTopFeatures":
+                    if not isinstance(anova_selection_threshold, int) or anova_selection_threshold <= 0:
+                        raise ValueError("anova_selection_threshold must be a positive integer for numTopFeatures mode")
+                elif anova_selection_mode == "percentile":
+                    if not isinstance(anova_selection_threshold, (int, float)) or anova_selection_threshold <= 0 or anova_selection_threshold > 1:
+                        raise ValueError("anova_selection_threshold must be a float between 0 and 1 for percentile mode")
+
             # Cohen test configuration
             if "Cohen test (manual count)" in transformations:
                 if "cohen_components" not in feature_transformation_config:
@@ -901,6 +941,7 @@ class UnifiedConfigHandler:
             "PCA (retain 95% variance)",
             "PCA (manual count)",
             "SVD (k components)",
+            "ANOVA F-test",
             # 'Cohen test (manual count)', # not implemented (can be done with logistic regression)
             # 'Cohen test (limit to % for example 0.05)'
         ]
@@ -1135,25 +1176,27 @@ class UnifiedConfigHandler:
             "synthetic", "None"
         )
 
+ 
     @property
     def anova_selection_mode(self) -> str:
         """Get ANOVA F-test selection mode."""
-        return self.raw_config.get("feature_transformation", {}).get("anova_selection_mode", "numTopFeatures")
+        return self.raw_config.get("feature_transformation", {}).get("anova_selection_mode", None)
+
+    @property
+    def anova_label_column(self) -> str:
+        """Get ANOVA F-test label column."""
+        return self.raw_config.get("feature_transformation", {}).get("anova_label_column", None)
 
     @property
     def anova_selection_threshold(self) -> Union[int, float]:
         """Get ANOVA F-test selection threshold."""
-        return self.raw_config.get("feature_transformation", {}).get("anova_selection_threshold", 10)
+        return self.raw_config.get("feature_transformation", {}).get("anova_selection_threshold", None)
 
     @property
     def anova_label_type(self) -> str:
         """Get ANOVA F-test label type."""
-        return self.raw_config.get("feature_transformation", {}).get("anova_label_type", "categorical")
+        return self.raw_config.get("feature_transformation", {}).get("anova_label_type", None)
 
-    @property
-    def anova_use_case(self) -> str:
-        """Get ANOVA F-test use case."""
-        return self.raw_config.get("feature_transformation", {}).get("anova_use_case", "Group classification")
 
     # Data Leakage Prevention Properties
     @property

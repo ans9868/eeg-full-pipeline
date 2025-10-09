@@ -179,9 +179,9 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
 
     # Use user-supplied project name and timestamp for config name
     project_name = config["project"]["name"] or "project"
-    # Sanitize project name: lowercase, replace spaces with underscores, remove non-alphanumeric/underscore/dot
+    # Sanitize project name: replace spaces with underscores, remove problematic CLI characters (&*%$#)
     sanitized_name = re.sub(
-        r"[^a-zA-Z0-9_.]", "", project_name.replace(" ", "_").lower()
+        r"[&*%$#]", "", project_name.replace(" ", "_")
     )
 
     # Debug: show the sanitized name
@@ -937,52 +937,60 @@ def featureTransformationsPart4() -> Dict[str, Any]:
             else:  # L∞
                 config["feature_transformation"]["normalizer_p"] = float("inf")
 
-        # Cohen test configuration
-        if "Cohen test" in config["feature_transformation"]["transformations"]:
-            if "manual count" in config["feature_transformation"]["transformations"]:
-                while True:
-                    cohen_components = questionary.text(
-                        "4.3.7 Enter number of Cohen test components (e.g., 10):"
-                    ).ask()
-                    try:
-                        count = int(cohen_components)
-                        if count > 0:
-                            config["feature_transformation"]["cohen_components"] = count
-                            break
-                        else:
-                            print("[ERROR] Please enter a positive number.")
-                    except ValueError:
-                        print("[ERROR] Please enter a valid integer.")
-            elif "limit to %" in config["feature_transformation"]["transformations"]:
-                while True:
-                    cohen_limit = questionary.text(
-                        "4.3.8 Enter Cohen test limit percentage (e.g., 0.05 for 5%):"
-                    ).ask()
-                    try:
-                        limit = float(cohen_limit)
-                        if 0 < limit < 1:
-                            config["feature_transformation"]["cohen_limit"] = limit
-                            break
-                        else:
-                            print("[ERROR] Please enter a value between 0 and 1.")
-                    except ValueError:
-                        print("[ERROR] Please enter a valid decimal number.")
+        # # Cohen test configuration
+        # if "Cohen test" in config["feature_transformation"]["transformations"]:
+        #     if "manual count" in config["feature_transformation"]["transformations"]:
+        #         while True:
+        #             cohen_components = questionary.text(
+        #                 "4.3.7 Enter number of Cohen test components (e.g., 10):"
+        #             ).ask()
+        #             try:
+        #                 count = int(cohen_components)
+        #                 if count > 0:
+        #                     config["feature_transformation"]["cohen_components"] = count
+        #                     break
+        #                 else:
+        #                     print("[ERROR] Please enter a positive number.")
+        #             except ValueError:
+        #                 print("[ERROR] Please enter a valid integer.")
+        #     elif "limit to %" in config["feature_transformation"]["transformations"]:
+        #         while True:
+        #             cohen_limit = questionary.text(
+        #                 "4.3.8 Enter Cohen test limit percentage (e.g., 0.05 for 5%):"
+        #             ).ask()
+        #             try:
+        #                 limit = float(cohen_limit)
+        #                 if 0 < limit < 1:
+        #                     config["feature_transformation"]["cohen_limit"] = limit
+        #                     break
+        #                 else:
+        #                     print("[ERROR] Please enter a value between 0 and 1.")
+        #             except ValueError:
+        #                 print("[ERROR] Please enter a valid decimal number.")
 
         # ANOVA F-test configuration
         if "ANOVA F-test" in config["feature_transformation"]["transformations"]:
             
             # Decided not to do this because is complicated and would add a lot of edge cases
             # Ask for use case (both are categorical)
-            # use_case = questionary.select(
-            #     "4.3.9 ANOVA F-test use case:",
-            #     choices=[
-            #         "Group classification (control vs patient)",
-            #         "Subject fingerprinting (sub-001 vs sub-002)"
-            #     ]
-            # ).ask()
+            use_which_label = questionary.select(
+                "4.3.9 ANOVA F-test - Which column to use for feature selection:",
+                choices=[
+                    "Group (control vs patient) - Use Group column for disease classification",
+                    "SubjectID (sub-001 vs sub-002) - Use SubjectID column for subject fingerprinting"
+                ]
+            ).ask()
             
-            config["feature_transformation"]["anova_label_type"] = "categorical"
-            config["feature_transformation"]["anova_use_case"] = use_case
+            # # Set default use case since the selection is commented out
+            # use_case = "Group classification (control vs patient)"
+            
+            # Map the choice to actual column names
+            if "Group (" in use_which_label:
+                config["feature_transformation"]["anova_label_column"] = "Group"  # Use 'Group' column from schema
+                config["feature_transformation"]["anova_label_type"] = "categorical"  # String labels
+            elif "SubjectID (" in use_which_label:
+                config["feature_transformation"]["anova_label_column"] = "SubjectID"  # Use temporary combined SubjectID + GroupID as string
+                config["feature_transformation"]["anova_label_type"] = "categorical"  # String labels for categorical ANOVA
             
             # Part 1: Ask for selection mode (statistical method)
             selection_mode = questionary.select(
