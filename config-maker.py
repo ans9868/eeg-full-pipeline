@@ -970,21 +970,23 @@ def featureTransformationsPart4() -> Dict[str, Any]:
 
         # ANOVA F-test configuration
         if "ANOVA F-test" in config["feature_transformation"]["transformations"]:
+            
+            # Decided not to do this because is complicated and would add a lot of edge cases
             # Ask for use case (both are categorical)
-            use_case = questionary.select(
-                "4.3.9 ANOVA F-test use case:",
-                choices=[
-                    "Group classification (control vs patient)",
-                    "Subject fingerprinting (sub-001 vs sub-002)"
-                ]
-            ).ask()
+            # use_case = questionary.select(
+            #     "4.3.9 ANOVA F-test use case:",
+            #     choices=[
+            #         "Group classification (control vs patient)",
+            #         "Subject fingerprinting (sub-001 vs sub-002)"
+            #     ]
+            # ).ask()
             
             config["feature_transformation"]["anova_label_type"] = "categorical"
             config["feature_transformation"]["anova_use_case"] = use_case
             
             # Part 1: Ask for selection mode (statistical method)
             selection_mode = questionary.select(
-                "4.3.10 ANOVA F-test selection mode:",
+                "4.3.9 ANOVA F-test selection mode:",
                 choices=[
                     "numTopFeatures - Choose a fixed number of top features",
                     "percentile - Choose a fraction of all features", 
@@ -1009,7 +1011,7 @@ def featureTransformationsPart4() -> Dict[str, Any]:
             # Part 2: Ask for threshold based on selection mode
             if config["feature_transformation"]["anova_selection_mode"] == "numTopFeatures":
                 threshold = validate_integer_input(
-                    "4.3.11 Enter number of top features to keep:",
+                    "4.3.10 Enter number of top features to keep:",
                     default="10"
                 )
                 config["feature_transformation"]["anova_selection_threshold"] = int(threshold)
@@ -1017,7 +1019,7 @@ def featureTransformationsPart4() -> Dict[str, Any]:
             else:  # percentile, fpr, fdr, fwe all use float threshold
                 while True:
                     threshold_input = questionary.text(
-                        "4.3.11 Enter threshold value (0.0-1.0, e.g., 0.05):"
+                        "4.3.10 Enter threshold value (0.0-1.0, e.g., 0.05):"
                     ).ask()
                     try:
                         threshold = float(threshold_input)
