@@ -608,7 +608,7 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
 
         # Ask for PSD features first
         psd_features = questionary.checkbox(
-            f"   ├─ PSD Features (spectral):\n  ",
+            f"  ├─ PSD Features (spectral):\n  ",
             choices=psd_choices,
         ).ask()
 
@@ -623,7 +623,7 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
 
         # Ask for time domain features
         time_domain_features = questionary.checkbox(
-            f"   └─ Time Domain Features:\n      💡 Tip: Select 'none' for no features, or select specific features (not both)",
+            f"  └─ Time Domain Features:\n      💡 Tip: Select 'none' for no features, or select specific features (not both)",
             choices=time_domain_choices,
         ).ask()
 
@@ -1913,10 +1913,87 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
     config = {}
     config["ray"] = {}
 
-    # far in the future todo: make it such that we can choose distributed or sklearn (where distributed is ray and pyspark with raydp)
+    # NEW: Strategy Selection (can select BOTH Grid Search and Ax)
+    print("📊 Hyperparameter Search Strategies")
+    print("   You can run multiple strategies to compare results!")
+    print("   • Grid Search: Systematic exploration (current, reliable)")
+    print("   • Ax: Bayesian optimization with Adaptive Experimentation (advanced, efficient)")
+    print()
+    
+    selected_strategies = questionary.checkbox(
+        "7.1 Select search strategy/strategies (you can select multiple):",
+        choices=[
+            "Grid Search - Systematic exploration (current, reliable)",
+            "Ax - Bayesian optimization with Adaptive Experimentation (advanced, efficient)"
+        ],
+    ).ask()
+    
+    # Validation: at least one strategy must be selected
+    if not selected_strategies:
+        print("❌ Error: You must select at least one search strategy!")
+        print("   Retrying strategy selection...")
+        return rayConfigurationPart7(project_config)  # Retry
+    
+    # Parse selections
+    use_grid_search = any("Grid Search" in s for s in selected_strategies)
+    use_ax = any("Ax" in s for s in selected_strategies)
+    
+    # Store which strategies are enabled
+    strategies_list = []
+    if use_grid_search:
+        strategies_list.append("grid_search")
+    if use_ax:
+        strategies_list.append("ax")
+    
+    config["ray"]["search_strategies"] = strategies_list
+    
+    print(f"\n✅ Selected strategies: {', '.join(strategies_list)}")
+    if len(strategies_list) > 1:
+        print("   📊 You'll be able to compare results across strategies!")
+    print()
+    
+    # Configure each selected strategy
+    if use_grid_search:
+        print("=" * 60)
+        print("🔍 GRID SEARCH CONFIGURATION")
+        print("=" * 60)
+        grid_config = rayConfigurationPart7_GridSearch(project_config)
+        config["ray"]["grid_search"] = grid_config
+        print()
+    
+    if use_ax:
+        print("=" * 60)
+        print("🎯 AX (ADAPTIVE EXPERIMENTATION) CONFIGURATION")
+        print("=" * 60)
+        ax_config = rayConfigurationPart7_Ax(project_config)
+        config["ray"]["ax"] = ax_config
+        print()
+    
+    # Common Ray configuration (resources, graphs)
+    print("=" * 60)
+    print("⚙️  COMMON RAY CONFIGURATION")
+    print("=" * 60)
+    common_config = rayConfigurationPart7_Common(project_config, strategies_list)
+    config["ray"].update(common_config)
+    
+    return config
+
+
+def rayConfigurationPart7_GridSearch(project_config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Grid Search specific configuration (extracted from original rayConfigurationPart7).
+    Returns configuration to be nested under ray.grid_search
+    """
+    print("\n[7.2] Grid Search Configuration")
+    print("   Select discrete values to test for each hyperparameter")
+    print("   Grid Search will test ALL combinations (systematic exploration)")
+    print()
+    
+    grid_config = {}
+    
     # Machine Learning Models Selection
     selected_models = questionary.checkbox(
-        "7.1 Select machine learning models to test:",
+        "7.2.1 Select machine learning models to test with Grid Search:",
         choices=[
             "Random Forest",
             "XGBoost",
@@ -1930,43 +2007,178 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
         ],
     ).ask()
 
-    config["ray"]["models"] = selected_models
+    grid_config["models"] = selected_models
 
-    # 7.2 Individual Model Hyperparameter Configuration
+    # 7.2.2 Individual Model Hyperparameter Configuration
     if selected_models:
-        print("\n[7.2] Individual Model Hyperparameter Configuration")
-        print("Configure hyperparameter search spaces for each selected model.")
-        print("You can customize the search ranges for better optimization.")
+        print("\n[7.2.2] Grid Search Model Hyperparameter Configuration")
+        print("Configure discrete hyperparameter values for Grid Search.")
+        print("Grid Search will test ALL combinations systematically.")
 
-        config["ray"]["model_configs"] = {}
+        grid_config["model_configs"] = {}
 
         for model in selected_models:
-            print(f"\n--- Configuring {model} ---")
+            print(f"\n--- Configuring {model} for Grid Search ---")
 
             # Ask if user wants to customize hyperparameters for this model
             customize = questionary.select(
-                f"7.2.{selected_models.index(model)+1} Customize hyperparameters for {model}?",
+                f"7.2.2.{selected_models.index(model)+1} Customize hyperparameters for {model}?",
                 choices=["Use default grid", "Customize hyperparameters"],
             ).ask()
 
             if customize == "Use default grid":
-                config["ray"]["model_configs"][model] = {"use_default": True}
+                grid_config["model_configs"][model] = {"use_default": True}
             else:
                 # Model-specific hyperparameter configuration
-                config["ray"]["model_configs"][model] = configure_model_hyperparameters(
+                grid_config["model_configs"][model] = configure_model_hyperparameters(
                     model
                 )
 
-    config["ray"]["num_trials"] = validate_integer_input(
-        "7.3 Enter number of trials for hyperparameter optimization:", default="10"
+    grid_config["max_concurrent"] = validate_integer_input(
+        "7.2.3 Enter maximum concurrent trials for Grid Search:", default="2"
     )
 
-    config["ray"]["max_concurrent"] = validate_integer_input(
-        "7.4 Enter maximum concurrent trials:", default="2"
+    grid_config["cv_folds"] = validate_integer_input(
+        "7.2.4 Enter number of cross-validation folds for Grid Search:", default="5"
+    )
+    
+    print("   ✅ Grid Search configuration completed")
+    return grid_config
+
+
+def rayConfigurationPart7_Ax(project_config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Ax (Adaptive Experimentation) specific configuration using Ray Tune syntax.
+    Returns configuration to be nested under ray.ax
+    """
+    print("\n[7.3] Ax Configuration")
+    print("   Define search spaces using Ray Tune syntax (tune.uniform, tune.choice, etc.)")
+    print("   Ax uses Bayesian optimization for efficient hyperparameter search")
+    print()
+    
+    ax_config = {}
+    
+    # Machine Learning Models Selection
+    selected_models = questionary.checkbox(
+        "7.3.1 Select machine learning models to test with Ax:",
+        choices=[
+            "Random Forest",
+            "XGBoost",
+            "MLP (Neural Network)",
+            "KNN",
+            "SVM",
+            "Logistic Regression",
+            "Decision Tree",
+            "Gradient Boosting",
+            "AdaBoost",
+        ],
+    ).ask()
+
+    ax_config["models"] = selected_models
+
+    # 7.3.2 Individual Model Hyperparameter Configuration
+    if selected_models:
+        print("\n[7.3.2] Ax Model Hyperparameter Configuration")
+        print("Configure search spaces using Ray Tune types:")
+        print("   • uniform(low, high) - Continuous range")
+        print("   • quniform(low, high, q) - Discrete steps")
+        print("   • loguniform(low, high) - Log-scale continuous")
+        print("   • choice([values]) - Discrete choices")
+        print()
+
+        ax_config["model_configs"] = {}
+
+        for model in selected_models:
+            print(f"\n--- Configuring {model} for Ax ---")
+
+            # Ask if user wants to customize hyperparameters for this model
+            customize = questionary.select(
+                f"7.3.2.{selected_models.index(model)+1} Customize hyperparameters for {model}?",
+                choices=["Use default Ax space", "Customize hyperparameters"],
+            ).ask()
+
+            if customize == "Use default Ax space":
+                ax_config["model_configs"][model] = {"use_default": True}
+            else:
+                # Model-specific hyperparameter configuration using Ray Tune syntax
+                ax_config["model_configs"][model] = configure_ax_search_space_rayTune(
+                    model
+                )
+            
+            # Ask for number of trials per model
+            model_trials = validate_integer_input(
+                f"   Number of trials for {model} with Ax:",
+                default="50",
+                min_value=10
+            )
+            ax_config["model_configs"][model]["num_samples"] = model_trials
+            print(f"   ✅ {model}: {model_trials} trials")
+
+    ax_config["max_concurrent"] = validate_integer_input(
+        "7.3.3 Enter maximum concurrent trials for Ax:", default="4"
     )
 
-    config["ray"]["metric"] = questionary.select(
-        "7.5 Select optimization metric:",
+    ax_config["cv_folds"] = validate_integer_input(
+        "7.3.4 Enter number of cross-validation folds for Ax:", default="5"
+    )
+
+    # COMMENTED OUT: Advanced Ax features (can be added later)
+    # # Optional: Parameter constraints and outcome constraints
+    # print("\n[7.3.5] Advanced Ax Configuration (Optional)")
+    # use_constraints = questionary.select(
+    #     "7.3.5.1 Do you want to add parameter or outcome constraints?",
+    #     choices=["No", "Yes (advanced)"],
+    # ).ask()
+    # 
+    # if use_constraints == "Yes (advanced)":
+    #     print("   Note: Constraints use Ax syntax (e.g., 'x1 + x2 <= 1.0')")
+    #     
+    #     # Parameter constraints
+    #     add_param_constraints = questionary.select(
+    #         "7.3.5.2 Add parameter constraints (e.g., 'max_depth <= n_estimators/10')?",
+    #         choices=["No", "Yes"],
+    #     ).ask()
+    #     
+    #     if add_param_constraints == "Yes":
+    #         constraints_str = questionary.text(
+    #             "7.3.5.3 Enter parameter constraints (comma-separated):",
+    #             default="",
+    #         ).ask()
+    #         if constraints_str.strip():
+    #             ax_config["parameter_constraints"] = [c.strip() for c in constraints_str.split(",")]
+    #     
+    #     # Outcome constraints
+    #     add_outcome_constraints = questionary.select(
+    #         "7.3.5.4 Add outcome constraints (e.g., 'metric1 >= 0.8')?",
+    #         choices=["No", "Yes"],
+    #     ).ask()
+    #     
+    #     if add_outcome_constraints == "Yes":
+    #         outcome_str = questionary.text(
+    #             "7.3.5.5 Enter outcome constraints (comma-separated):",
+    #             default="",
+    #         ).ask()
+    #         if outcome_str.strip():
+    #             ax_config["outcome_constraints"] = [c.strip() for c in outcome_str.split(",")]
+    
+    print("   ✅ Ax configuration completed")
+    return ax_config
+
+
+def rayConfigurationPart7_Common(project_config: Dict[str, Any], strategies_list: List[str]) -> Dict[str, Any]:
+    """
+    Common Ray configuration shared across all strategies.
+    Returns configuration to be added to ray root level.
+    """
+    print("\n[7.4] Common Ray Configuration")
+    print("   These settings apply to all selected strategies")
+    print()
+    
+    common_config = {}
+    
+    # Metric and mode
+    common_config["metric"] = questionary.select(
+        "7.4.1 Select optimization metric:",
         choices=[
             "accuracy",
             "f1",
@@ -1979,146 +2191,117 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
         ],
     ).ask()
 
-    config["ray"]["mode"] = questionary.select(
-        "7.6 Select optimization mode:", choices=["max", "min"]
+    common_config["mode"] = questionary.select(
+        "7.4.2 Select optimization mode:", 
+        choices=["max", "min"]
     ).ask()
 
-    config["ray"]["cv_folds"] = validate_integer_input(
-        "7.7 Enter number of cross-validation folds:", default="5"
-    )
-
-    # Use global random seed from project configuration
-    global_seed = project_config["random_seed"]
-    config["ray"]["random_state"] = str(global_seed)
-    print(f"   ✅ Using global random seed: {global_seed}")
-
-    print("\n[7.8] Graph Data Visualization")
+    # NOTE: random_state is NOT set here - config_handler automatically 
+    # falls back to project.random_seed if ray.random_state is not present
+    
+    print("\n[7.4.3] Graph Data Visualization")
     
     # Initialize graph_data_visualization dictionary
-    config["ray"]["graph_data_visualization"] = {}
+    common_config["graph_data_visualization"] = {}
     
-    config["ray"]["graph_data_visualization"]["save_prediction_outputs"] = questionary.select(
-        "7.8.1 Do you want to save the training and testing final ml predictions for each hyper-parameter combination as pandas dataframes? (required for automatic graph generation)",
+    common_config["graph_data_visualization"]["save_prediction_outputs"] = questionary.select(
+        "7.4.3.1 Do you want to save the training and testing final ml predictions for each hyper-parameter combination as pandas dataframes? (required for automatic graph generation)",
         choices=["Yes", "No"],
     ).ask()
 
-    # 7.8 graph data visualization
-    if config["ray"]["graph_data_visualization"]["save_prediction_outputs"] == "Yes":
+    # 7.4.3.2+ graph data visualization options
+    if common_config["graph_data_visualization"]["save_prediction_outputs"] == "Yes":
    
-
-       config["ray"]["graph_data_visualization"]["best_models_graph"] = questionary.select(
-           "7.8.2 Do you want to get a graph of best model of each machine learning model (best KNN, best SVM, etc.)?",
+       common_config["graph_data_visualization"]["best_models_graph"] = questionary.select(
+           "7.4.3.2 Do you want to get a graph of best model of each machine learning model (best KNN, best SVM, etc.)?",
            choices=["Yes", "No"],
        ).ask()
 
-       config["ray"]["graph_data_visualization"]["per_model_accross_hyperparameters_graph"] = questionary.select(
-           "7.8.3 Do you want to get a graph of per model accross hyperparameters (KNN euclidean, KNN manhattan, etc.)?",
+       common_config["graph_data_visualization"]["per_model_accross_hyperparameters_graph"] = questionary.select(
+           "7.4.3.3 Do you want to get a graph of per model across hyperparameters (KNN euclidean, KNN manhattan, etc.)?",
            choices=["Yes", "No"],
        ).ask()
 
-       config["ray"]["graph_data_visualization"]["per_model_per_hyperparameter_across_folds_graph"] = questionary.select(
-           "7.8.4 Do you want to get a graph of per model per hyperparameter across folds (KNN euclidean fold 1, KNN manhattan, etc.)?",
+       common_config["graph_data_visualization"]["per_model_per_hyperparameter_across_folds_graph"] = questionary.select(
+           "7.4.3.4 Do you want to get a graph of per model per hyperparameter across folds (KNN euclidean fold 1, KNN manhattan, etc.)?",
            choices=["Yes", "No"],
        ).ask()
 
-       config["ray"]["graph_data_visualization"]["per_subject_analysis_graph"] = questionary.select(
-           "7.8.5 Do you want to get a per-subject analysis graph showing accuracy for each subject (e.g., sub-001, sub-002, etc.)?",
+       common_config["graph_data_visualization"]["per_subject_analysis_graph"] = questionary.select(
+           "7.4.3.5 Do you want to get a per-subject analysis graph showing accuracy for each subject (e.g., sub-001, sub-002, etc.)?",
            choices=["Yes", "No"],
        ).ask()
        
        # If per-subject analysis is enabled, ask for number of top models
-       if config["ray"]["graph_data_visualization"]["per_subject_analysis_graph"] == "Yes":
-           config["ray"]["graph_data_visualization"]["per_subject_top_n_models"] = validate_integer_input(
-               "7.8.6 How many top-performing models should be included in per-subject analysis? (default: 3)",
+       if common_config["graph_data_visualization"]["per_subject_analysis_graph"] == "Yes":
+           common_config["graph_data_visualization"]["per_subject_top_n_models"] = validate_integer_input(
+               "7.4.3.6 How many top-performing models should be included in per-subject analysis? (default: 3)",
                default="3",
                min_value=1
            )
            
            # Ask for hyperparameter-specific per-subject analysis
-           config["ray"]["graph_data_visualization"]["per_subject_hyperparameter_analysis"] = questionary.select(
-               "7.8.7 Do you want hyperparameter-specific per-subject analysis showing each subject's accuracy for each hyperparameter combination with fold boundaries?",
+           common_config["graph_data_visualization"]["per_subject_hyperparameter_analysis"] = questionary.select(
+               "7.4.3.7 Do you want hyperparameter-specific per-subject analysis showing each subject's accuracy for each hyperparameter combination with fold boundaries?",
                choices=["Yes", "No"],
            ).ask()
 
-    # 7.9 Ray Resource Configuration
-    print("\n[7.9] Ray Resource Configuration")
-    print(
-        "Ray resource configuration helps optimize performance for hyperparameter tuning."
-    )
-    print("If not configured, Ray will fall back to PySpark resource settings.")
+    # 7.4.4 Global Ray Resource Configuration
+    print("\n[7.4.4] Global Ray Cluster Resource Configuration")
+    print("   Configure global Ray cluster resources (shared across all strategies)")
+    print("   Note: Per-strategy resources (cpus_per_trial, gpus_per_trial) are configured separately")
+    print()
 
     configure_ray_resources = questionary.select(
-        "7.9.1 Do you want to configure Ray-specific resources?",
-        choices=["Yes", "No (use approximatley the same settings as PySpark)"],
+        "7.4.4.1 Do you want to configure global Ray cluster resources?",
+        choices=["Yes", "No (use defaults: 4 CPUs, 8GB RAM)"],
     ).ask()
 
     if configure_ray_resources == "Yes":
-        print("\nRay Resource Configuration:")
-        print("For example, for a 8-core CPU with 16GB memory, we can safely allocate:")
-        print("  - 4-6 CPUs for Ray cluster")
-        print("  - 8-12GB memory for Ray")
-        print("  - 2-4 concurrent trials")
-        print("This is optimized for ML workloads.")
+        print("\n   Global Ray Cluster Resource Configuration:")
+        print("   For example, for an 8-core CPU with 16GB memory:")
+        print("     - 4-6 CPUs for Ray cluster")
+        print("     - 8-12GB memory for Ray")
+        print("   This is optimized for ML workloads.")
+        print()
 
-        config["ray"]["resources"] = {}
-        config["ray"]["resources"]["num_cpus"] = validate_integer_input(
-            "7.9.2 Enter number of CPUs for Ray cluster:", default="4"
+        common_config["resources"] = {}
+        common_config["resources"]["num_cpus"] = validate_integer_input(
+            "7.4.4.2 Enter number of CPUs for Ray cluster:", default="4"
         )
-        config["ray"]["resources"]["memory_gb"] = validate_integer_input(
-            "7.9.3 Enter memory in GB for Ray:", default="8"
+        common_config["resources"]["memory_gb"] = validate_integer_input(
+            "7.4.4.3 Enter memory in GB for Ray:", default="8"
         )
-        config["ray"]["resources"]["object_store_memory_gb"] = validate_integer_input(
-            "7.9.4 Enter object store memory in GB (for data caching):", default="4"
+        common_config["resources"]["object_store_memory_gb"] = validate_integer_input(
+            "7.4.4.4 Enter object store memory in GB (for data caching):", default="4"
         )
 
         # Ask for GPU configuration if needed
         use_gpu = questionary.select(
-            "7.9.5 Do you want to use GPU acceleration (if available)?",
+            "7.4.4.5 Do you want to enable GPU acceleration (if available)?",
             choices=["No", "Yes"],
         ).ask()
 
         if use_gpu == "Yes":
-            config["ray"]["resources"]["num_gpus"] = validate_integer_input(
-                "7.9.6 Enter number of GPUs to use:", default="0"
+            common_config["resources"]["num_gpus"] = validate_integer_input(
+                "7.4.4.6 Enter total number of GPUs available:", default="0"
             )
         else:
-            config["ray"]["resources"]["num_gpus"] = 0
+            common_config["resources"]["num_gpus"] = 0
 
-        # # Ask for Ray dashboard port
-        # config["ray"]["resources"]["dashboard_port"] = validate_integer_input(
-        #     "7.9.7 Enter Ray dashboard port (for monitoring):", default="8265"
-        # )
-
-        print("✅ Ray resource configuration completed")
-    else:  # 'No (use approximatley the same settings as PySpark)'
-        print("ℹ️  Ray will use PySpark resource settings as fallback")
-
-        # Get PySpark settings to use as base for Ray resources
-        pyspark_master = int(config.get("pyspark", {}).get("master", "6"))
-        pyspark_driver_memory = int(config.get("pyspark", {}).get("driver_memory", "6"))
-        pyspark_executor_memory = int(
-            config.get("pyspark", {}).get("executor_memory", "6")
-        )
-
-        # Calculate Ray resources based on PySpark settings
-        ray_cpus = max(2, pyspark_master - 2)  # Leave some cores for system
-        ray_memory = max(
-            4, pyspark_driver_memory + pyspark_executor_memory - 4
-        )  # Leave some memory for system
-        ray_object_store = max(
-            2, ray_memory // 2
-        )  # Object store is typically half of total memory
-
-        # Set Ray resources based on PySpark fallback
-        config["ray"]["resources"] = {
-            "num_cpus": str(ray_cpus),
-            "memory_gb": str(ray_memory),
-            "object_store_memory_gb": str(ray_object_store),
+        print("   ✅ Global Ray cluster resource configuration completed")
+    else:
+        # Use defaults
+        common_config["resources"] = {
+            "num_cpus": 4,
+            "memory_gb": 8,
+            "object_store_memory_gb": 4,
             "num_gpus": 0,
-            "dashboard_port": "8265",
         }
+        print("   ✅ Using default Ray cluster resources")
 
-    return config
+    print(f"\n✅ Common Ray configuration completed for strategies: {', '.join(strategies_list)}")
+    return common_config
 
 
 def get_hyperparameter_with_custom(
@@ -2156,6 +2339,451 @@ def get_hyperparameter_with_custom(
     return selected
 
 
+def configure_ax_search_space_rayTune(model_name: str) -> dict:
+    """
+    Configure Ax search space using Ray Tune types.
+    Returns dict with hyperparameters in Ray Tune format (to be converted later).
+    
+    Args:
+        model_name: Name of the model to configure
+    
+    Returns:
+        Dictionary with hyperparameter configuration using Ray Tune syntax
+    """
+    config = {"use_default": False, "hyperparameters": {}}
+    
+    if model_name == "Random Forest":
+        print("\n🌲 Random Forest - Ax Search Space Configuration")
+        print("   Define search spaces using Ray Tune types")
+        print("   💡 Ax will use Bayesian optimization to intelligently explore the space")
+        print()
+        
+        # n_estimators
+        print("📊 n_estimators (number of trees)")
+        print("   💡 Recommendation: Usually between 50-500")
+        print("   💡 Use quniform for discrete values, uniform for continuous")
+        n_est_type = questionary.select(
+            "   Select search space type for n_estimators:",
+            choices=[
+                "quniform(50, 500, 50) - Discrete steps: 50, 100, 150... 500 [RECOMMENDED]",
+                "uniform(50, 500) - Continuous range 50-500",
+                "Custom range (enter your own bounds)"
+            ],
+        ).ask()
+        
+        if "quniform" in n_est_type:
+            config["hyperparameters"]["n_estimators"] = {
+                "type": "quniform",
+                "bounds": [50, 500],
+                "q": 50
+            }
+            print("   ✅ n_estimators: quniform(50, 500, 50)")
+        elif "uniform" in n_est_type:
+            config["hyperparameters"]["n_estimators"] = {
+                "type": "uniform",
+                "bounds": [50, 500]
+            }
+            print("   ✅ n_estimators: uniform(50, 500)")
+        else:  # Custom
+            low = int(validate_integer_input("      Lower bound:", default="50"))
+            high = int(validate_integer_input("      Upper bound:", default="500"))
+            use_q = questionary.select(
+                "      Use discrete steps (quniform)?",
+                choices=["Yes", "No (continuous)"],
+            ).ask()
+            if use_q == "Yes":
+                q = int(validate_integer_input("      Step size (q):", default="50"))
+                config["hyperparameters"]["n_estimators"] = {
+                    "type": "quniform",
+                    "bounds": [low, high],
+                    "q": q
+                }
+                print(f"   ✅ n_estimators: quniform({low}, {high}, {q})")
+            else:
+                config["hyperparameters"]["n_estimators"] = {
+                    "type": "uniform",
+                    "bounds": [low, high]
+                }
+                print(f"   ✅ n_estimators: uniform({low}, {high})")
+        
+        # max_depth
+        print("\n📊 max_depth (maximum tree depth)")
+        print("   💡 Recommendation: Usually 10-50, or None for unlimited")
+        print("   💡 Use 'choice' for discrete categorical options")
+        max_depth_choices = questionary.text(
+            "   Enter max_depth choices (comma-separated, use 'None' for unlimited):",
+            default="10, 20, 30, None",
+        ).ask()
+        
+        # Parse max_depth choices
+        max_depth_values = []
+        for val in max_depth_choices.split(","):
+            val = val.strip()
+            if val.lower() == "none":
+                max_depth_values.append(None)
+            else:
+                try:
+                    max_depth_values.append(int(val))
+                except ValueError:
+                    print(f"      ⚠️  Skipping invalid value: {val}")
+        
+        config["hyperparameters"]["max_depth"] = {
+            "type": "choice",
+            "values": max_depth_values
+        }
+        print(f"   ✅ max_depth: choice({max_depth_values})")
+        
+        # max_features
+        print("\n📊 max_features (features per split)")
+        max_features_choices = questionary.text(
+            "   Enter max_features choices (comma-separated, e.g., 'sqrt, log2, None'):",
+            default="sqrt, log2, None",
+        ).ask()
+        
+        # Parse max_features choices
+        max_features_values = []
+        for val in max_features_choices.split(","):
+            val = val.strip()
+            if val.lower() == "none":
+                max_features_values.append(None)
+            elif val in ["sqrt", "log2"]:
+                max_features_values.append(val)
+            else:
+                try:
+                    max_features_values.append(float(val))
+                except ValueError:
+                    print(f"      ⚠️  Skipping invalid value: {val}")
+        
+        config["hyperparameters"]["max_features"] = {
+            "type": "choice",
+            "values": max_features_values
+        }
+        print(f"   ✅ max_features: choice({max_features_values})")
+        
+        # min_samples_split
+        print("\n📊 min_samples_split (minimum samples to split)")
+        min_samples_split_type = questionary.select(
+            "   Select search space type for min_samples_split:",
+            choices=[
+                "choice([2, 5, 10]) - Discrete choices",
+                "quniform(2, 20, 2) - Discrete steps: 2, 4, 6... 20",
+                "Custom"
+            ],
+        ).ask()
+        
+        if "choice" in min_samples_split_type:
+            config["hyperparameters"]["min_samples_split"] = {
+                "type": "choice",
+                "values": [2, 5, 10]
+            }
+            print("   ✅ min_samples_split: choice([2, 5, 10])")
+        elif "quniform" in min_samples_split_type:
+            config["hyperparameters"]["min_samples_split"] = {
+                "type": "quniform",
+                "bounds": [2, 20],
+                "q": 2
+            }
+            print("   ✅ min_samples_split: quniform(2, 20, 2)")
+        else:  # Custom
+            choices_str = questionary.text(
+                "      Enter choices (comma-separated):",
+                default="2, 5, 10",
+            ).ask()
+            choices_list = [int(v.strip()) for v in choices_str.split(",")]
+            config["hyperparameters"]["min_samples_split"] = {
+                "type": "choice",
+                "values": choices_list
+            }
+            print(f"   ✅ min_samples_split: choice({choices_list})")
+    
+    elif model_name == "KNN":
+        print("\n🔍 KNN - Ax Search Space Configuration")
+        print("   Define search spaces using Ray Tune types")
+        print()
+        
+        # n_neighbors
+        print("📊 n_neighbors (number of neighbors)")
+        n_neighbors_type = questionary.select(
+            "   Select search space type for n_neighbors:",
+            choices=[
+                "quniform(3, 21, 2) - Discrete odd numbers: 3, 5, 7... 21",
+                "quniform(1, 20, 1) - All integers 1-20",
+                "Custom range"
+            ],
+        ).ask()
+        
+        if "odd numbers" in n_neighbors_type:
+            config["hyperparameters"]["n_neighbors"] = {
+                "type": "quniform",
+                "bounds": [3, 21],
+                "q": 2
+            }
+            print("   ✅ n_neighbors: quniform(3, 21, 2)")
+        elif "All integers" in n_neighbors_type:
+            config["hyperparameters"]["n_neighbors"] = {
+                "type": "quniform",
+                "bounds": [1, 20],
+                "q": 1
+            }
+            print("   ✅ n_neighbors: quniform(1, 20, 1)")
+        else:  # Custom
+            low = int(validate_integer_input("      Lower bound:", default="3"))
+            high = int(validate_integer_input("      Upper bound:", default="21"))
+            q = int(validate_integer_input("      Step size (q):", default="2"))
+            config["hyperparameters"]["n_neighbors"] = {
+                "type": "quniform",
+                "bounds": [low, high],
+                "q": q
+            }
+            print(f"   ✅ n_neighbors: quniform({low}, {high}, {q})")
+        
+        # weights
+        print("\n📊 weights (weight function)")
+        weights_choices = questionary.text(
+            "   Enter weights choices (comma-separated):",
+            default="uniform, distance",
+        ).ask()
+        weights_values = [v.strip() for v in weights_choices.split(",")]
+        config["hyperparameters"]["weights"] = {
+            "type": "choice",
+            "values": weights_values
+        }
+        print(f"   ✅ weights: choice({weights_values})")
+        
+        # metric
+        print("\n📊 metric (distance metric)")
+        metric_choices = questionary.text(
+            "   Enter metric choices (comma-separated):",
+            default="euclidean, manhattan, minkowski",
+        ).ask()
+        metric_values = [v.strip() for v in metric_choices.split(",")]
+        config["hyperparameters"]["metric"] = {
+            "type": "choice",
+            "values": metric_values
+        }
+        print(f"   ✅ metric: choice({metric_values})")
+        
+        # p (for minkowski)
+        print("\n📊 p (power parameter for Minkowski metric)")
+        add_p = questionary.select(
+            "   Add 'p' parameter search space (only used with Minkowski)?",
+            choices=["Yes", "No"],
+        ).ask()
+        if add_p == "Yes":
+            config["hyperparameters"]["p"] = {
+                "type": "choice",
+                "values": [1, 2, 3]
+            }
+            print("   ✅ p: choice([1, 2, 3])")
+    
+    elif model_name == "XGBoost":
+        print("\n🚀 XGBoost - Ax Search Space Configuration")
+        print("   Define search spaces using Ray Tune types")
+        print("   💡 Ax will use Bayesian optimization to intelligently explore the space")
+        print()
+        
+        # learning_rate
+        print("📊 learning_rate (step size shrinkage)")
+        print("   💡 Recommendation: Usually between 0.001-0.3")
+        print("   💡 Use loguniform for log-scale search (better for learning rates)")
+        lr_type = questionary.select(
+            "   Select search space type for learning_rate:",
+            choices=[
+                "loguniform(0.001, 0.3) - Log-scale continuous [RECOMMENDED]",
+                "uniform(0.01, 0.3) - Linear continuous",
+                "choice([0.01, 0.05, 0.1, 0.2]) - Discrete choices",
+                "Custom range (enter your own bounds)"
+            ],
+        ).ask()
+        
+        if "loguniform" in lr_type:
+            config["hyperparameters"]["learning_rate"] = {
+                "type": "loguniform",
+                "bounds": [0.001, 0.3]
+            }
+            print("   ✅ learning_rate: loguniform(0.001, 0.3)")
+        elif "uniform" in lr_type:
+            config["hyperparameters"]["learning_rate"] = {
+                "type": "uniform",
+                "bounds": [0.01, 0.3]
+            }
+            print("   ✅ learning_rate: uniform(0.01, 0.3)")
+        elif "choice" in lr_type:
+            config["hyperparameters"]["learning_rate"] = {
+                "type": "choice",
+                "values": [0.01, 0.05, 0.1, 0.2]
+            }
+            print("   ✅ learning_rate: choice([0.01, 0.05, 0.1, 0.2])")
+        else:  # Custom
+            space_type = questionary.select(
+                "      Select type:",
+                choices=["loguniform", "uniform", "choice"],
+            ).ask()
+            if space_type == "choice":
+                choices_str = questionary.text(
+                    "      Enter choices (comma-separated):",
+                    default="0.01, 0.05, 0.1",
+                ).ask()
+                choices_list = [float(v.strip()) for v in choices_str.split(",")]
+                config["hyperparameters"]["learning_rate"] = {
+                    "type": "choice",
+                    "values": choices_list
+                }
+                print(f"   ✅ learning_rate: choice({choices_list})")
+            else:
+                low = float(questionary.text("      Lower bound:", default="0.001").ask())
+                high = float(questionary.text("      Upper bound:", default="0.3").ask())
+                config["hyperparameters"]["learning_rate"] = {
+                    "type": space_type,
+                    "bounds": [low, high]
+                }
+                print(f"   ✅ learning_rate: {space_type}({low}, {high})")
+        
+        # n_estimators
+        print("\n📊 n_estimators (number of boosting rounds)")
+        n_est_type = questionary.select(
+            "   Select search space type for n_estimators:",
+            choices=[
+                "quniform(50, 500, 50) - Discrete steps: 50, 100, 150... 500",
+                "Custom range"
+            ],
+        ).ask()
+        
+        if "quniform" in n_est_type:
+            config["hyperparameters"]["n_estimators"] = {
+                "type": "quniform",
+                "bounds": [50, 500],
+                "q": 50
+            }
+            print("   ✅ n_estimators: quniform(50, 500, 50)")
+        else:  # Custom
+            low = int(validate_integer_input("      Lower bound:", default="50"))
+            high = int(validate_integer_input("      Upper bound:", default="500"))
+            q = int(validate_integer_input("      Step size (q):", default="50"))
+            config["hyperparameters"]["n_estimators"] = {
+                "type": "quniform",
+                "bounds": [low, high],
+                "q": q
+            }
+            print(f"   ✅ n_estimators: quniform({low}, {high}, {q})")
+        
+        # max_depth
+        print("\n📊 max_depth (maximum tree depth)")
+        max_depth_type = questionary.select(
+            "   Select search space type for max_depth:",
+            choices=[
+                "quniform(3, 10, 1) - Integers 3-10",
+                "choice([3, 5, 7, 9]) - Discrete choices",
+                "Custom"
+            ],
+        ).ask()
+        
+        if "quniform" in max_depth_type:
+            config["hyperparameters"]["max_depth"] = {
+                "type": "quniform",
+                "bounds": [3, 10],
+                "q": 1
+            }
+            print("   ✅ max_depth: quniform(3, 10, 1)")
+        elif "choice" in max_depth_type:
+            config["hyperparameters"]["max_depth"] = {
+                "type": "choice",
+                "values": [3, 5, 7, 9]
+            }
+            print("   ✅ max_depth: choice([3, 5, 7, 9])")
+        else:  # Custom
+            choices_str = questionary.text(
+                "      Enter choices (comma-separated):",
+                default="3, 5, 7, 10",
+            ).ask()
+            choices_list = [int(v.strip()) for v in choices_str.split(",")]
+            config["hyperparameters"]["max_depth"] = {
+                "type": "choice",
+                "values": choices_list
+            }
+            print(f"   ✅ max_depth: choice({choices_list})")
+        
+        # subsample
+        print("\n📊 subsample (fraction of samples for training)")
+        subsample_type = questionary.select(
+            "   Select search space type for subsample:",
+            choices=[
+                "uniform(0.6, 1.0) - Continuous 60%-100%",
+                "choice([0.6, 0.7, 0.8, 0.9, 1.0]) - Discrete choices",
+                "Custom"
+            ],
+        ).ask()
+        
+        if "uniform" in subsample_type:
+            config["hyperparameters"]["subsample"] = {
+                "type": "uniform",
+                "bounds": [0.6, 1.0]
+            }
+            print("   ✅ subsample: uniform(0.6, 1.0)")
+        elif "choice" in subsample_type:
+            config["hyperparameters"]["subsample"] = {
+                "type": "choice",
+                "values": [0.6, 0.7, 0.8, 0.9, 1.0]
+            }
+            print("   ✅ subsample: choice([0.6, 0.7, 0.8, 0.9, 1.0])")
+        else:  # Custom
+            choices_str = questionary.text(
+                "      Enter choices (comma-separated):",
+                default="0.7, 0.8, 0.9, 1.0",
+            ).ask()
+            choices_list = [float(v.strip()) for v in choices_str.split(",")]
+            config["hyperparameters"]["subsample"] = {
+                "type": "choice",
+                "values": choices_list
+            }
+            print(f"   ✅ subsample: choice({choices_list})")
+        
+        # colsample_bytree
+        print("\n📊 colsample_bytree (fraction of features per tree)")
+        colsample_type = questionary.select(
+            "   Select search space type for colsample_bytree:",
+            choices=[
+                "uniform(0.6, 1.0) - Continuous 60%-100%",
+                "choice([0.6, 0.7, 0.8, 0.9, 1.0]) - Discrete choices",
+                "Custom"
+            ],
+        ).ask()
+        
+        if "uniform" in colsample_type:
+            config["hyperparameters"]["colsample_bytree"] = {
+                "type": "uniform",
+                "bounds": [0.6, 1.0]
+            }
+            print("   ✅ colsample_bytree: uniform(0.6, 1.0)")
+        elif "choice" in colsample_type:
+            config["hyperparameters"]["colsample_bytree"] = {
+                "type": "choice",
+                "values": [0.6, 0.7, 0.8, 0.9, 1.0]
+            }
+            print("   ✅ colsample_bytree: choice([0.6, 0.7, 0.8, 0.9, 1.0])")
+        else:  # Custom
+            choices_str = questionary.text(
+                "      Enter choices (comma-separated):",
+                default="0.7, 0.8, 0.9, 1.0",
+            ).ask()
+            choices_list = [float(v.strip()) for v in choices_str.split(",")]
+            config["hyperparameters"]["colsample_bytree"] = {
+                "type": "choice",
+                "values": choices_list
+            }
+            print(f"   ✅ colsample_bytree: choice({choices_list})")
+    
+    else:
+        # For other models, use a simplified configuration
+        print(f"\n⚙️  {model_name} - Ax Search Space Configuration")
+        print(f"   Using default Ax search space for {model_name}")
+        print(f"   (Full customization not yet implemented for this model)")
+        config["use_default"] = True
+    
+    print(f"\n✅ Ax search space configuration completed for {model_name}")
+    return config
+
+
 def configure_model_hyperparameters(model_name: str) -> dict:
     """
     Configure hyperparameters for a specific model.
@@ -2169,16 +2797,38 @@ def configure_model_hyperparameters(model_name: str) -> dict:
     config = {"use_default": False, "hyperparameters": {}}
 
     if model_name == "Random Forest":
-        print("\nRandom Forest Hyperparameters:")
-        config["hyperparameters"]["n_estimators"] = get_hyperparameter_with_custom(
-            "n_estimators (number of trees)", ["50", "100", "200", "300", "500"]
-        )
+        print("\n🌲 Random Forest Hyperparameters:")
+        print("   💡 Tip: You can enter any values you want!")
+        print()
+        
+        # n_estimators with flexible input
+        print("📊 n_estimators (number of trees)")
+        print("   💡 Recommendation: Usually between 50-500")
+        n_estimators_input = questionary.text(
+            "   Enter values to test (comma-separated):",
+            default="50, 100, 200, 300, 500",
+        ).ask()
+        config["hyperparameters"]["n_estimators"] = [
+            int(v.strip()) for v in n_estimators_input.split(",")
+        ]
+        print(f"   ✅ Testing: {config['hyperparameters']['n_estimators']}")
 
-        config["hyperparameters"]["max_depth"] = get_hyperparameter_with_custom(
-            "max_depth (max tree depth)",
-            ["None", "10", "20", "30", "50"],
-            "Enter custom max_depth value (or 'None'):",
-        )
+        # max_depth with flexible input
+        print("\n📊 max_depth (maximum tree depth)")
+        print("   💡 Recommendation: Usually 10-50, or None for unlimited")
+        max_depth_input = questionary.text(
+            "   Enter values to test (comma-separated, use 'None' for unlimited):",
+            default="None, 10, 20, 30",
+        ).ask()
+        max_depth_values = []
+        for val in max_depth_input.split(","):
+            val = val.strip()
+            if val.lower() == "none":
+                max_depth_values.append(None)
+            else:
+                max_depth_values.append(int(val))
+        config["hyperparameters"]["max_depth"] = max_depth_values
+        print(f"   ✅ Testing: {config['hyperparameters']['max_depth']}")
 
         config["hyperparameters"]["min_samples_split"] = get_hyperparameter_with_custom(
             "min_samples_split", ["2", "5", "10", "20"]

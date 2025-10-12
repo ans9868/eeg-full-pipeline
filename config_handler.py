@@ -712,101 +712,329 @@ class UnifiedConfigHandler:
                 raise ValueError(f"PySpark field '{field}' is None")
 
     def rayConfigurationPart7_validate(self) -> None:
-        """Validate Ray configuration (rayConfigurationPart7)."""
+        """Validate Ray configuration with multiple search strategies (rayConfigurationPart7)."""
         ray_config = self.raw_config.get("ray", {})
 
-        # Basic validation - Ray config is more flexible
-        if "models" in ray_config:
-            models = ray_config["models"]
-            if not isinstance(models, list):
-                raise ValueError("Ray models must be a list")
+        # 1. Validate search_strategies list (NEW)
+        if "search_strategies" not in ray_config:
+            raise ValueError("Ray configuration must include 'search_strategies' list")
+        
+        search_strategies = ray_config.get("search_strategies", [])
+        if not isinstance(search_strategies, list):
+            raise ValueError("Ray 'search_strategies' must be a list")
+        
+        if len(search_strategies) == 0:
+            raise ValueError("At least one search strategy must be selected")
+        
+        valid_strategies = ["grid_search", "ax"]
+        for strategy in search_strategies:
+            if strategy not in valid_strategies:
+                raise ValueError(
+                    f"Invalid search strategy '{strategy}'. "
+                    f"Valid strategies: {valid_strategies}"
+                )
 
-        # Validate numeric fields if present
-        numeric_fields = ["num_trials", "max_concurrent", "cv_folds", "random_state"]
-        for field in numeric_fields:
-            if field in ray_config:
-                try:
-                    int(ray_config[field])
-                except (ValueError, TypeError):
-                    raise ValueError(f"Ray field '{field}' must be a valid integer")
+        # 2. Validate Grid Search config if present
+        if "grid_search" in search_strategies:
+            if "grid_search" not in ray_config:
+                raise ValueError("'grid_search' strategy selected but configuration missing")
+            self._validate_grid_search_config(ray_config["grid_search"])
 
-        # Validate Ray resources if present
-        if "resources" in ray_config:
-            resources = ray_config["resources"]
-            if resources is None:
-                raise ValueError("Ray resources must be a dictionary and not None")
-            if not isinstance(resources, dict):
-                raise ValueError("Ray resources must be a dictionary and not None")
+        # 3. Validate Ax config if present
+        if "ax" in search_strategies:
+            if "ax" not in ray_config:
+                raise ValueError("'ax' strategy selected but configuration missing")
+            self._validate_ax_config(ray_config["ax"])
 
-            # Validate required resource fields
-            required_resource_fields = [
-                "num_cpus",
-                "memory_gb",
-                "object_store_memory_gb",
-            ]
-            for field in required_resource_fields:
-                if field in resources:
-                    try:
-                        int(resources[field])
-                    except (ValueError, TypeError):
-                        raise ValueError(
-                            f"Ray resource field '{field}' must be a valid integer"
-                        )
+        # 4. Validate common Ray configuration
+        self._validate_ray_common_config(ray_config)
 
-            # Validate GPU configuration
-            if "num_gpus" in resources:
-                try:
-                    gpu_count = int(resources["num_gpus"])
-                    if gpu_count < 0:
-                        raise ValueError(
-                            "Ray resource num_gpus must be non-negative"
-                        )
-                except (ValueError, TypeError):
-                    raise ValueError(
-                        "Ray resource num_gpus must be a valid integer"
-                    )
+    def _validate_grid_search_config(self, grid_config: Dict[str, Any]) -> None:
+        """Validate Grid Search specific configuration."""
+        # Validate models
+        if "models" not in grid_config:
+            raise ValueError("Grid Search configuration must include 'models' list")
+        
+        models = grid_config["models"]
+        if not isinstance(models, list):
+            raise ValueError("Grid Search 'models' must be a list")
+        
+        if len(models) == 0:
+            raise ValueError("At least one model must be selected for Grid Search")
 
-            # Validate dashboard port
-            if "dashboard_port" in resources:
-                try:
-                    port = int(resources["dashboard_port"])
-                    if port < 1 or port > 65535:
-                        raise ValueError(
-                            "Ray resource dashboard_port must be between 1 and 65535"
-                        )
-                except (ValueError, TypeError):
-                    raise ValueError(
-                        "Ray resource dashboard_port must be a valid integer"
-                    )
+        # Validate max_concurrent
+        if "max_concurrent" in grid_config:
+            try:
+                max_concurrent = int(grid_config["max_concurrent"])
+                if max_concurrent < 1:
+                    raise ValueError("Grid Search 'max_concurrent' must be positive")
+            except (ValueError, TypeError):
+                raise ValueError("Grid Search 'max_concurrent' must be a valid integer")
+
+        # Validate cv_folds
+        if "cv_folds" in grid_config:
+            try:
+                cv_folds = int(grid_config["cv_folds"])
+                if cv_folds < 2:
+                    raise ValueError("Grid Search 'cv_folds' must be at least 2")
+            except (ValueError, TypeError):
+                raise ValueError("Grid Search 'cv_folds' must be a valid integer")
 
         # Validate model_configs if present
-        if "model_configs" in ray_config:
-            model_configs = ray_config["model_configs"]
+        if "model_configs" in grid_config:
+            model_configs = grid_config["model_configs"]
             if not isinstance(model_configs, dict):
-                raise ValueError("Ray model_configs must be a dictionary")
+                raise ValueError("Grid Search 'model_configs' must be a dictionary")
 
             # Validate each model configuration
             for model_name, model_config in model_configs.items():
                 if not isinstance(model_config, dict):
-                    raise ValueError(
-                        f"Ray model_config for {model_name} must be a dictionary"
+                        raise ValueError(
+                        f"Grid Search model_config for {model_name} must be a dictionary"
                     )
 
                 if "use_default" in model_config:
                     if not isinstance(model_config["use_default"], bool):
                         raise ValueError(
-                            f"Ray model_config.use_default for {model_name} must be a boolean"
+                            f"Grid Search model_config.use_default for {model_name} must be a boolean"
                         )
 
                 if "hyperparameters" in model_config:
                     hyperparams = model_config["hyperparameters"]
                     if not isinstance(hyperparams, dict):
                         raise ValueError(
-                            f"Ray model_config.hyperparameters for {model_name} must be a dictionary"
+                            f"Grid Search model_config.hyperparameters for {model_name} must be a dictionary"
                         )
 
+        # Note: Grid Search resources are handled by Ray automatically
+        # No per-strategy resource validation needed
+
+    def _validate_ax_config(self, ax_config: Dict[str, Any]) -> None:
+        """Validate Ax specific configuration."""
+        # Validate models
+        if "models" not in ax_config:
+            raise ValueError("Ax configuration must include 'models' list")
+        
+        models = ax_config["models"]
+        if not isinstance(models, list):
+            raise ValueError("Ax 'models' must be a list")
+        
+        if len(models) == 0:
+            raise ValueError("At least one model must be selected for Ax")
+
+        # Validate max_concurrent
+        if "max_concurrent" in ax_config:
+            try:
+                max_concurrent = int(ax_config["max_concurrent"])
+                if max_concurrent < 1:
+                    raise ValueError("Ax 'max_concurrent' must be positive")
+            except (ValueError, TypeError):
+                raise ValueError("Ax 'max_concurrent' must be a valid integer")
+
+        # Validate cv_folds
+        if "cv_folds" in ax_config:
+            try:
+                cv_folds = int(ax_config["cv_folds"])
+                if cv_folds < 2:
+                    raise ValueError("Ax 'cv_folds' must be at least 2")
+            except (ValueError, TypeError):
+                raise ValueError("Ax 'cv_folds' must be a valid integer")
+
+        # Validate model_configs if present
+        if "model_configs" in ax_config:
+            model_configs = ax_config["model_configs"]
+            if not isinstance(model_configs, dict):
+                raise ValueError("Ax 'model_configs' must be a dictionary")
+
+            # Validate each model configuration
+            for model_name, model_config in model_configs.items():
+                if not isinstance(model_config, dict):
+                    raise ValueError(
+                        f"Ax model_config for {model_name} must be a dictionary"
+                    )
+
+                if "use_default" in model_config:
+                    if not isinstance(model_config["use_default"], bool):
+                        raise ValueError(
+                            f"Ax model_config.use_default for {model_name} must be a boolean"
+                        )
+
+                # Validate num_samples (per-model trials)
+                if "num_samples" in model_config:
+                    try:
+                        num_samples = int(model_config["num_samples"])
+                        if num_samples < 10:
+                            raise ValueError(
+                                f"Ax num_samples for {model_name} must be at least 10"
+                            )
+                    except (ValueError, TypeError):
+                        raise ValueError(
+                            f"Ax num_samples for {model_name} must be a valid integer"
+                        )
+
+                if "hyperparameters" in model_config:
+                    hyperparams = model_config["hyperparameters"]
+                    if not isinstance(hyperparams, dict):
+                        raise ValueError(
+                            f"Ax model_config.hyperparameters for {model_name} must be a dictionary"
+                        )
+                    # Validate Ax-specific search spaces
+                    self._validate_ax_search_spaces(hyperparams, model_name)
+
+        # COMMENTED OUT: Advanced constraint validation (not yet implemented in config-maker)
+        # # Validate parameter_constraints if present
+        # if "parameter_constraints" in ax_config:
+        #     constraints = ax_config["parameter_constraints"]
+        #     if not isinstance(constraints, list):
+        #         raise ValueError("Ax 'parameter_constraints' must be a list")
+        #     for constraint in constraints:
+        #         if not isinstance(constraint, str):
+        #             raise ValueError("Each Ax parameter constraint must be a string")
+        #
+        # # Validate outcome_constraints if present
+        # if "outcome_constraints" in ax_config:
+        #     constraints = ax_config["outcome_constraints"]
+        #     if not isinstance(constraints, list):
+        #         raise ValueError("Ax 'outcome_constraints' must be a list")
+        #     for constraint in constraints:
+        #         if not isinstance(constraint, str):
+        #             raise ValueError("Each Ax outcome constraint must be a string")
+
+        # Note: Ax resources are handled by Ray automatically
+        # No per-strategy resource validation needed
+
+    def _validate_ax_search_spaces(self, hyperparams: Dict[str, Any], model_name: str) -> None:
+        """Validate Ax search space definitions using Ray Tune syntax."""
+        for param_name, param_config in hyperparams.items():
+            if not isinstance(param_config, dict):
+                raise ValueError(
+                    f"Ax hyperparameter '{param_name}' for {model_name} must be a dictionary"
+                )
+            
+            if "type" not in param_config:
+                raise ValueError(
+                    f"Ax hyperparameter '{param_name}' for {model_name} must include 'type'"
+                )
+            
+            param_type = param_config["type"]
+            valid_types = ["uniform", "quniform", "loguniform", "choice"]
+            
+            if param_type not in valid_types:
+                raise ValueError(
+                    f"Ax hyperparameter '{param_name}' has invalid type '{param_type}'. "
+                    f"Valid types: {valid_types}"
+                )
+            
+            # Validate type-specific requirements
+            if param_type in ["uniform", "loguniform"]:
+                if "bounds" not in param_config:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' with type '{param_type}' must include 'bounds'"
+                    )
+                bounds = param_config["bounds"]
+                if not isinstance(bounds, list) or len(bounds) != 2:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' bounds must be a list of [low, high]"
+                    )
+                if bounds[0] >= bounds[1]:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' bounds[0] must be < bounds[1]"
+                    )
+            
+            elif param_type == "quniform":
+                if "bounds" not in param_config or "q" not in param_config:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' with type 'quniform' must include 'bounds' and 'q'"
+                    )
+                bounds = param_config["bounds"]
+                if not isinstance(bounds, list) or len(bounds) != 2:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' bounds must be a list of [low, high]"
+                    )
+                if bounds[0] >= bounds[1]:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' bounds[0] must be < bounds[1]"
+                    )
+                q = param_config["q"]
+                if not isinstance(q, (int, float)) or q <= 0:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' 'q' must be a positive number"
+                    )
+            
+            elif param_type == "choice":
+                if "values" not in param_config:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' with type 'choice' must include 'values'"
+                    )
+                values = param_config["values"]
+                if not isinstance(values, list) or len(values) == 0:
+                    raise ValueError(
+                        f"Ax hyperparameter '{param_name}' 'values' must be a non-empty list"
+                    )
+
+    def _validate_ray_common_config(self, ray_config: Dict[str, Any]) -> None:
+        """Validate common Ray configuration shared across strategies."""
+        # Validate metric and mode
+        if "metric" in ray_config:
+            metric = ray_config["metric"]
+            valid_metrics = ["accuracy", "f1", "precision", "recall", "auc", "mse", "mae", "r2"]
+            if metric not in valid_metrics:
+                raise ValueError(
+                    f"Ray 'metric' must be one of {valid_metrics}, got '{metric}'"
+                )
+
+        if "mode" in ray_config:
+            mode = ray_config["mode"]
+            if mode not in ["max", "min"]:
+                raise ValueError("Ray 'mode' must be either 'max' or 'min'")
+
+        # Validate random_state
+        if "random_state" in ray_config:
+            try:
+                int(ray_config["random_state"])
+            except (ValueError, TypeError):
+                raise ValueError("Ray 'random_state' must be a valid integer")
+
+        # Validate global Ray resources if present
+        if "resources" in ray_config:
+            resources = ray_config["resources"]
+            if not isinstance(resources, dict):
+                raise ValueError("Ray 'resources' must be a dictionary")
+
+            # Validate required resource fields
+            if "num_cpus" in resources:
+                try:
+                    cpus = int(resources["num_cpus"])
+                    if cpus < 1:
+                        raise ValueError("Ray resources 'num_cpus' must be positive")
+                except (ValueError, TypeError):
+                    raise ValueError("Ray resources 'num_cpus' must be a valid integer")
+
+            if "memory_gb" in resources:
+                try:
+                    mem = int(resources["memory_gb"])
+                    if mem < 1:
+                        raise ValueError("Ray resources 'memory_gb' must be positive")
+                except (ValueError, TypeError):
+                    raise ValueError("Ray resources 'memory_gb' must be a valid integer")
+
+            if "object_store_memory_gb" in resources:
+                try:
+                    obj_mem = int(resources["object_store_memory_gb"])
+                    if obj_mem < 1:
+                        raise ValueError("Ray resources 'object_store_memory_gb' must be positive")
+                except (ValueError, TypeError):
+                    raise ValueError("Ray resources 'object_store_memory_gb' must be a valid integer")
+
+            if "num_gpus" in resources:
+                try:
+                    gpus = int(resources["num_gpus"])
+                    if gpus < 0:
+                        raise ValueError("Ray resources 'num_gpus' must be non-negative")
+                except (ValueError, TypeError):
+                    raise ValueError("Ray resources 'num_gpus' must be a valid integer")
+
         # Validate graph data visualization configuration
-        """Validate graph data visualization configuration."""
         graph_config = ray_config.get("graph_data_visualization", {})
         
         # Check if any graph options are enabled
@@ -1298,54 +1526,152 @@ class UnifiedConfigHandler:
         """Check if within-subject split is configured."""
         return "Within-subject" in self.data_leakage_strategy and "train/test split" in self.data_leakage_strategy
 
-    # Ray Properties
+    # Ray Properties - NEW NESTED STRUCTURE
+    
+    # Common Ray Properties
     @property
-    def selected_models(self) -> List[str]:
-        """Get selected ML models from Ray configuration."""
+    def search_strategies(self) -> List[str]:
+        """Get list of enabled search strategies."""
         ray_config = self.raw_config.get("ray", {})
-        return ray_config.get("models", [])
+        return ray_config.get("search_strategies", [])
+    
+    @property
+    def uses_grid_search(self) -> bool:
+        """Check if Grid Search strategy is enabled."""
+        return "grid_search" in self.search_strategies
+    
+    @property
+    def uses_ax(self) -> bool:
+        """Check if Ax strategy is enabled."""
+        return "ax" in self.search_strategies
 
     @property
     def optimization_metric(self) -> str:
-        """Get the optimization metric from Ray configuration."""
+        """Get the optimization metric from Ray configuration (common)."""
         ray_config = self.raw_config.get("ray", {})
         return ray_config.get("metric", "accuracy")
 
     @property
     def optimization_mode(self) -> str:
-        """Get the optimization mode from Ray configuration."""
+        """Get the optimization mode from Ray configuration (common)."""
         ray_config = self.raw_config.get("ray", {})
         return ray_config.get("mode", "max")
 
     @property
-    def num_trials(self) -> int:
-        """Get number of trials from Ray configuration."""
-        ray_config = self.raw_config.get("ray", {})
-        return int(ray_config.get("num_trials", 10))
-
-    @property
-    def max_concurrent_trials(self) -> int:
-        """Get maximum concurrent trials from Ray configuration."""
-        ray_config = self.raw_config.get("ray", {})
-        return int(ray_config.get("max_concurrent", 2))
-
-    @property
-    def cv_folds(self) -> int:
-        """Get number of CV folds from Ray configuration."""
-        ray_config = self.raw_config.get("ray", {})
-        return int(ray_config.get("cv_folds", 5))
-
-    @property
     def random_state(self) -> int:
-        """Get random state from Ray configuration."""
+        """Get random state from Ray configuration (common)."""
         ray_config = self.raw_config.get("ray", {})
         return int(ray_config.get("random_state", self.global_random_seed))
 
+    # Grid Search Properties
+    @property
+    def grid_search_config(self) -> Dict[str, Any]:
+        """Get Grid Search configuration."""
+        ray_config = self.raw_config.get("ray", {})
+        return ray_config.get("grid_search", {})
+
+    @property
+    def grid_search_models(self) -> List[str]:
+        """Get selected models for Grid Search."""
+        return self.grid_search_config.get("models", [])
+
+    @property
+    def grid_search_model_configs(self) -> Dict[str, Any]:
+        """Get model configurations for Grid Search."""
+        return self.grid_search_config.get("model_configs", {})
+    
+    @property
+    def grid_search_max_concurrent(self) -> int:
+        """Get maximum concurrent trials for Grid Search."""
+        return int(self.grid_search_config.get("max_concurrent", 2))
+    
+    @property
+    def grid_search_cv_folds(self) -> int:
+        """Get number of CV folds for Grid Search."""
+        return int(self.grid_search_config.get("cv_folds", 5))
+    
+    # Note: Grid Search resources removed - Ray handles resource allocation automatically
+
+    # Ax Properties
+    @property
+    def ax_config(self) -> Dict[str, Any]:
+        """Get Ax configuration."""
+        ray_config = self.raw_config.get("ray", {})
+        return ray_config.get("ax", {})
+    
+    @property
+    def ax_models(self) -> List[str]:
+        """Get selected models for Ax."""
+        return self.ax_config.get("models", [])
+    
+    @property
+    def ax_model_configs(self) -> Dict[str, Any]:
+        """Get model configurations for Ax."""
+        return self.ax_config.get("model_configs", {})
+    
+    @property
+    def ax_max_concurrent(self) -> int:
+        """Get maximum concurrent trials for Ax."""
+        return int(self.ax_config.get("max_concurrent", 4))
+    
+    @property
+    def ax_cv_folds(self) -> int:
+        """Get number of CV folds for Ax."""
+        return int(self.ax_config.get("cv_folds", 5))
+    
+    # Note: Ax resources removed - Ray handles resource allocation automatically
+    # Note: ax_total_trials is now per-model, access via ax_model_configs[model_name]["num_samples"]
+    # Note: Ax constraints commented out for now (can be added later)
+
+    # Backward Compatibility: selected_models now returns models from all strategies
+    @property
+    def selected_models(self) -> List[str]:
+        """Get selected ML models from all enabled strategies (combined)."""
+        all_models = []
+        if self.uses_grid_search:
+            all_models.extend(self.grid_search_models)
+        if self.uses_ax:
+            all_models.extend(self.ax_models)
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_models = []
+        for model in all_models:
+            if model not in seen:
+                seen.add(model)
+                unique_models.append(model)
+        return unique_models
+
+    # Deprecated/Legacy properties (kept for backward compatibility)
+    @property
+    def num_trials(self) -> int:
+        """DEPRECATED: Get number of trials (returns Grid Search max_concurrent if Grid Search enabled)."""
+        if self.uses_grid_search:
+            return self.grid_search_max_concurrent
+        return 10
+    
+    @property
+    def max_concurrent_trials(self) -> int:
+        """DEPRECATED: Get maximum concurrent trials (returns first available strategy's value)."""
+        if self.uses_grid_search:
+            return self.grid_search_max_concurrent
+        elif self.uses_ax:
+            return self.ax_max_concurrent
+        return 2
+    
+    @property
+    def cv_folds(self) -> int:
+        """DEPRECATED: Get number of CV folds (returns first available strategy's value)."""
+        if self.uses_grid_search:
+            return self.grid_search_cv_folds
+        elif self.uses_ax:
+            return self.ax_cv_folds
+        return 5
+
     @property
     def ray_resources(self) -> Optional[Dict[str, Any]]:
-        """Get Ray resource configuration."""
+        """Get Ray resource configuration (global)."""
         ray_config = self.raw_config.get("ray", {})
-        return ray_config.get("ray")
+        return ray_config.get("resources")
 
     @property
     def has_ray_resources(self) -> bool:
