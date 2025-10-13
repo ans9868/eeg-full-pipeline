@@ -1142,6 +1142,15 @@ def main() -> None:
     )
     print(f"{EMOJI_TARGET} Pipeline mode: {pipeline_mode}")
 
+    # Block ports if expose_ports is set to "No" in config
+    expose_ports = config.get("project", {}).get("expose_ports", "No") == "Yes"
+    if not expose_ports:
+        CONTAINER_CONFIG["pyspark"]["ports"] = []
+        CONTAINER_CONFIG["ray"]["ports"] = []
+        print(f"{EMOJI_INFO} Ports blocked (expose_ports = No in config)")
+    else:
+        print(f"{EMOJI_CREATING} Ports exposed for monitoring dashboards")
+
     if deployment_method == "Docker":
         if pipeline_mode == "pyspark-only":
             run_docker_pyspark_only(config_path)

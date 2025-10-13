@@ -69,7 +69,7 @@ def validate_downsampling_rate(rate_str: Optional[str]) -> Optional[float]:
         return None
 
 
-def validate_integer_input(prompt: str, default: str = "", min_value: int = 1) -> str:
+def validate_integer_input(prompt: str, default: str = "", min_value: int = 1) -> int:
     """Validate and get integer input with retry logic."""
     while True:
         value = questionary.text(prompt, default=default).ask()
@@ -78,7 +78,7 @@ def validate_integer_input(prompt: str, default: str = "", min_value: int = 1) -
             if int_value < min_value:
                 print(f"[ERROR] Value must be at least {min_value}. Please try again.")
                 continue
-            return str(int_value)
+            return int_value
         except ValueError:
             print("[ERROR] Please enter a valid integer. Please try again.")
             continue
@@ -176,6 +176,12 @@ def metadataPart0() -> Tuple[Dict[str, Any], str]:
             break
         except ValueError:
             print("[ERROR] Please enter a valid integer.")
+
+    # 0.7 Port exposure (for accessing Spark UI and Ray Dashboard)
+    config["project"]["expose_ports"] = questionary.select(
+        "0.7 Make ports to Spark/Ray accessible (currently only works for Docker) (for monitoring dashboards)?",
+        choices=["Yes", "No"],
+    ).ask()
 
     # Use user-supplied project name and timestamp for config name
     project_name = config["project"]["name"] or "project"
@@ -608,7 +614,7 @@ def featureCreationPart3(experiment_type: str) -> Dict[str, Any]:
 
         # Ask for PSD features first
         psd_features = questionary.checkbox(
-            f"  ├─ PSD Features (spectral):\n  ",
+            f" ├─ PSD Features (spectral):\n  ",
             choices=psd_choices,
         ).ask()
 
@@ -1823,11 +1829,11 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
         else:
             # Use defaults
             config["pyspark"] = {
-                "master": "6",
-                "driver_memory": "6",
-                "executor_memory": "6",
-                "executor_cores": "2",
-                "shuffle_partitions": "8",
+                "master": 6,
+                "driver_memory": 6,
+                "executor_memory": 6,
+                "executor_cores": 2,
+                "shuffle_partitions": 8,
             }
 
     # 6.2 SLURM Configuration (if Singularity with Slurm is selected)
@@ -2109,7 +2115,7 @@ def rayConfigurationPart7_Ax(project_config: Dict[str, Any]) -> Dict[str, Any]:
             model_trials = validate_integer_input(
                 f"   Number of trials for {model} with Ax:",
                 default="50",
-                min_value=10
+                min_value=5
             )
             ax_config["model_configs"][model]["num_samples"] = model_trials
             print(f"   ✅ {model}: {model_trials} trials")
@@ -2385,14 +2391,14 @@ def configure_ax_search_space_rayTune(model_name: str) -> dict:
             }
             print("   ✅ n_estimators: uniform(50, 500)")
         else:  # Custom
-            low = int(validate_integer_input("      Lower bound:", default="50"))
-            high = int(validate_integer_input("      Upper bound:", default="500"))
+            low = validate_integer_input("      Lower bound:", default="50")
+            high = validate_integer_input("      Upper bound:", default="500")
             use_q = questionary.select(
                 "      Use discrete steps (quniform)?",
                 choices=["Yes", "No (continuous)"],
             ).ask()
             if use_q == "Yes":
-                q = int(validate_integer_input("      Step size (q):", default="50"))
+                q = validate_integer_input("      Step size (q):", default="50")
                 config["hyperparameters"]["n_estimators"] = {
                     "type": "quniform",
                     "bounds": [low, high],
@@ -2527,9 +2533,9 @@ def configure_ax_search_space_rayTune(model_name: str) -> dict:
             }
             print("   ✅ n_neighbors: quniform(1, 20, 1)")
         else:  # Custom
-            low = int(validate_integer_input("      Lower bound:", default="3"))
-            high = int(validate_integer_input("      Upper bound:", default="21"))
-            q = int(validate_integer_input("      Step size (q):", default="2"))
+            low = validate_integer_input("      Lower bound:", default="3")
+            high = validate_integer_input("      Upper bound:", default="21")
+            q = validate_integer_input("      Step size (q):", default="2")
             config["hyperparameters"]["n_neighbors"] = {
                 "type": "quniform",
                 "bounds": [low, high],
@@ -2657,9 +2663,9 @@ def configure_ax_search_space_rayTune(model_name: str) -> dict:
             }
             print("   ✅ n_estimators: quniform(50, 500, 50)")
         else:  # Custom
-            low = int(validate_integer_input("      Lower bound:", default="50"))
-            high = int(validate_integer_input("      Upper bound:", default="500"))
-            q = int(validate_integer_input("      Step size (q):", default="50"))
+            low = validate_integer_input("      Lower bound:", default="50")
+            high = validate_integer_input("      Upper bound:", default="500")
+            q = validate_integer_input("      Step size (q):", default="50")
             config["hyperparameters"]["n_estimators"] = {
                 "type": "quniform",
                 "bounds": [low, high],
@@ -2942,10 +2948,10 @@ def configure_model_hyperparameters(model_name: str) -> dict:
                         break
                     print("⚠️  Please enter a number between 5 and 500")
 
-            # Convert to tuple format for sklearn
-            architecture = tuple(layer_sizes)
-            mlp_architectures.append(str(architecture))
-            print(f"✅ MLP {mlp_idx + 1} architecture: {architecture}")
+            # Save as list for YAML (will be converted to tuple by model runner)
+            # ✅ Lists serialize cleanly in YAML, tuples become strings
+            mlp_architectures.append(layer_sizes)
+            print(f"✅ MLP {mlp_idx + 1} architecture: {tuple(layer_sizes)} (saved as {layer_sizes})")
 
         config["hyperparameters"]["hidden_layer_sizes"] = mlp_architectures
 

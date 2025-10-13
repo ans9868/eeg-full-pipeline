@@ -213,6 +213,12 @@ class UnifiedConfigHandler:
             if not isinstance(config_name, str) or not config_name.strip():
                 raise ValueError("config_name must be a non-empty string")
 
+        # Validate expose_ports if present
+        if "expose_ports" in project_config:
+            expose_ports = project_config["expose_ports"]
+            if expose_ports not in ["Yes", "No"]:
+                raise ValueError("expose_ports must be 'Yes' or 'No'")
+
     def dataInputPart1_validate(self) -> None:
         """Validate data input configuration (dataInputPart1)."""
         data_input_config = self.raw_config.get("data_input", {})
@@ -805,6 +811,13 @@ class UnifiedConfigHandler:
                         raise ValueError(
                             f"Grid Search model_config.hyperparameters for {model_name} must be a dictionary"
                         )
+                    
+                    # 🔧 FIX: Convert MLP hidden_layer_sizes from string tuples to lists
+                    if model_name == "MLP (Neural Network)" and "hidden_layer_sizes" in hyperparams:
+                        hyperparams["hidden_layer_sizes"] = self._convert_mlp_architectures(
+                            hyperparams["hidden_layer_sizes"], 
+                            f"Grid Search {model_name}"
+                        )
 
         # Note: Grid Search resources are handled by Ray automatically
         # No per-strategy resource validation needed
@@ -863,9 +876,9 @@ class UnifiedConfigHandler:
                 if "num_samples" in model_config:
                     try:
                         num_samples = int(model_config["num_samples"])
-                        if num_samples < 10:
+                        if num_samples < 5:
                             raise ValueError(
-                                f"Ax num_samples for {model_name} must be at least 10"
+                                f"Ax num_samples for {model_name} must be at least 5"
                             )
                     except (ValueError, TypeError):
                         raise ValueError(
@@ -902,6 +915,170 @@ class UnifiedConfigHandler:
 
         # Note: Ax resources are handled by Ray automatically
         # No per-strategy resource validation needed
+
+    def _convert_mlp_architectures(self, architectures: List[Any], context: str) -> List[List[int]]:
+        """
+        Convert MLP hidden_layer_sizes from various formats to standard list format.
+        
+        Handles:
+        - String tuples: "(5, 5)" -> [5, 5]
+        - Already lists: [5, 5] -> [5, 5]
+        - Tuples: (5, 5) -> [5, 5]
+        
+        Parameters
+        ----------
+        architectures : list
+            List of architectures in various formats
+        context : str
+            Context string for error messages (e.g., "Grid Search MLP")
+        
+        Returns
+        -------
+        list
+            List of architectures as lists of integers
+        
+        Raises
+        ------
+        ValueError
+            If architecture format is invalid
+        """
+        import ast
+        
+        converted = []
+        for i, arch in enumerate(architectures):
+            try:
+                if isinstance(arch, str):
+                    # String tuple like "(5, 5)" or "(100,)" 
+                    if arch.startswith('(') and arch.endswith(')'):
+                        # Parse string tuple to actual tuple
+                        parsed = ast.literal_eval(arch)
+                        if isinstance(parsed, tuple):
+                            arch = list(parsed)
+                        elif isinstance(parsed, int):
+                            arch = [parsed]
+                        else:
+                            raise ValueError(f"Unexpected parsed type: {type(parsed)}")
+                    else:
+                        # Try to parse as a number
+                        arch = [int(arch)]
+                
+                elif isinstance(arch, tuple):
+                    # Convert tuple to list
+                    arch = list(arch)
+                
+                elif isinstance(arch, int):
+                    # Single neuron layer
+                    arch = [arch]
+                
+                elif isinstance(arch, list):
+                    # Already a list - validate it contains only integers
+                    if not all(isinstance(x, int) for x in arch):
+                        raise ValueError(f"Architecture must contain only integers, got: {arch}")
+                
+                else:
+                    raise ValueError(f"Unexpected architecture type: {type(arch)}")
+                
+                # Final validation: ensure it's a list of positive integers
+                if not isinstance(arch, list) or not arch:
+                    raise ValueError(f"Architecture must be a non-empty list")
+                
+                if not all(isinstance(x, int) and x > 0 for x in arch):
+                    raise ValueError(f"Architecture must contain only positive integers")
+                
+                converted.append(arch)
+                
+            except Exception as e:
+                raise ValueError(
+                    f"{context}: Invalid hidden_layer_sizes architecture at index {i}: {arch}. "
+                    f"Error: {e}. Expected format: [5, 5] or (5, 5) or '(5, 5)'"
+                )
+        
+        if converted:
+            print(f"   ✅ {context}: Converted {len(converted)} MLP architecture(s)")
+            for i, arch in enumerate(converted):
+                print(f"      • Architecture {i+1}: {arch} (tuple will be: {tuple(arch)})")
+        
+        return converted
+    
+    @staticmethod
+    def convert_mlp_layers_for_sklearn(hidden_layer_sizes: Union[List[int], Tuple[int], Any]) -> Tuple[int]:
+        """
+        Convert MLP hidden_layer_sizes to sklearn-compatible tuple format.
+        
+        This is a centralized conversion method used by both strategies and model_runner
+        to ensure consistent MLP layer format conversion.
+        
+        Parameters
+        ----------
+        hidden_layer_sizes : list, tuple, str (including JSON), or int
+            Layer architecture in various formats:
+            - List: [5, 5] or [100]
+            - Tuple: (5, 5) - already correct
+            - String tuple: "(5, 5)" - will be parsed
+            - JSON string: "[5, 5]" - used by Ax encoding (decoded here)
+            - Integer: 100 - single layer
+        
+        Returns
+        -------
+        tuple
+            Sklearn-compatible tuple format, e.g., (5, 5) or (100,)
+        
+        Examples
+        --------
+        >>> convert_mlp_layers_for_sklearn([5, 5])
+        (5, 5)
+        >>> convert_mlp_layers_for_sklearn([100])
+        (100,)
+        >>> convert_mlp_layers_for_sklearn((5, 5))
+        (5, 5)
+        >>> convert_mlp_layers_for_sklearn("[5, 5]")  # Ax JSON encoding
+        (5, 5)
+        """
+        import ast
+        import json
+        
+        if isinstance(hidden_layer_sizes, tuple):
+            # Already a tuple - return as is
+            return hidden_layer_sizes
+        
+        elif isinstance(hidden_layer_sizes, list):
+            # List - convert to tuple
+            return tuple(hidden_layer_sizes)
+        
+        elif isinstance(hidden_layer_sizes, str):
+            # 🔧 NEW: JSON string from Ax encoding (e.g., "[5, 5]")
+            if hidden_layer_sizes.startswith('[') and hidden_layer_sizes.endswith(']'):
+                try:
+                    parsed = json.loads(hidden_layer_sizes)
+                    if isinstance(parsed, list):
+                        return tuple(parsed)
+                except json.JSONDecodeError:
+                    pass
+            
+            # String tuple representation like "(5, 5)" - parse it
+            if hidden_layer_sizes.startswith('(') and hidden_layer_sizes.endswith(')'):
+                parsed = ast.literal_eval(hidden_layer_sizes)
+                if isinstance(parsed, tuple):
+                    return parsed
+                elif isinstance(parsed, int):
+                    return (parsed,)
+            
+            # Try as comma-separated string
+            try:
+                values = [int(x.strip()) for x in hidden_layer_sizes.split(',')]
+                return tuple(values)
+            except:
+                pass
+        
+        elif isinstance(hidden_layer_sizes, int):
+            # Single integer - create single-layer tuple
+            return (hidden_layer_sizes,)
+        
+        # If we get here, format is unexpected - raise error
+        raise ValueError(
+            f"Cannot convert hidden_layer_sizes to sklearn format: {hidden_layer_sizes} "
+            f"(type: {type(hidden_layer_sizes)}). Expected list, tuple, or parseable string."
+        )
 
     def _validate_ax_search_spaces(self, hyperparams: Dict[str, Any], model_name: str) -> None:
         """Validate Ax search space definitions using Ray Tune syntax."""
@@ -971,6 +1148,18 @@ class UnifiedConfigHandler:
                     raise ValueError(
                         f"Ax hyperparameter '{param_name}' 'values' must be a non-empty list"
                     )
+                
+                # 🔧 FIX: Convert MLP hidden_layer_sizes in choice values
+                if model_name == "MLP (Neural Network)" and param_name == "hidden_layer_sizes":
+                    # Convert to lists (validation only - no tuple conversion)
+                    # Ax search strategy will handle JSON encoding for tune.choice()
+                    architectures_as_lists = self._convert_mlp_architectures(
+                        values, 
+                        f"Ax {model_name}"
+                    )
+                    # Keep as lists in config (will be JSON-encoded later in ax_search_strategy.py)
+                    param_config["values"] = architectures_as_lists
+                    print(f"   ✅ Ax {model_name}: Validated MLP architectures (will be JSON-encoded for Ax)")
 
     def _validate_ray_common_config(self, ray_config: Dict[str, Any]) -> None:
         """Validate common Ray configuration shared across strategies."""
@@ -1268,6 +1457,11 @@ class UnifiedConfigHandler:
     def deployment_method(self) -> str:
         """Get deployment method."""
         return self.raw_config.get("project", {}).get("deployment_method")
+
+    @property
+    def expose_ports(self) -> bool:
+        """Get port exposure setting."""
+        return self.raw_config.get("project", {}).get("expose_ports", "No") == "Yes"
 
     @property
     def base_output_dir(self) -> str:
