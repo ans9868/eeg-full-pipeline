@@ -2417,8 +2417,8 @@ def configure_ax_search_space_rayTune(model_name: str) -> dict:
         print("   💡 Recommendation: Usually 10-50, or None for unlimited")
         print("   💡 Use 'choice' for discrete categorical options")
         max_depth_choices = questionary.text(
-            "   Enter max_depth choices (comma-separated, use 'None' for unlimited):",
-            default="10, 20, 30, None",
+            "   Enter max_depth choices (comma-separated integers):",
+            default="10, 20, 30, ",
         ).ask()
         
         # Parse max_depth choices
