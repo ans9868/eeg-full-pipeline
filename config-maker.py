@@ -2502,6 +2502,387 @@ def configure_ax_search_space_rayTune(model_name: str) -> dict:
             }
             print(f"   ✅ min_samples_split: choice({choices_list})")
     
+    elif model_name == "SVM":
+        print("\n⚖️  SVM - Ax Search Space Configuration")
+        print("   Define search spaces using Ray Tune types")
+        print("   💡 Ax will use Bayesian optimization to intelligently explore the space")
+        print()
+        
+        # C (regularization parameter)
+        print("📊 C (regularization parameter)")
+        print("   💡 Recommendation: Usually between 0.01-100")
+        print("   💡 Use loguniform for log-scale search (better for regularization)")
+        c_type = questionary.select(
+            "   Select search space type for C:",
+            choices=[
+                "loguniform(0.1, 100.0) - Log-scale continuous [RECOMMENDED]",
+                "uniform(0.1, 100.0) - Linear continuous",
+                "choice([0.1, 1.0, 10.0, 100.0]) - Discrete choices",
+                "Custom range (enter your own bounds)"
+            ],
+        ).ask()
+        
+        if "loguniform" in c_type:
+            config["hyperparameters"]["C"] = {
+                "type": "loguniform",
+                "bounds": [0.1, 100.0]
+            }
+            print("   ✅ C: loguniform(0.1, 100.0)")
+        elif "uniform" in c_type:
+            config["hyperparameters"]["C"] = {
+                "type": "uniform",
+                "bounds": [0.1, 100.0]
+            }
+            print("   ✅ C: uniform(0.1, 100.0)")
+        elif "choice" in c_type:
+            config["hyperparameters"]["C"] = {
+                "type": "choice",
+                "values": [0.1, 1.0, 10.0, 100.0]
+            }
+            print("   ✅ C: choice([0.1, 1.0, 10.0, 100.0])")
+        else:  # Custom
+            space_type = questionary.select(
+                "      Select type:",
+                choices=["loguniform", "uniform", "choice"],
+            ).ask()
+            if space_type == "choice":
+                choices_str = questionary.text(
+                    "      Enter choices (comma-separated):",
+                    default="0.1, 1.0, 10.0, 100.0",
+                ).ask()
+                choices_list = [float(v.strip()) for v in choices_str.split(",")]
+                config["hyperparameters"]["C"] = {
+                    "type": "choice",
+                    "values": choices_list
+                }
+                print(f"   ✅ C: choice({choices_list})")
+            else:
+                low = float(questionary.text("      Lower bound:", default="0.1").ask())
+                high = float(questionary.text("      Upper bound:", default="100.0").ask())
+                config["hyperparameters"]["C"] = {
+                    "type": space_type,
+                    "bounds": [low, high]
+                }
+                print(f"   ✅ C: {space_type}({low}, {high})")
+        
+        # kernel
+        print("\n📊 kernel (kernel type)")
+        print("   💡 Common choices: rbf (Radial Basis Function), linear, poly, sigmoid")
+        kernel_choices = questionary.text(
+            "   Enter kernel choices (comma-separated):",
+            default="rbf, linear, poly",
+        ).ask()
+        kernel_values = [v.strip() for v in kernel_choices.split(",")]
+        config["hyperparameters"]["kernel"] = {
+            "type": "choice",
+            "values": kernel_values
+        }
+        print(f"   ✅ kernel: choice({kernel_values})")
+        
+        # gamma
+        print("\n📊 gamma (kernel coefficient)")
+        print("   💡 Only used for rbf, poly, and sigmoid kernels")
+        print("   💡 'scale' and 'auto' are sklearn's automatic options")
+        gamma_type = questionary.select(
+            "   Select search space type for gamma:",
+            choices=[
+                "choice(['scale', 'auto']) - Automatic scaling [RECOMMENDED]",
+                "loguniform(0.0001, 1.0) - Log-scale continuous (numeric gamma)",
+                "Custom"
+            ],
+        ).ask()
+        
+        if "Automatic scaling" in gamma_type:
+            config["hyperparameters"]["gamma"] = {
+                "type": "choice",
+                "values": ["scale", "auto"]
+            }
+            print("   ✅ gamma: choice(['scale', 'auto'])")
+        elif "loguniform" in gamma_type:
+            config["hyperparameters"]["gamma"] = {
+                "type": "loguniform",
+                "bounds": [0.0001, 1.0]
+            }
+            print("   ✅ gamma: loguniform(0.0001, 1.0)")
+        else:  # Custom
+            gamma_choice_type = questionary.select(
+                "      Select gamma type:",
+                choices=[
+                    "String values only (scale, auto)",
+                    "Numeric values only (0.001, 0.01, etc.)"
+                ],
+            ).ask()
+            
+            if "String values" in gamma_choice_type:
+                gamma_choices_str = questionary.text(
+                    "         Enter string choices (comma-separated):",
+                    default="scale, auto",
+                ).ask()
+                gamma_values = [v.strip() for v in gamma_choices_str.split(",")]
+            else:  # Numeric values only
+                gamma_choices_str = questionary.text(
+                    "         Enter numeric choices (comma-separated):",
+                    default="0.001, 0.01, 0.1",
+                ).ask()
+                gamma_values = []
+                for val in gamma_choices_str.split(","):
+                    try:
+                        gamma_values.append(float(val.strip()))
+                    except ValueError:
+                        print(f"         ⚠️  Skipping invalid numeric value: {val}")
+            
+            config["hyperparameters"]["gamma"] = {
+                "type": "choice",
+                "values": gamma_values
+            }
+            print(f"   ✅ gamma: choice({gamma_values})")
+        
+        # degree (for poly kernel)
+        print("\n📊 degree (polynomial degree - only for poly kernel)")
+        add_degree = questionary.select(
+            "   Add 'degree' parameter search space (only used with poly kernel)?",
+            choices=["No (skip)", "Yes - Add degree parameter"],
+        ).ask()
+        if "Yes" in add_degree:
+            degree_type = questionary.select(
+                "      Select search space type for degree:",
+                choices=[
+                    "choice([2, 3, 4]) - Common polynomial degrees",
+                    "quniform(2, 5, 1) - Integers 2-5",
+                    "Custom"
+                ],
+            ).ask()
+            if "Common polynomial" in degree_type:
+                config["hyperparameters"]["degree"] = {
+                    "type": "choice",
+                    "values": [2, 3, 4]
+                }
+                print("      ✅ degree: choice([2, 3, 4])")
+            elif "quniform" in degree_type:
+                config["hyperparameters"]["degree"] = {
+                    "type": "quniform",
+                    "bounds": [2, 5],
+                    "q": 1
+                }
+                print("      ✅ degree: quniform(2, 5, 1)")
+            else:  # Custom
+                choices_str = questionary.text(
+                    "         Enter degree choices (comma-separated integers):",
+                    default="2, 3, 4",
+                ).ask()
+                choices_list = [int(v.strip()) for v in choices_str.split(",")]
+                config["hyperparameters"]["degree"] = {
+                    "type": "choice",
+                    "values": choices_list
+                }
+                print(f"      ✅ degree: choice({choices_list})")
+    
+    elif model_name == "Logistic Regression":
+        print("\n📊 Logistic Regression - Ax Search Space Configuration")
+        print("   Define search spaces using Ray Tune types")
+        print("   💡 Ax will use Bayesian optimization to intelligently explore the space")
+        print()
+        
+        # Display solver-penalty constraints table
+        print("   ⚠️  SOLVER-PENALTY COMPATIBILITY CONSTRAINTS:")
+        print("   ┌─────────────────┬─────────────────────────────┬─────────────────────┐")
+        print("   │ Solver          │ Allowed Penalties           │ Classification      │")
+        print("   ├─────────────────┼─────────────────────────────┼─────────────────────┤")
+        print("   │ lbfgs           │ 'l2', None                  │ Binary & Multiclass│")
+        print("   │ newton-cg       │ 'l2', None                  │ Binary & Multiclass│")
+        print("   │ newton-cholesky │ 'l2', None                  │ Binary & Multiclass│")
+        print("   │ sag             │ 'l2', None                  │ Binary & Multiclass│")
+        print("   │ liblinear       │ 'l1', 'l2'                  │ Binary Only         │")
+        print("   │ saga            │ 'l1', 'l2', 'elasticnet', None │ Binary & Multiclass│")
+        print("   └─────────────────┴─────────────────────────────┴─────────────────────┘")
+        print("   💡 Choose solver-penalty combinations that are compatible!")
+        print()
+        print("   ⚠️  IMPORTANT WARNINGS:")
+        print("   • L2 regularization is 100% supported across ALL scenarios")
+        print("   • liblinear ONLY works for BINARY classification (not multiclass)")
+        print("   • For multiclass problems, avoid liblinear solver")
+        print("   • L1/elasticnet penalties have limited solver support")
+        print()
+        
+        # C (regularization parameter)
+        print("📊 C (regularization parameter)")
+        print("   💡 Recommendation: Usually between 0.001-10")
+        print("   💡 Use loguniform for log-scale search (better for regularization)")
+        c_type = questionary.select(
+            "   Select search space type for C:",
+            choices=[
+                "loguniform(0.001, 10.0) - Log-scale continuous [RECOMMENDED]",
+                "uniform(0.001, 10.0) - Linear continuous",
+                "choice([0.001, 0.01, 0.1, 1.0, 10.0]) - Discrete choices",
+                "Custom range (enter your own bounds)"
+            ],
+        ).ask()
+        
+        if "loguniform" in c_type:
+            config["hyperparameters"]["C"] = {
+                "type": "loguniform",
+                "bounds": [0.001, 10.0]
+            }
+            print("   ✅ C: loguniform(0.001, 10.0)")
+        elif "uniform" in c_type:
+            config["hyperparameters"]["C"] = {
+                "type": "uniform",
+                "bounds": [0.001, 10.0]
+            }
+            print("   ✅ C: uniform(0.001, 10.0)")
+        elif "choice" in c_type:
+            config["hyperparameters"]["C"] = {
+                "type": "choice",
+                "values": [0.001, 0.01, 0.1, 1.0, 10.0]
+            }
+            print("   ✅ C: choice([0.001, 0.01, 0.1, 1.0, 10.0])")
+        else:  # Custom
+            space_type = questionary.select(
+                "      Select type:",
+                choices=["loguniform", "uniform", "choice"],
+            ).ask()
+            if space_type == "choice":
+                choices_str = questionary.text(
+                    "      Enter choices (comma-separated):",
+                    default="0.001, 0.01, 0.1, 1.0, 10.0",
+                ).ask()
+                choices_list = [float(v.strip()) for v in choices_str.split(",")]
+                config["hyperparameters"]["C"] = {
+                    "type": "choice",
+                    "values": choices_list
+                }
+                print(f"   ✅ C: choice({choices_list})")
+            else:
+                low = float(questionary.text("      Lower bound:", default="0.001").ask())
+                high = float(questionary.text("      Upper bound:", default="10.0").ask())
+                config["hyperparameters"]["C"] = {
+                    "type": space_type,
+                    "bounds": [low, high]
+                }
+                print(f"   ✅ C: {space_type}({low}, {high})")
+        
+        # penalty
+        print("\n📊 penalty (regularization type)")
+        print("   💡 Common choices: l2 (Ridge), l1 (Lasso), elasticnet, None")
+        penalty_choices = questionary.text(
+            "   Enter penalty choices (comma-separated):",
+            default="l2, l1, elasticnet, None",
+        ).ask()
+        
+        # Parse penalty choices - separate None from string values
+        penalty_choice_type = questionary.select(
+            "   Select penalty type:",
+            choices=[
+                "String penalties only (l1, l2, elasticnet)",
+                "Include None penalty (mixed types - not recommended for Ax)"
+            ],
+        ).ask()
+        
+        if "String penalties only" in penalty_choice_type:
+            penalty_choices_str = questionary.text(
+                "      Enter penalty choices (comma-separated):",
+                default="l2, l1, elasticnet",
+            ).ask()
+            penalty_values = [v.strip() for v in penalty_choices_str.split(",") if v.strip() in ["l1", "l2", "elasticnet"]]
+        else:  # Include None
+            penalty_choices_str = questionary.text(
+                "      Enter penalty choices (comma-separated, can include 'None'):",
+                default="l2, l1, elasticnet, None",
+            ).ask()
+            penalty_values = []
+            for val in penalty_choices_str.split(","):
+                val = val.strip()
+                if val.lower() == "none":
+                    penalty_values.append(None)
+                elif val in ["l1", "l2", "elasticnet"]:
+                    penalty_values.append(val)
+                else:
+                    print(f"      ⚠️  Skipping invalid penalty: {val}")
+        
+        config["hyperparameters"]["penalty"] = {
+            "type": "choice",
+            "values": penalty_values
+        }
+        print(f"   ✅ penalty: choice({penalty_values})")
+        
+        # solver (for different penalties)
+        print("\n📊 solver (optimization algorithm)")
+        print("   💡 Different solvers work with different penalties")
+        print("   ⚠️  WARNING: Some solver-penalty combinations are invalid!")
+        print("      - newton-cg, lbfgs: only l2 or None")
+        print("      - liblinear: l1, l2")
+        print("      - sag, saga: l1, l2, elasticnet")
+        add_solver = questionary.select(
+            "   Add 'solver' parameter search space?",
+            choices=["No (skip)", "Yes - Add solver parameter"],
+        ).ask()
+        if "Yes" in add_solver:
+            solver_type = questionary.select(
+                "      Select solver compatibility:",
+                choices=[
+                    "Safe combinations (liblinear, lbfgs) - works with l1/l2",
+                    "All solvers (may cause invalid combinations)",
+                    "Custom"
+                ],
+            ).ask()
+            
+            if "Safe combinations" in solver_type:
+                solver_values = ["liblinear", "lbfgs"]
+            elif "All solvers" in solver_type:
+                solver_values = ["liblinear", "lbfgs", "newton-cg", "sag", "saga"]
+            else:  # Custom
+                solver_choices = questionary.text(
+                    "         Enter solver choices (comma-separated):",
+                    default="liblinear, lbfgs",
+                ).ask()
+                solver_values = [v.strip() for v in solver_choices.split(",")]
+            
+            config["hyperparameters"]["solver"] = {
+                "type": "choice",
+                "values": solver_values
+            }
+            print(f"      ✅ solver: choice({solver_values})")
+        
+        # max_iter (for convergence)
+        print("\n📊 max_iter (maximum iterations)")
+        add_max_iter = questionary.select(
+            "   Add 'max_iter' parameter search space?",
+            choices=["No (skip)", "Yes - Add max_iter parameter"],
+        ).ask()
+        if "Yes" in add_max_iter:
+            max_iter_type = questionary.select(
+                "      Select search space type for max_iter:",
+                choices=[
+                    "choice([100, 500, 1000]) - Common iteration counts",
+                    "quniform(100, 1000, 100) - Steps: 100, 200... 1000",
+                    "Custom"
+                ],
+            ).ask()
+            if "Common iteration" in max_iter_type:
+                config["hyperparameters"]["max_iter"] = {
+                    "type": "choice",
+                    "values": [100, 500, 1000]
+                }
+                print("      ✅ max_iter: choice([100, 500, 1000])")
+            elif "quniform" in max_iter_type:
+                config["hyperparameters"]["max_iter"] = {
+                    "type": "quniform",
+                    "bounds": [100, 1000],
+                    "q": 100
+                }
+                print("      ✅ max_iter: quniform(100, 1000, 100)")
+            else:  # Custom
+                choices_str = questionary.text(
+                    "         Enter max_iter choices (comma-separated integers):",
+                    default="100, 500, 1000",
+                ).ask()
+                choices_list = [int(v.strip()) for v in choices_str.split(",")]
+                config["hyperparameters"]["max_iter"] = {
+                    "type": "choice",
+                    "values": choices_list
+                }
+                print(f"      ✅ max_iter: choice({choices_list})")
+    
     elif model_name == "KNN":
         print("\n🔍 KNN - Ax Search Space Configuration")
         print("   Define search spaces using Ray Tune types")
@@ -3002,6 +3383,28 @@ def configure_model_hyperparameters(model_name: str) -> dict:
 
     elif model_name in ["Logistic Regression", "Logistic Regression"]:
         print(f"\n{model_name} Hyperparameters:")
+        
+        # Display solver-penalty constraints table
+        print("   ⚠️  SOLVER-PENALTY COMPATIBILITY CONSTRAINTS:")
+        print("   ┌─────────────────┬─────────────────────────────┬─────────────────────┐")
+        print("   │ Solver          │ Allowed Penalties           │ Classification      │")
+        print("   ├─────────────────┼─────────────────────────────┼─────────────────────┤")
+        print("   │ lbfgs           │ 'l2', None                  │ Binary & Multiclass│")
+        print("   │ newton-cg       │ 'l2', None                  │ Binary & Multiclass│")
+        print("   │ newton-cholesky │ 'l2', None                  │ Binary & Multiclass│")
+        print("   │ sag             │ 'l2', None                  │ Binary & Multiclass│")
+        print("   │ liblinear       │ 'l1', 'l2'                  │ Binary Only         │")
+        print("   │ saga            │ 'l1', 'l2', 'elasticnet', None │ Binary & Multiclass│")
+        print("   └─────────────────┴─────────────────────────────┴─────────────────────┘")
+        print("   💡 Choose solver-penalty combinations that are compatible!")
+        print()
+        print("   ⚠️  IMPORTANT WARNINGS:")
+        print("   • L2 regularization is 100% supported across ALL scenarios")
+        print("   • liblinear ONLY works for BINARY classification (not multiclass)")
+        print("   • For multiclass problems, avoid liblinear solver")
+        print("   • L1/elasticnet penalties have limited solver support")
+        print()
+        
         config["hyperparameters"]["C"] = get_hyperparameter_with_custom(
             "C (inverse regularization strength)",
             ["0.1", "0.5", "1.0", "5.0", "10.0", "50.0"],
