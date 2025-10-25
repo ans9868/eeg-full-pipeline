@@ -819,8 +819,50 @@ class UnifiedConfigHandler:
                             f"Grid Search {model_name}"
                         )
 
-        # Note: Grid Search resources are handled by Ray automatically
-        # No per-strategy resource validation needed
+        # Validate CPU resource configuration
+        if "cpus_per_model_task" in grid_config:
+            cpus_per_model = grid_config["cpus_per_model_task"]
+            try:
+                cpus_per_model = int(cpus_per_model)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"grid_search.cpus_per_model_task must be a valid integer, got: {cpus_per_model}"
+                )
+            if cpus_per_model < 2:
+                raise ValueError(
+                    f"grid_search.cpus_per_model_task must be >= 2, got: {cpus_per_model}"
+                )
+
+        if "max_concurrent_trials" in grid_config:
+            max_concurrent = grid_config["max_concurrent_trials"]
+            try:
+                max_concurrent = int(max_concurrent)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"grid_search.max_concurrent_trials must be a valid integer, got: {max_concurrent}"
+                )
+            if max_concurrent < 1:
+                raise ValueError(
+                    f"grid_search.max_concurrent_trials must be >= 1, got: {max_concurrent}"
+                )
+            
+            # Validate relationship: max_concurrent_trials < cpus_per_model_task
+            if "cpus_per_model_task" in grid_config:
+                cpus_per_model = grid_config["cpus_per_model_task"]
+                try:
+                    cpus_per_model = int(cpus_per_model)
+                except (ValueError, TypeError):
+                    cpus_per_model = 0
+                if max_concurrent >= cpus_per_model and cpus_per_model > 0:
+                    raise ValueError(
+                        f"grid_search.max_concurrent_trials ({max_concurrent}) must be < "
+                        f"grid_search.cpus_per_model_task ({cpus_per_model}). "
+                        f"At least 1 CPU must be reserved for Tuner coordination."
+                    )
+
+        # Support old naming (max_concurrent) for backward compatibility
+        if "max_concurrent" in grid_config and "max_concurrent_trials" not in grid_config:
+            print("⚠️  WARNING: Using deprecated 'max_concurrent' field. Please use 'max_concurrent_trials' instead.")
 
     def _validate_ax_config(self, ax_config: Dict[str, Any]) -> None:
         """Validate Ax specific configuration."""
@@ -893,6 +935,56 @@ class UnifiedConfigHandler:
                         )
                     # Validate Ax-specific search spaces
                     self._validate_ax_search_spaces(hyperparams, model_name)
+
+        # Validate CPU resource configuration
+        if "cpus_per_model_task" in ax_config:
+            cpus_per_model = ax_config["cpus_per_model_task"]
+            try:
+                cpus_per_model = int(cpus_per_model)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"ax.cpus_per_model_task must be a valid integer, got: {cpus_per_model}"
+                )
+            if cpus_per_model < 2:
+                raise ValueError(
+                    f"ax.cpus_per_model_task must be >= 2, got: {cpus_per_model}"
+                )
+
+        if "max_concurrent_trials" in ax_config:
+            max_concurrent = ax_config["max_concurrent_trials"]
+            try:
+                max_concurrent = int(max_concurrent)
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"ax.max_concurrent_trials must be a valid integer, got: {max_concurrent}"
+                )
+            if max_concurrent < 1:
+                raise ValueError(
+                    f"ax.max_concurrent_trials must be >= 1, got: {max_concurrent}"
+                )
+            
+            # Validate relationship: max_concurrent_trials < cpus_per_model_task
+            if "cpus_per_model_task" in ax_config:
+                cpus_per_model = ax_config["cpus_per_model_task"]
+                try:
+                    cpus_per_model = int(cpus_per_model)
+                except (ValueError, TypeError):
+                    cpus_per_model = 0
+                if max_concurrent >= cpus_per_model and cpus_per_model > 0:
+                    raise ValueError(
+                        f"ax.max_concurrent_trials ({max_concurrent}) must be < "
+                        f"ax.cpus_per_model_task ({cpus_per_model}). "
+                        f"At least 1 CPU must be reserved for Tuner coordination."
+                    )
+            
+            # Ax-specific warning for high concurrency
+            if max_concurrent > 3:
+                print(f"⚠️  WARNING: ax.max_concurrent_trials={max_concurrent} is higher than recommended")
+                print("   💡 Ax uses Bayesian optimization which works best with 2-3 concurrent trials")
+
+        # Support old naming (max_concurrent) for backward compatibility
+        if "max_concurrent" in ax_config and "max_concurrent_trials" not in ax_config:
+            print("⚠️  WARNING: Using deprecated 'max_concurrent' field. Please use 'max_concurrent_trials' instead.")
 
         # COMMENTED OUT: Advanced constraint validation (not yet implemented in config-maker)
         # # Validate parameter_constraints if present
@@ -1080,6 +1172,135 @@ class UnifiedConfigHandler:
             f"(type: {type(hidden_layer_sizes)}). Expected list, tuple, or parseable string."
         )
 
+    @staticmethod
+    def convert_hyperparameter_types(model_name: str, hyperparams: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert hyperparameters from strings to proper types for sklearn models.
+        
+        This method handles the conversion of string hyperparameters (from YAML config)
+        to the proper types expected by sklearn models.
+        
+        Parameters
+        ----------
+        model_name : str
+            Name of the ML model
+        hyperparams : Dict[str, Any]
+            Dictionary of hyperparameters (may contain strings)
+        
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary with properly typed hyperparameters
+        
+        Examples
+        --------
+        >>> convert_hyperparameter_types('KNN', {'n_neighbors': '5', 'weights': 'uniform'})
+        {'n_neighbors': 5, 'weights': 'uniform'}
+        >>> convert_hyperparameter_types('XGBoost', {'n_estimators': '100', 'max_depth': '6'})
+        {'n_estimators': 100, 'max_depth': 6}
+        """
+        converted_params = {}
+        
+        for param_name, param_value in hyperparams.items():
+            try:
+                # Model-specific type conversions
+                if model_name == 'KNN':
+                    if param_name == 'n_neighbors':
+                        converted_params[param_name] = int(param_value)
+                    elif param_name in ['weights', 'metric']:
+                        # Keep as string for categorical parameters
+                        converted_params[param_name] = param_value
+                    else:
+                        converted_params[param_name] = param_value
+                
+                elif model_name == 'XGBoost':
+                    if param_name in ['n_estimators', 'max_depth', 'min_child_weight', 'reg_alpha', 'reg_lambda']:
+                        converted_params[param_name] = int(param_value)
+                    elif param_name in ['learning_rate', 'subsample', 'colsample_bytree', 'gamma']:
+                        converted_params[param_name] = float(param_value)
+                    else:
+                        converted_params[param_name] = param_value
+                
+                elif model_name == 'Random Forest':
+                    if param_name in ['n_estimators', 'max_depth', 'min_samples_split', 'min_samples_leaf']:
+                        if param_value is None or str(param_value).lower() == 'none':
+                            converted_params[param_name] = None
+                        else:
+                            converted_params[param_name] = int(param_value)
+                    elif param_name in ['max_features']:
+                        # Handle max_features which can be string, float, or None
+                        if param_value is None or str(param_value).lower() == 'none':
+                            converted_params[param_name] = None
+                        elif str(param_value) in ['sqrt', 'log2']:
+                            converted_params[param_name] = param_value  # Keep as string
+                        else:
+                            converted_params[param_name] = float(param_value)
+                    else:
+                        converted_params[param_name] = param_value
+                
+                elif model_name == 'SVM':
+                    if param_name == 'C':
+                        converted_params[param_name] = float(param_value)
+                    elif param_name == 'gamma':
+                        if str(param_value).lower() in ['scale', 'auto']:
+                            converted_params[param_name] = param_value  # Keep as string
+                        else:
+                            converted_params[param_name] = float(param_value)
+                    elif param_name in ['kernel', 'degree']:
+                        if param_name == 'degree':
+                            converted_params[param_name] = int(param_value)
+                        else:
+                            converted_params[param_name] = param_value  # Keep as string
+                    else:
+                        converted_params[param_name] = param_value
+                
+                elif model_name == 'MLP (Neural Network)':
+                    if param_name == 'hidden_layer_sizes':
+                        # Use existing MLP conversion method
+                        converted_params[param_name] = UnifiedConfigHandler.convert_mlp_layers_for_sklearn(param_value)
+                    elif param_name in ['max_iter', 'early_stopping']:
+                        if param_name == 'max_iter':
+                            converted_params[param_name] = int(param_value)
+                        else:
+                            converted_params[param_name] = bool(param_value)
+                    elif param_name in ['learning_rate_init', 'alpha', 'beta_1', 'beta_2', 'epsilon']:
+                        converted_params[param_name] = float(param_value)
+                    else:
+                        converted_params[param_name] = param_value
+                
+                elif model_name == 'Logistic Regression':
+                    if param_name == 'C':
+                        converted_params[param_name] = float(param_value)
+                    elif param_name == 'max_iter':
+                        converted_params[param_name] = int(param_value)
+                    elif param_name in ['penalty', 'solver']:
+                        converted_params[param_name] = param_value  # Keep as string
+                    else:
+                        converted_params[param_name] = param_value
+                
+                else:
+                    # For other models, try to convert common numeric parameters
+                    if param_name in ['n_estimators', 'max_depth', 'min_samples_split', 'min_samples_leaf', 
+                                    'max_iter', 'n_neighbors', 'C', 'gamma']:
+                        try:
+                            if str(param_value).lower() == 'none':
+                                converted_params[param_name] = None
+                            elif '.' in str(param_value):
+                                converted_params[param_name] = float(param_value)
+                            else:
+                                converted_params[param_name] = int(param_value)
+                        except (ValueError, TypeError):
+                            converted_params[param_name] = param_value
+                    else:
+                        converted_params[param_name] = param_value
+            
+            except (ValueError, TypeError) as e:
+                # If conversion fails, keep original value and log warning
+                print(f"⚠️  WARNING: Could not convert {param_name}={param_value} for {model_name}: {e}")
+                converted_params[param_name] = param_value
+        
+        return converted_params
+
     def _validate_ax_search_spaces(self, hyperparams: Dict[str, Any], model_name: str) -> None:
         """Validate Ax search space definitions using Ray Tune syntax."""
         for param_name, param_config in hyperparams.items():
@@ -1161,6 +1382,82 @@ class UnifiedConfigHandler:
                     param_config["values"] = architectures_as_lists
                     print(f"   ✅ Ax {model_name}: Validated MLP architectures (will be JSON-encoded for Ax)")
 
+    def _validate_ray_resource_utilization(self, ray_config: Dict[str, Any]) -> None:
+        """
+        Validate Ray resource utilization across all strategies.
+        Ensures total strategy resources don't exceed global resources.
+        """
+        resources = ray_config.get("resources", {})
+        global_cpus = resources.get("num_cpus", 0)
+        
+        # Convert to int if it's a string
+        try:
+            global_cpus = int(global_cpus)
+        except (ValueError, TypeError):
+            return  # Skip validation if can't convert to int
+        
+        if global_cpus <= 0:
+            return  # Skip validation if no global resources configured
+        
+        total_strategy_cpus = 0
+        strategy_details = []
+        
+        # Calculate Grid Search resource usage
+        if "grid_search" in ray_config:
+            grid_config = ray_config["grid_search"]
+            grid_cpus = grid_config.get("cpus_per_model_task", 0)
+            try:
+                grid_cpus = int(grid_cpus)
+            except (ValueError, TypeError):
+                grid_cpus = 0
+            
+            grid_models = len(grid_config.get("models", []))
+            grid_total = grid_cpus * grid_models
+            total_strategy_cpus += grid_total
+            if grid_total > 0:
+                strategy_details.append(f"Grid Search: {grid_models} models × {grid_cpus} CPUs = {grid_total} CPUs")
+        
+        # Calculate Ax resource usage
+        if "ax" in ray_config:
+            ax_config = ray_config["ax"]
+            ax_cpus = ax_config.get("cpus_per_model_task", 0)
+            try:
+                ax_cpus = int(ax_cpus)
+            except (ValueError, TypeError):
+                ax_cpus = 0
+            
+            ax_models = len(ax_config.get("models", []))
+            ax_total = ax_cpus * ax_models
+            total_strategy_cpus += ax_total
+            if ax_total > 0:
+                strategy_details.append(f"Ax Search: {ax_models} models × {ax_cpus} CPUs = {ax_total} CPUs")
+        
+        # Validate total resource usage
+        if total_strategy_cpus > global_cpus:
+            raise ValueError(
+                f"❌ Resource validation failed: Total strategy CPUs ({total_strategy_cpus}) "
+                f"exceeds global resources ({global_cpus}). "
+                f"Strategy details: {'; '.join(strategy_details)}. "
+                f"Please reduce cpus_per_model_task or increase global num_cpus."
+            )
+        
+        # Calculate and report utilization
+        utilization_percent = (total_strategy_cpus / global_cpus) * 100 if global_cpus > 0 else 0
+        
+        if utilization_percent > 95:
+            print(f"⚠️  WARNING: Very high resource utilization ({utilization_percent:.1f}%)")
+            print("   💡 Consider reducing cpus_per_model_task or adding more global CPUs")
+        elif utilization_percent < 50:
+            print(f"💡 INFO: Low resource utilization ({utilization_percent:.1f}%)")
+            print("   💡 You could increase cpus_per_model_task for better performance")
+        else:
+            print(f"✅ Good resource utilization ({utilization_percent:.1f}%)")
+        
+        print(f"   📊 Resource Summary: {total_strategy_cpus}/{global_cpus} CPUs used")
+        if strategy_details:
+            for detail in strategy_details:
+                print(f"      • {detail}")
+
     def _validate_ray_common_config(self, ray_config: Dict[str, Any]) -> None:
         """Validate common Ray configuration shared across strategies."""
         # Validate metric and mode
@@ -1222,6 +1519,9 @@ class UnifiedConfigHandler:
                         raise ValueError("Ray resources 'num_gpus' must be non-negative")
                 except (ValueError, TypeError):
                     raise ValueError("Ray resources 'num_gpus' must be a valid integer")
+            
+            # NEW: Validate resource utilization across strategies
+            self._validate_ray_resource_utilization(ray_config)
 
         # Validate graph data visualization configuration
         graph_config = ray_config.get("graph_data_visualization", {})
@@ -1817,6 +2117,39 @@ class UnifiedConfigHandler:
     # Note: ax_total_trials is now per-model, access via ax_model_configs[model_name]["num_samples"]
     # Note: Ax constraints commented out for now (can be added later)
 
+    # Per-Strategy CPU Resource Properties
+    @property
+    def grid_search_cpus_per_model_task(self) -> int:
+        """Get CPU budget per model task for Grid Search."""
+        return int(self.grid_search_config.get("cpus_per_model_task", 4))
+
+    @property
+    def grid_search_max_concurrent_trials(self) -> int:
+        """Get maximum concurrent trials for Grid Search (renamed from max_concurrent)."""
+        # Support both old and new naming for backward compatibility
+        return int(
+            self.grid_search_config.get(
+                "max_concurrent_trials",
+                self.grid_search_config.get("max_concurrent", 2)
+            )
+        )
+
+    @property
+    def ax_cpus_per_model_task(self) -> int:
+        """Get CPU budget per model task for Ax."""
+        return int(self.ax_config.get("cpus_per_model_task", 4))
+
+    @property
+    def ax_max_concurrent_trials(self) -> int:
+        """Get maximum concurrent trials for Ax (renamed from max_concurrent)."""
+        # Support both old and new naming for backward compatibility
+        return int(
+            self.ax_config.get(
+                "max_concurrent_trials",
+                self.ax_config.get("max_concurrent", 3)
+            )
+        )
+
     # Backward Compatibility: selected_models now returns models from all strategies
     @property
     def selected_models(self) -> List[str]:
@@ -1923,6 +2256,60 @@ class UnifiedConfigHandler:
         if resources:
             return int(resources.get("dashboard_port", 8265))
         return 8265
+    
+    # NEW: Resource Management Properties
+    @property
+    def ray_global_cpus(self) -> int:
+        """Get total global CPUs for Ray cluster (building capacity)."""
+        resources = self.ray_resources_config
+        if resources:
+            return int(resources.get("num_cpus", 4))
+        return 4
+    
+    @property
+    def ray_total_strategy_cpus(self) -> int:
+        """Get total CPUs used by all strategies combined."""
+        total_cpus = 0
+        
+        # Grid Search CPUs
+        if self.uses_grid_search:
+            grid_models = len(self.grid_search_models)
+            grid_cpus_per_model = self.grid_search_cpus_per_model_task
+            total_cpus += grid_models * grid_cpus_per_model
+        
+        # Ax Search CPUs
+        if self.uses_ax:
+            ax_models = len(self.ax_models)
+            ax_cpus_per_model = self.ax_cpus_per_model_task
+            total_cpus += ax_models * ax_cpus_per_model
+        
+        return total_cpus
+    
+    @property
+    def ray_resource_utilization_percent(self) -> float:
+        """Get resource utilization percentage."""
+        global_cpus = self.ray_global_cpus
+        if global_cpus <= 0:
+            return 0.0
+        return (self.ray_total_strategy_cpus / global_cpus) * 100
+    
+    @property
+    def ray_remaining_cpus(self) -> int:
+        """Get remaining CPUs after strategy allocation."""
+        return self.ray_global_cpus - self.ray_total_strategy_cpus
+    
+    @property
+    def ray_resource_efficiency_rating(self) -> str:
+        """Get resource efficiency rating."""
+        utilization = self.ray_resource_utilization_percent
+        if utilization > 95:
+            return "Very High"
+        elif utilization >= 70:
+            return "High"
+        elif utilization >= 50:
+            return "Good"
+        else:
+            return "Low"
     
     # @property 
     # def data_directory(self) -> str:
@@ -2102,6 +2489,26 @@ class UnifiedConfigHandler:
             print(f"🤖 Selected Models: {', '.join(self.selected_models)}")
             print(f"📊 Data Leakage Strategy: {self.data_leakage_strategy}")
             print(f"🔧 Transformations: {self.transform_features_flag}")
+            
+            # Show Ray resource management if configured
+            if self.has_ray_resources:
+                print(f"\n🏢 Ray Resource Management:")
+                print(f"   📊 Global Building Capacity: {self.ray_global_cpus} CPUs")
+                print(f"   📈 Strategy Resource Usage: {self.ray_total_strategy_cpus} CPUs")
+                print(f"   📊 Utilization: {self.ray_resource_utilization_percent:.1f}%")
+                print(f"   🔄 Remaining CPUs: {self.ray_remaining_cpus}")
+                print(f"   ⭐ Efficiency Rating: {self.ray_resource_efficiency_rating}")
+                
+                # Show per-strategy details
+                if self.uses_grid_search:
+                    grid_models = len(self.grid_search_models)
+                    grid_cpus = self.grid_search_cpus_per_model_task
+                    print(f"   🔍 Grid Search: {grid_models} models × {grid_cpus} CPUs = {grid_models * grid_cpus} CPUs")
+                
+                if self.uses_ax:
+                    ax_models = len(self.ax_models)
+                    ax_cpus = self.ax_cpus_per_model_task
+                    print(f"   🎯 Ax Search: {ax_models} models × {ax_cpus} CPUs = {ax_models * ax_cpus} CPUs")
         
         print(f"✅ Configuration is valid and ready to use!")
 
