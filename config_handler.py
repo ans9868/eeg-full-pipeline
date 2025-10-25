@@ -1814,6 +1814,14 @@ class UnifiedConfigHandler:
         return (
             self.raw_config.get("data_input", {}).get("save_transformed", "No") == "Yes"
         )
+    
+    @property
+    def reuse_transformed_across_experiments(self) -> bool:
+        """Get reuse_transformed_across_experiments setting."""
+        return (
+            self.raw_config.get("data_input", {}).get("reuse_transformed_across_experiments", "No")
+            == "Yes"
+        )
 
     # Preprocessing Properties
     @property
@@ -2020,7 +2028,15 @@ class UnifiedConfigHandler:
         """Check if within-subject split is configured."""
         return "Within-subject" in self.data_leakage_strategy and "train/test split" in self.data_leakage_strategy
 
-    # Ray Properties - NEW NESTED STRUCTURE
+    
+    # Data Leakage Prevention Properties
+    @property
+    def shuffle_transformed_data(self) -> bool:
+        """Get shuffle_transformed_data setting."""
+        return (
+            self.raw_config.get("data_leakage_prevention", {}).get("shuffle_transformed_data", "No")
+            == "Yes"
+        )
     
     # Common Ray Properties
     @property

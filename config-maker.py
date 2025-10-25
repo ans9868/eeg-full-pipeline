@@ -365,6 +365,12 @@ def dataInputPart1() -> Dict[str, Any]:
         "1.6 Save transformed data (post PCA, z-score etc.) for reuse? (Necessary for RayTuner to work)",
         choices=["Yes", "No"],
     ).ask()
+    config["data_input"]["reuse_transformed_across_experiments"] = questionary.select(
+        "1.7 Reuse transformed data accross experiments (if the data and the data transformations are the same in another experiment in the ./data folder it will be reused).",
+        choices=["Yes", "No"],
+    ).ask()
+
+
 
     return config
 
@@ -458,9 +464,7 @@ def preprocessingPart2() -> Dict[str, Any]:
     print("   - Reject threshold: Maximum acceptable peak-to-peak amplitude per epoch")
     print("   - Flat threshold: Minimum acceptable peak-to-peak amplitude per epoch")
     print("   - Applied during epoch creation (more efficient than annotation)")
-    print(
-        "   - Note: Values are entered in μV but automatically converted to V for MNE"
-    )
+    print("   - Note: Values are entered in μV but automatically converted to V for MNE")
 
     # Enable/disable epoch rejection
     config["preprocessing"]["use_epoch_rejection"] = questionary.select(
@@ -1835,6 +1839,11 @@ def dataLeakagePreventionPart5(
                 print("   📊 Within-subject split configuration completed!")
             elif is_transform_all:
                 print("   📊 Transform all data together with post-transformation split configuration completed!")
+
+    config["data_leakage_prevention"]["shuffle_transformed_data"] = questionary.select(
+        "1.8 Shuffle transformed data? (A sanity check for balanced ML model performance. Shuffling the data may help to avoid overfitting a certain scenario).",
+        choices=["Yes", "No"],
+    ).ask()
 
     return config
 
