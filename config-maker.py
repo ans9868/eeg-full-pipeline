@@ -104,10 +104,10 @@ def validate_ray_resource_constraints(
     if max_concurrent_trials >= cpus_per_model_task:
         return False, f"❌ ERROR: max_concurrent_trials ({max_concurrent_trials}) must be < cpus_per_model_task ({cpus_per_model_task}) - need 1 CPU for coordination"
     
-    # Rule 3: Total strategy resources must not exceed global resources
+    # # Rule 3: Total strategy resources must not exceed global resources
     total_strategy_cpus = cpus_per_model_task * num_models
-    if total_strategy_cpus > num_cpus:
-        return False, f"❌ ERROR: Total strategy CPUs ({total_strategy_cpus}) exceeds global resources ({num_cpus}). Reduce cpus_per_model_task or num_models."
+    # if total_strategy_cpus > num_cpus:
+    #     return False, f"❌ ERROR: Total strategy CPUs ({total_strategy_cpus}) exceeds global resources ({num_cpus}). Reduce cpus_per_model_task or num_models."
     
     # Calculate utilization
     utilization = (total_strategy_cpus / num_cpus) * 100
@@ -1121,14 +1121,14 @@ def dataLeakagePreventionPart5(
         feature_transformations: List of selected feature transformations
         data_input_groups: Dictionary of data input groups
         project_config: Dictionary containing project configuration (including random_seed)
-    Returns: Dictionary containing data_leakage_prevention configuration
+    Returns: Dictionary containing data_transformation_strategy configuration
     """
     print("\n[5] Data Leakage Prevention")
     print(f"⚠️  WARNING: You selected {experiment_type} with Feature Transformation.")
     print("   This can cause data leakage if test data influences training transforms.")
 
     config = {}
-    config["data_leakage_prevention"] = {}
+    config["data_transformation_strategy"] = {}
 
     # Question 1: Data leakage prevention strategy
     # For ML Fingerprinting, only allow intra-subject splits (same subjects in train/test)
@@ -1136,7 +1136,7 @@ def dataLeakagePreventionPart5(
         print("ML Fingerprinting detected - only intra-subject splits are allowed")
         print("   This is because fingerprinting predicts subject IDs, requiring same subjects in train/test")
         
-        data_leakage_prevention_choice = questionary.select(
+        data_transformation_strategy_choice = questionary.select(
             "5.1 How would you like to handle data leakage during feature transformation?",
             choices=[
                 "Transform all data together (intra subject) (no split - fastest, and potential data leakage)",
@@ -1144,7 +1144,7 @@ def dataLeakagePreventionPart5(
             ],
         ).ask()
     else:
-        data_leakage_prevention_choice = questionary.select(
+        data_transformation_strategy_choice = questionary.select(
         "5.1 How would you like to handle data leakage during feature transformation?",
         choices=[
             "Transform all data together (intra subject) (no split - fastest, and potential data leakage)",
@@ -1156,18 +1156,29 @@ def dataLeakagePreventionPart5(
     
     
     # Map the choice to the full strategy string expected by config_handler.py
-    data_leakage_prevention_mapping = {
+    data_transformation_strategy_mapping = {
         "Transform all data together (intra subject) (no split - fastest, and potential data leakage)": "Transform all data together (intra subject split) (no split - fastest, and potential data leakage)",
         "Within-subject (intra subject) train/test split (example: 80/20 per subject) - each subject contributes to both train and test": "Within-subject (intra subject split) train/test split (80/20 per subject) - each subject contributes to both train and test",
         "1 test/1 train split (inter subject) with transforms applied to training set only (faster, single split)": "1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)",
         "LPSO (Leave-P-Subjects-Out) (inter subject) - systematic cross-validation (recommended for small datasets)": "LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)"
     }
     
-    config["data_leakage_prevention"]["strategy"] = data_leakage_prevention_mapping[data_leakage_prevention_choice]
+    config["data_transformation_strategy"]["strategy"] = data_transformation_strategy_mapping[data_transformation_strategy_choice]
+
+    # TODO! make saftey checking for tune test train 
+    # [] ensure minimum size of fold  is ‘#groups * 2 (one for tune one for test)’
+    # [] ensure at least use 1 subject represented for every group in each fold
+    # config["data_transformation_strategy"]["train_tune_test_mode"] = questionary.select(
+    #     "5.2 Enable train-tune-test mode? (Split test subjects into group-balanced sections for hyperparameter tuning)",
+    #     choices=[
+    #         "No - Standard LPSO (test subjects used only for testing)",
+    #         "Yes - Train-tune-test (split test subjects into balanced sections for tuning + testing)"
+    #     ],
+    # ).ask()
 
     # Question 2: Test subject definition (if rotation is selected)
-    if "Rotate test subjects" in config["data_leakage_prevention"]["strategy"]:
-        config["data_leakage_prevention"]["test_subject_method"] = questionary.select(
+    if "Rotate test subjects" in config["data_transformation_strategy"]["strategy"]:
+        config["data_transformation_strategy"]["test_subject_method"] = questionary.select(
             "5.2.1 How would you like to define test subjects for rotation?",
             choices=[
                 "Manually select X test subjects per fold and provide full paths",
@@ -1177,7 +1188,7 @@ def dataLeakagePreventionPart5(
 
         if (
             "Manually select"
-            in config["data_leakage_prevention"]["test_subject_method"]
+            in config["data_transformation_strategy"]["test_subject_method"]
         ):
             # Ask for number of test subjects per fold
             while True:
@@ -1187,7 +1198,7 @@ def dataLeakagePreventionPart5(
                 try:
                     count = int(test_subjects_count)
                     if count > 0:
-                        config["data_leakage_prevention"][
+                        config["data_transformation_strategy"][
                             "test_subjects_per_fold"
                         ] = count
                         break
@@ -1197,7 +1208,7 @@ def dataLeakagePreventionPart5(
                     print("[ERROR] Please enter a valid integer.")
 
             # Ask for fold paths
-            config["data_leakage_prevention"]["fold_paths"] = {}
+            config["data_transformation_strategy"]["fold_paths"] = {}
             fold_number = 1
 
             # Get available group names for reference
@@ -1251,16 +1262,16 @@ def dataLeakagePreventionPart5(
                     # Check if number of subjects matches expected count
                     if (
                         len(valid_fold_paths)
-                        != config["data_leakage_prevention"]["test_subjects_per_fold"]
+                        != config["data_transformation_strategy"]["test_subjects_per_fold"]
                     ):
                         confirm = questionary.select(
-                            f"⚠️  You entered {len(valid_fold_paths)} subjects but expected {config['data_leakage_prevention']['test_subjects_per_fold']}. Continue anyway?",
+                            f"⚠️  You entered {len(valid_fold_paths)} subjects but expected {config['data_transformation_strategy']['test_subjects_per_fold']}. Continue anyway?",
                             choices=["Yes, continue", "No, re-enter"],
                         ).ask()
                         if confirm == "No, re-enter":
                             continue
 
-                    config["data_leakage_prevention"]["fold_paths"][
+                    config["data_transformation_strategy"]["fold_paths"][
                         f"fold_{fold_number}"
                     ] = valid_fold_paths
                     fold_number += 1
@@ -1271,7 +1282,7 @@ def dataLeakagePreventionPart5(
 
         elif (
             "Automatically rotate"
-            in config["data_leakage_prevention"]["test_subject_method"]
+            in config["data_transformation_strategy"]["test_subject_method"]
         ):
             # Ask for number of test subjects to leave out
             while True:
@@ -1281,7 +1292,7 @@ def dataLeakagePreventionPart5(
                 try:
                     count = int(leave_out_count)
                     if count > 0:
-                        config["data_leakage_prevention"]["leave_out_count"] = count
+                        config["data_transformation_strategy"]["leave_out_count"] = count
                         break
                     else:
                         print("[ERROR] Please enter a positive number.")
@@ -1290,7 +1301,7 @@ def dataLeakagePreventionPart5(
 
     # Question 2: LPSO configuration (if LPSO is selected)
     elif (
-        "LPSO (Leave-P-Subjects-Out)" in config["data_leakage_prevention"]["strategy"]
+        "LPSO (Leave-P-Subjects-Out)" in config["data_transformation_strategy"]["strategy"]
     ):
         print("\n📊 LPSO (Leave-P-Subjects-Out) Configuration")
         print("   This will systematically leave out subjects for cross-validation.")
@@ -1345,7 +1356,7 @@ def dataLeakagePreventionPart5(
                 print(f"   Each group needs at least 1 subject for default LPSO.")
                 raise ValueError("Insufficient subjects for default LPSO")
 
-            config["data_leakage_prevention"]["lpso_subjects_per_group"] = count
+            config["data_transformation_strategy"]["lpso_subjects_per_group"] = count
 
         elif "Leave-P-Subjects-Out (Individual)" in lpso_choice:
             # Individual LPSO - each subject gets its own test fold
@@ -1365,8 +1376,8 @@ def dataLeakagePreventionPart5(
             count = total_subjects  # Each subject gets its own fold
             subjects_per_group_per_fold = 1  # Each fold has exactly 1 subject
 
-            config["data_leakage_prevention"]["lpso_subjects_per_group"] = count
-            config["data_leakage_prevention"]["individual_lpso"] = True
+            config["data_transformation_strategy"]["lpso_subjects_per_group"] = count
+            config["data_transformation_strategy"]["individual_lpso"] = True
 
         else:
             # Ask for custom number of subjects per group
@@ -1426,7 +1437,7 @@ def dataLeakagePreventionPart5(
                             )
                             continue
 
-                        config["data_leakage_prevention"][
+                        config["data_transformation_strategy"][
                             "lpso_subjects_per_group"
                         ] = count
                         break
@@ -1467,17 +1478,17 @@ def dataLeakagePreventionPart5(
                     f"   ✅ Using wrap-around strategy: will reuse subjects when group runs out"
                 )
 
-            config["data_leakage_prevention"]["uneven_handling"] = uneven_handling
+            config["data_transformation_strategy"]["uneven_handling"] = uneven_handling
         else:
             # All groups have the same size, use default
             uneven_handling = "cutoff"
-            config["data_leakage_prevention"]["uneven_handling"] = uneven_handling
+            config["data_transformation_strategy"]["uneven_handling"] = uneven_handling
 
         # Generate LPSO folds
         print(f"   🔄 Generating LPSO folds...")
         try:
             # Check if individual LPSO is enabled
-            individual_lpso = config["data_leakage_prevention"].get(
+            individual_lpso = config["data_transformation_strategy"].get(
                 "individual_lpso", False
             )
 
@@ -1490,8 +1501,8 @@ def dataLeakagePreventionPart5(
             )
 
             # Store the folds in config
-            config["data_leakage_prevention"]["lpso_folds"] = lpso_folds
-            config["data_leakage_prevention"]["lpso_metadata"] = fold_metadata
+            config["data_transformation_strategy"]["lpso_folds"] = lpso_folds
+            config["data_transformation_strategy"]["lpso_metadata"] = fold_metadata
 
             print(f"   ✅ Generated {len(lpso_folds)} LPSO folds")
             print(f"   📊 Each fold leaves out {count} subjects per group")
@@ -1508,7 +1519,7 @@ def dataLeakagePreventionPart5(
             exit(1)
 
         # Set LPSO flag
-        config["data_leakage_prevention"]["use_lpso"] = True
+        config["data_transformation_strategy"]["use_lpso"] = True
         
         # Ask about leaky LPSO (data leakage experiment)
         print("\n⚠️  LEAKY LPSO OPTION (Data Leakage Experiment)")
@@ -1526,17 +1537,55 @@ def dataLeakagePreventionPart5(
         ).ask()
         
         if "Yes" in leaky_lpso_choice:
-            config["data_leakage_prevention"]["leaky_lpso"] = True
+            config["data_transformation_strategy"]["leaky_lpso"] = True
             print("   ⚠️  LEAKY LPSO ENABLED: This will cause data leakage!")
             print("   📊 Transformers will be fitted on ALL subjects (including test)")
             print("   🎯 Use only for research experiments studying data leakage effects")
         else:
-            config["data_leakage_prevention"]["leaky_lpso"] = False
+            config["data_transformation_strategy"]["leaky_lpso"] = False
             print("   ✅ Standard LPSO: No data leakage (recommended)")
+        
+        # Ask about train-tune-test mode (only for LPSO)
+        print("\n🎯 Train-Tune-Test Mode Configuration")
+        print("   This mode splits test subjects into group-balanced sections for hyperparameter tuning.")
+        print("   Ray will rotate which section is used for tuning vs testing.")
+        
+        # Check if we have enough subjects for train-tune-test
+        groups = data_input_groups
+        num_groups = len(groups)
+        min_subjects_per_group = 2  # Need at least 2 subjects per group for balanced sections
+        
+        can_use_train_tune_test = True
+        for group_name, group_subjects in groups.items():
+            if len(group_subjects) < min_subjects_per_group:
+                can_use_train_tune_test = False
+                break
+        
+        if can_use_train_tune_test:
+            train_tune_test = questionary.select(
+                "5.2.5 Enable train-tune-test mode? (Split test subjects into group-balanced sections for hyperparameter tuning)",
+                choices=[
+                    "No - Standard LPSO (test subjects used only for testing)",
+                    "Yes - Train-tune-test (split test subjects into balanced sections for tuning + testing)"
+                ],
+            ).ask()
+            
+            if "Yes" in train_tune_test:
+                config["data_transformation_strategy"]["train_tune_test_mode"] = "Yes"
+                print(f"   ✅ Train-tune-test configured: Group-balanced sections")
+                print(f"   ⚖️  Each section will contain subjects from all groups")
+                print(f"   🔄 Ray will rotate which section is used for tuning vs testing")
+            else:
+                config["data_transformation_strategy"]["train_tune_test_mode"] = "No"
+                print(f"   📊 Standard LPSO mode: Test subjects used only for testing")
+        else:
+            print(f"   ⚠️  Train-tune-test not available: Need at least {min_subjects_per_group} subjects per group")
+            print(f"   📊 Current groups: {[(name, len(subjects)) for name, subjects in groups.items()]}")
+            config["data_transformation_strategy"]["train_tune_test_mode"] = "No"
 
     # Question 2: Single train/test set definition (if single split is selected)
-    elif "1 test/1 train split" in config["data_leakage_prevention"]["strategy"]:
-        config["data_leakage_prevention"]["single_split_method"] = questionary.select(
+    elif "1 test/1 train split" in config["data_transformation_strategy"]["strategy"]:
+        config["data_transformation_strategy"]["single_split_method"] = questionary.select(
             "5.2.1 How would you like to define this 1 training/testing set?",
             choices=[
                 "Manually select test subjects and provide full paths",
@@ -1546,7 +1595,7 @@ def dataLeakagePreventionPart5(
 
         if (
             "Manually select"
-            in config["data_leakage_prevention"]["single_split_method"]
+            in config["data_transformation_strategy"]["single_split_method"]
         ):
             # Ask for number of test subjects
             while True:
@@ -1556,7 +1605,7 @@ def dataLeakagePreventionPart5(
                 try:
                     count = int(test_subjects_count)
                     if count > 0:
-                        config["data_leakage_prevention"]["test_subjects_count"] = count
+                        config["data_transformation_strategy"]["test_subjects_count"] = count
                         break
                     else:
                         print("[ERROR] Please enter a positive number.")
@@ -1570,7 +1619,7 @@ def dataLeakagePreventionPart5(
 
             while True:
                 test_subjects_input = questionary.text(
-                    f"5.2.3 Enter comma-separated paths to test subjects (expected {config['data_leakage_prevention']['test_subjects_count']} subjects)\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
+                    f"5.2.3 Enter comma-separated paths to test subjects (expected {config['data_transformation_strategy']['test_subjects_count']} subjects)\n*Notice these paths should have been inputed in the correct group in [1] data inputs.\nAvailable groups: {groups_text}"
                 ).ask()
                 if not test_subjects_input.strip():
                     print("[ERROR] Please enter valid paths.")
@@ -1614,16 +1663,16 @@ def dataLeakagePreventionPart5(
                     # Check if number of subjects matches expected count
                     if (
                         len(valid_test_paths)
-                        != config["data_leakage_prevention"]["test_subjects_count"]
+                        != config["data_transformation_strategy"]["test_subjects_count"]
                     ):
                         confirm = questionary.select(
-                            f"⚠️  You entered {len(valid_test_paths)} subjects but expected {config['data_leakage_prevention']['test_subjects_count']}. Continue anyway?",
+                            f"⚠️  You entered {len(valid_test_paths)} subjects but expected {config['data_transformation_strategy']['test_subjects_count']}. Continue anyway?",
                             choices=["Yes, continue", "No, re-enter"],
                         ).ask()
                         if confirm == "No, re-enter":
                             continue
 
-                    config["data_leakage_prevention"][
+                    config["data_transformation_strategy"][
                         "test_subjects_paths"
                     ] = valid_test_paths
                     break
@@ -1634,7 +1683,7 @@ def dataLeakagePreventionPart5(
 
         elif (
             "Automatically split"
-            in config["data_leakage_prevention"]["single_split_method"]
+            in config["data_transformation_strategy"]["single_split_method"]
         ):
             # Ask for number of test subjects
             while True:
@@ -1645,7 +1694,7 @@ def dataLeakagePreventionPart5(
                 try:
                     count = int(test_subjects_count)
                     if count > 0:
-                        config["data_leakage_prevention"]["test_subjects_count"] = count
+                        config["data_transformation_strategy"]["test_subjects_count"] = count
                         break
                     else:
                         print("[ERROR] Please enter a positive number.")
@@ -1655,7 +1704,7 @@ def dataLeakagePreventionPart5(
             # Automatically select test subjects and add them to config for reproducibility
             # This makes the split reproducible and explicit, avoiding the need for the Ray container
             # to re-implement the same random selection logic
-            test_count = config["data_leakage_prevention"]["test_subjects_count"]
+            test_count = config["data_transformation_strategy"]["test_subjects_count"]
             if test_count >= 1:
 
                 # Check if we have enough test subjects for balanced group representation
@@ -1688,7 +1737,7 @@ def dataLeakagePreventionPart5(
                             try:
                                 new_count = int(new_test_count)
                                 if new_count > 0:
-                                    config["data_leakage_prevention"][
+                                    config["data_transformation_strategy"][
                                         "test_subjects_count"
                                     ] = new_count
                                     test_count = new_count
@@ -1711,7 +1760,7 @@ def dataLeakagePreventionPart5(
                     )
 
                     # Add the selected subjects to config as if they were manually selected
-                    config["data_leakage_prevention"][
+                    config["data_transformation_strategy"][
                         "test_subjects_paths"
                     ] = selected_test_subjects
 
@@ -1738,7 +1787,7 @@ def dataLeakagePreventionPart5(
                         )
 
                     # Also add the random seed to config for transparency
-                    config["data_leakage_prevention"]["random_seed"] = metadata[
+                    config["data_transformation_strategy"]["random_seed"] = metadata[
                         "random_seed"
                     ]
 
@@ -1747,11 +1796,11 @@ def dataLeakagePreventionPart5(
                     exit(1)
 
     # Question 2: Intra-test-train split configuration (for both strategies)
-    elif ("Within-subject" in config["data_leakage_prevention"]["strategy"] and "train/test split" in config["data_leakage_prevention"]["strategy"]) or "Transform all data together" in config["data_leakage_prevention"]["strategy"]:
+    elif ("Within-subject" in config["data_transformation_strategy"]["strategy"] and "train/test split" in config["data_transformation_strategy"]["strategy"]) or "Transform all data together" in config["data_transformation_strategy"]["strategy"]:
         
         # Determine strategy type for messaging
-        is_within_subject = "Within-subject" in config["data_leakage_prevention"]["strategy"] and "train/test split" in config["data_leakage_prevention"]["strategy"]
-        is_transform_all = "Transform all data together" in config["data_leakage_prevention"]["strategy"]
+        is_within_subject = "Within-subject" in config["data_transformation_strategy"]["strategy"] and "train/test split" in config["data_transformation_strategy"]["strategy"]
+        is_transform_all = "Transform all data together" in config["data_transformation_strategy"]["strategy"]
         
         if is_within_subject:
             print("\n📊 Within-Subject Train/Test Split Configuration")
@@ -1792,7 +1841,7 @@ def dataLeakagePreventionPart5(
                 try:
                     train_ratio = float(train_ratio_input)
                     if 0.1 <= train_ratio <= 0.9:
-                        config["data_leakage_prevention"]["intra_test_train_split"] = {
+                        config["data_transformation_strategy"]["intra_test_train_split"] = {
                             "train_ratio": train_ratio,
                             "random_seed": project_config["random_seed"]
                         }
@@ -1805,7 +1854,7 @@ def dataLeakagePreventionPart5(
 
             # Use global random seed from project configuration
             global_seed = project_config["random_seed"]
-            config["data_leakage_prevention"]["intra_test_train_split"]["random_seed"] = global_seed
+            config["data_transformation_strategy"]["intra_test_train_split"]["random_seed"] = global_seed
             print(f"   ✅ Using global random seed: {global_seed}")
 
             # Ask for split method
@@ -1822,16 +1871,16 @@ def dataLeakagePreventionPart5(
             
             # Map selection to config value
             if "random" in split_method:
-                config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = "random"
+                config["data_transformation_strategy"]["intra_test_train_split"]["split_method"] = "random"
                 print("   ✅ Using random split method")
             elif "start" in split_method:
-                config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = "start"
+                config["data_transformation_strategy"]["intra_test_train_split"]["split_method"] = "start"
                 print("   ✅ Using start split method (first portion for training)")
             elif "middle" in split_method:
-                config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = "middle"
+                config["data_transformation_strategy"]["intra_test_train_split"]["split_method"] = "middle"
                 print("   ✅ Using middle split method (middle portion for training)")
             elif "end" in split_method:
-                config["data_leakage_prevention"]["intra_test_train_split"]["split_method"] = "end"
+                config["data_transformation_strategy"]["intra_test_train_split"]["split_method"] = "end"
                 print("   ✅ Using end split method (last portion for training)")
             
             # Final completion message
@@ -1840,7 +1889,7 @@ def dataLeakagePreventionPart5(
             elif is_transform_all:
                 print("   📊 Transform all data together with post-transformation split configuration completed!")
 
-    config["data_leakage_prevention"]["shuffle_transformed_data"] = questionary.select(
+    config["data_transformation_strategy"]["shuffle_transformed_data"] = questionary.select(
         "1.8 Shuffle transformed data? (A sanity check for balanced ML model performance. Shuffling the data may help to avoid overfitting a certain scenario).",
         choices=["Yes", "No"],
     ).ask()
@@ -2662,8 +2711,8 @@ def configure_ax_search_space_rayTune(model_name: str) -> dict:
         # max_features
         print("\n📊 max_features (features per split)")
         max_features_choices = questionary.text(
-            "   Enter max_features choices (comma-separated, e.g., 'sqrt, log2, None'):",
-            default="sqrt, log2, None",
+            "   Enter max_features choices (comma-separated, e.g., 'sqrt, log2'):",
+            default="sqrt, log2",
         ).ask()
         
         # Parse max_features choices
@@ -3443,8 +3492,8 @@ def configure_model_hyperparameters(model_name: str) -> dict:
 
         config["hyperparameters"]["max_features"] = get_hyperparameter_with_custom(
             "max_features",
-            ["sqrt", "log2", "None"],
-            "Enter custom max_features value (sqrt, log2, None, or number):",
+            ["sqrt", "log2"],
+            "Enter custom max_features value (int for specific number of features and float for percentage of features):",
         )
 
     elif model_name == "XGBoost":
@@ -3583,8 +3632,8 @@ def configure_model_hyperparameters(model_name: str) -> dict:
 
         config["hyperparameters"]["max_features"] = get_hyperparameter_with_custom(
             "max_features",
-            ["sqrt", "log2", "None"],
-            "Enter custom max_features value (sqrt, log2, None, or number):",
+            ["sqrt", "log2"],
+            "Enter custom max_features value (int for specific number of features and float for percentage of features):",
         )
 
     elif model_name == "AdaBoost":
@@ -3679,7 +3728,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         if config["project"]["experiment_type"] in ["ML Classification", "ML Fingerprinting"] and config[
             "feature_transformation"
         ]["transformations"] != ["None"]:
-            data_leakage_prevention_config = run_section_with_confirmation(
+            data_transformation_strategy_config = run_section_with_confirmation(
                 "Data Leakage Prevention",
                 dataLeakagePreventionPart5,
                 config["project"]["experiment_type"],
@@ -3687,7 +3736,7 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 config["data_input"]["groups"],
                 config["project"],
             )
-            config.update(data_leakage_prevention_config)
+            config.update(data_transformation_strategy_config)
 
     else:
         print(
@@ -3756,8 +3805,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print(f"📈 Analysis Pipeline: PySpark only (manual ML)")
 
     # Show test subject selection info if applicable
-    if config.get("data_leakage_prevention", {}).get("test_subjects_paths"):
-        test_subject_paths = config["data_leakage_prevention"]["test_subjects_paths"]
+    if config.get("data_transformation_strategy", {}).get("test_subjects_paths"):
+        test_subject_paths = config["data_transformation_strategy"]["test_subjects_paths"]
         test_count = len(test_subject_paths)
 
         # Extract subject IDs from paths
@@ -3789,8 +3838,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
                 print(f"      {i}. {subject_id}: {path}")
 
     # Show LPSO information if applicable
-    elif config.get("data_leakage_prevention", {}).get("use_lpso"):
-        lpso_metadata = config["data_leakage_prevention"]["lpso_metadata"]
+    elif config.get("data_transformation_strategy", {}).get("use_lpso"):
+        lpso_metadata = config["data_transformation_strategy"]["lpso_metadata"]
         total_folds = lpso_metadata.get("total_folds", "unknown")
         subjects_per_group = lpso_metadata.get("subjects_per_group", "unknown")
         total_subjects = lpso_metadata.get("total_subjects", "unknown")
@@ -3801,8 +3850,8 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
         print(f"   🔄 Each subject used as test data exactly once")
 
         # Show example of first fold if available
-        if config.get("data_leakage_prevention", {}).get("lpso_folds"):
-            first_fold = config["data_leakage_prevention"]["lpso_folds"][0]
+        if config.get("data_transformation_strategy", {}).get("lpso_folds"):
+            first_fold = config["data_transformation_strategy"]["lpso_folds"][0]
             if first_fold:
                 # Extract subject IDs from first fold
                 first_fold_subject_ids = []

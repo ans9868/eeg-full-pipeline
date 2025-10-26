@@ -73,7 +73,7 @@ This document summarizes the comprehensive integration of `UnifiedConfigHandler`
 - Use property accessors:
   - `config_handler.data_leakage_strategy` instead of nested dict access
   - `config_handler.groups` for subject extraction
-  - `config_handler.get_data_leakage_prevention_config()` for legacy functions
+  - `config_handler.get_data_transformation_strategy_config()` for legacy functions
 
 **Benefits:**
 - Cleaner split management logic

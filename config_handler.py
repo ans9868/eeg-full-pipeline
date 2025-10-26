@@ -120,7 +120,7 @@ class UnifiedConfigHandler:
             self.featureCreationPart3_validate()
         if "feature_transformation" in self.raw_config:
             self.featureTransformationsPart4_validate()
-        if "data_leakage_prevention" in self.raw_config:
+        if "data_transformation_strategy" in self.raw_config:
             self.dataLeakagePreventionPart5_validate()
         if "pyspark" in self.raw_config:
             self.deploymentMethodPart6_validate()
@@ -508,14 +508,14 @@ class UnifiedConfigHandler:
 
     def dataLeakagePreventionPart5_validate(self) -> None:
         """Validate data leakage prevention configuration (dataLeakagePreventionPart5)."""
-        data_leakage_config = self.raw_config.get("data_leakage_prevention", {})
+        data_leakage_config = self.raw_config.get("data_transformation_strategy", {})
 
         if not data_leakage_config:
             return  # Optional section
 
         # Check required field
         if "strategy" not in data_leakage_config:
-            raise ValueError("Missing required data_leakage_prevention field: strategy")
+            raise ValueError("Missing required data_transformation_strategy field: strategy")
 
         strategy = data_leakage_config["strategy"]
         valid_strategies = [
@@ -1218,6 +1218,21 @@ class UnifiedConfigHandler:
                         converted_params[param_name] = int(param_value)
                     elif param_name in ['learning_rate', 'subsample', 'colsample_bytree', 'gamma']:
                         converted_params[param_name] = float(param_value)
+                    elif param_name in ['max_features']:
+                        # Handle max_features which can be string, int, float, or None
+                        if param_value is None or str(param_value).lower() == 'none':
+                            converted_params[param_name] = None
+                        elif str(param_value) in ['sqrt', 'log2']:
+                            converted_params[param_name] = param_value  # Keep as string
+                        else:
+                            # Try to convert to int first, then float
+                            try:
+                                if str(param_value).replace('.', '').isdigit() and '.' not in str(param_value):
+                                    converted_params[param_name] = int(param_value)
+                                else:
+                                    converted_params[param_name] = float(param_value)
+                            except (ValueError, TypeError):
+                                converted_params[param_name] = param_value
                     else:
                         converted_params[param_name] = param_value
                 
@@ -1228,13 +1243,20 @@ class UnifiedConfigHandler:
                         else:
                             converted_params[param_name] = int(param_value)
                     elif param_name in ['max_features']:
-                        # Handle max_features which can be string, float, or None
+                        # Handle max_features which can be string, int, float, or None
                         if param_value is None or str(param_value).lower() == 'none':
                             converted_params[param_name] = None
                         elif str(param_value) in ['sqrt', 'log2']:
                             converted_params[param_name] = param_value  # Keep as string
                         else:
-                            converted_params[param_name] = float(param_value)
+                            # Try to convert to int first, then float
+                            try:
+                                if str(param_value).replace('.', '').isdigit() and '.' not in str(param_value):
+                                    converted_params[param_name] = int(param_value)
+                                else:
+                                    converted_params[param_name] = float(param_value)
+                            except (ValueError, TypeError):
+                                converted_params[param_name] = param_value
                     else:
                         converted_params[param_name] = param_value
                 
@@ -1369,6 +1391,20 @@ class UnifiedConfigHandler:
                     raise ValueError(
                         f"Ax hyperparameter '{param_name}' 'values' must be a non-empty list"
                     )
+                
+                # 🔧 FIX: Handle mixed types in max_features for Random Forest and XGBoost
+                if param_name == "max_features" and model_name in ["Random Forest", "XGBoost"]:
+                    # Check if we have mixed types (strings and numbers)
+                    has_strings = any(isinstance(v, str) for v in values)
+                    has_numbers = any(isinstance(v, (int, float)) for v in values)
+                    
+                    if has_strings and has_numbers:
+                        print(f"   ⚠️  WARNING: max_features has mixed types (strings and numbers)")
+                        print(f"      Ax Search requires consistent types in choice parameters")
+                        print(f"      Consider using separate parameters or consistent types")
+                        print(f"      Current values: {values}")
+                        # For now, we'll allow it but warn the user
+                        # In the future, we could split into separate parameters
                 
                 # 🔧 FIX: Convert MLP hidden_layer_sizes in choice values
                 if model_name == "MLP (Neural Network)" and param_name == "hidden_layer_sizes":
@@ -1603,7 +1639,7 @@ class UnifiedConfigHandler:
         
         # Add ML-specific sections only for ML experiments (not Analysis)
         if experiment_type.startswith("ML "):
-            sections_to_validate.append("data_leakage_prevention")
+            sections_to_validate.append("data_transformation_strategy")
             sections_to_validate.append("ray")
         
         # Add SLURM section if using Singularity with Slurm
@@ -1932,7 +1968,7 @@ class UnifiedConfigHandler:
     @property
     def data_leakage_strategy(self) -> str:
         """Get data leakage prevention strategy."""
-        return self.raw_config.get("data_leakage_prevention", {}).get(
+        return self.raw_config.get("data_transformation_strategy", {}).get(
             "strategy",
             "Transform all data together (intra subject split) (no split - fastest, and potential data leakage)",
         )
@@ -1940,38 +1976,38 @@ class UnifiedConfigHandler:
     @property
     def uses_lpso(self) -> bool:
         """Check if LPSO cross-validation is being used."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         strategy = dlp_config.get("strategy", "")
         return "LPSO" in strategy or dlp_config.get("use_lpso", False)
 
     @property
     def lpso_folds(self) -> Optional[List[List[str]]]:
         """Get LPSO folds if available."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         return dlp_config.get("lpso_folds")
 
     @property
     def test_subjects(self) -> Optional[List[str]]:
         """Get test subjects if available."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         return dlp_config.get("test_subjects_paths")
 
     @property
     def individual_lpso(self) -> bool:
         """Get individual_lpso setting."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         return dlp_config.get("individual_lpso", False)
 
     @property
     def leaky_lpso(self) -> bool:
         """Get leaky_lpso setting (data leakage experiment)."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         return dlp_config.get("leaky_lpso", False)
 
     @property
     def intra_test_train_split_train_ratio(self) -> float:
         """Get intra-test-train split train ratio."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         intra_split_config = dlp_config.get("intra_test_train_split", {})
         return intra_split_config.get("train_ratio")
 
@@ -1983,14 +2019,14 @@ class UnifiedConfigHandler:
     @property
     def intra_test_train_split_seed(self) -> int:
         """Get intra-test-train split random seed."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         intra_split_config = dlp_config.get("intra_test_train_split", {})
         return intra_split_config.get("random_seed", self.global_random_seed)
 
     @property
     def intra_test_train_split_method(self) -> str:
         """Get intra-test-train split method."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         intra_split_config = dlp_config.get("intra_test_train_split", {})
         return intra_split_config.get("split_method", "random")
 
@@ -1998,7 +2034,7 @@ class UnifiedConfigHandler:
     @property
     def within_subject_train_ratio(self) -> float:
         """Get within-subject train ratio (deprecated - use intra_test_train_split_train_ratio)."""
-        dlp_config = self.raw_config.get("data_leakage_prevention", {})
+        dlp_config = self.raw_config.get("data_transformation_strategy", {})
         # Try new unified config first
         intra_split_config = dlp_config.get("intra_test_train_split", {})
         if intra_split_config:
@@ -2034,8 +2070,16 @@ class UnifiedConfigHandler:
     def shuffle_transformed_data(self) -> bool:
         """Get shuffle_transformed_data setting."""
         return (
-            self.raw_config.get("data_leakage_prevention", {}).get("shuffle_transformed_data", "No")
+            self.raw_config.get("data_transformation_strategy", {}).get("shuffle_transformed_data", "No")
             == "Yes"
+        )
+    
+    @property
+    def train_tune_test_mode(self) -> bool:
+        """Check if train-tune-test mode is enabled."""
+        return (
+            self.raw_config.get("data_transformation_strategy", {})
+            .get("train_tune_test_mode", "No") == "Yes"
         )
     
     # Common Ray Properties
@@ -2353,7 +2397,7 @@ class UnifiedConfigHandler:
     @property
     def transformed_keys(self) -> List[str]:
         """Get transformed config keys for hash validation."""
-        return ["feature_transformation", "feature_extraction", "data_leakage_prevention"]
+        return ["feature_transformation", "feature_extraction", "data_transformation_strategy"]
 
     # ========================================
     # SECTION ACCESSORS
@@ -2383,9 +2427,9 @@ class UnifiedConfigHandler:
         """Get feature transformation configuration."""
         return self.raw_config.get("feature_transformation", {})
 
-    def get_data_leakage_prevention_config(self) -> Dict[str, Any]:
+    def get_data_transformation_strategy_config(self) -> Dict[str, Any]:
         """Get data leakage prevention configuration."""
-        return self.raw_config.get("data_leakage_prevention", {})
+        return self.raw_config.get("data_transformation_strategy", {})
 
     def get_pyspark_config(self) -> Dict[str, Any]:
         """Get PySpark configuration."""
