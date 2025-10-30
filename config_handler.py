@@ -1482,10 +1482,10 @@ class UnifiedConfigHandler:
         
         if utilization_percent > 95:
             print(f"⚠️  WARNING: Very high resource utilization ({utilization_percent:.1f}%)")
-            print("   💡 Consider reducing cpus_per_model_task or adding more global CPUs")
+            print("   💡 Consider reducing max_concurrent_trials or adding more global CPUs")
         elif utilization_percent < 50:
             print(f"💡 INFO: Low resource utilization ({utilization_percent:.1f}%)")
-            print("   💡 You could increase cpus_per_model_task for better performance")
+            print("   💡 You could increase max_concurrent_trials for better performance")
         else:
             print(f"✅ Good resource utilization ({utilization_percent:.1f}%)")
         
