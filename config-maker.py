@@ -86,58 +86,8 @@ def validate_integer_input(prompt: str, default: str = "", min_value: int = 1) -
 
 
 
-def validate_ray_resource_constraints(
-    num_cpus: int, 
-    cpus_per_model_task: int, 
-    max_concurrent_trials: int,
-    num_models: int
-) -> Tuple[bool, str]:
-    """
-    Validate Ray resource constraints using building/office analogies.
-    Returns: (is_valid, message)
-    """
-    # Rule 1: cpus_per_model_task must be >= 2
-    if cpus_per_model_task < 2:
-        return False, "❌ ERROR: cpus_per_model_task must be ≥ 2 (need room for trials)"
-    
-    # Rule 2: max_concurrent_trials must be < cpus_per_model_task
-    if max_concurrent_trials >= cpus_per_model_task:
-        return False, f"❌ ERROR: max_concurrent_trials ({max_concurrent_trials}) must be < cpus_per_model_task ({cpus_per_model_task}) - need 1 CPU for coordination"
-    
-    # # Rule 3: Total strategy resources must not exceed global resources
-    total_strategy_cpus = cpus_per_model_task * num_models
-    # if total_strategy_cpus > num_cpus:
-    #     return False, f"❌ ERROR: Total strategy CPUs ({total_strategy_cpus}) exceeds global resources ({num_cpus}). Reduce cpus_per_model_task or num_models."
-    
-    # Calculate utilization
-    utilization = (total_strategy_cpus / num_cpus) * 100
-    
-    if utilization > 95:
-        return True, f"⚠️  WARNING: High resource utilization ({utilization:.0f}%). Consider reducing cpus_per_model_task or adding more global CPUs."
-    elif utilization < 50:
-        return True, f"💡 SUGGESTION: Low resource utilization ({utilization:.0f}%). You could increase cpus_per_model_task for better performance."
-    else:
-        return True, f"✅ Good resource utilization ({utilization:.0f}%)"
-
-
-def calculate_resource_utilization(
-    num_cpus: int,
-    cpus_per_model_task: int, 
-    num_models: int
-) -> Dict[str, Any]:
-    """
-    Calculate and return resource utilization metrics.
-    """
-    total_strategy_cpus = cpus_per_model_task * num_models
-    utilization_percent = (total_strategy_cpus / num_cpus) * 100
-    
-    return {
-        "total_strategy_cpus": total_strategy_cpus,
-        "global_cpus": num_cpus,
-        "utilization_percent": utilization_percent,
-        "remaining_cpus": num_cpus - total_strategy_cpus,
-        "efficiency_rating": "High" if 70 <= utilization_percent <= 90 else "Low" if utilization_percent < 50 else "Very High" if utilization_percent > 95 else "Good"
-    }
+# REMOVED: Two-level parallelism validation functions
+# The system now uses single-level parallelism where Ray handles resource allocation automatically
 
 
 def metadataPart0() -> Tuple[Dict[str, Any], str]:
@@ -2096,49 +2046,29 @@ def rayConfigurationPart7(project_config: Dict[str, Any]) -> Dict[str, Any]:
     common_config = rayConfigurationPart7_Common(project_config, strategies_list)
     config["ray"].update(common_config)
     
-    # Final resource validation and summary
+    # Final configuration summary
     if "resources" in common_config and "num_cpus" in common_config["resources"]:
         print("\n" + "=" * 60)
-        print("📊 FINAL RESOURCE UTILIZATION SUMMARY")
+        print("📊 FINAL RAY CONFIGURATION SUMMARY")
         print("=" * 60)
         
         global_cpus = common_config["resources"]["num_cpus"]
-        total_strategy_cpus = 0
-        strategy_details = []
         
-        # Calculate total strategy resources
+        print(f"🏢 Global Ray Cluster: {global_cpus} CPUs")
+        print(f"📊 Selected Strategies:")
+        
         if use_grid_search and "grid_search" in config["ray"]:
-            grid_cpus = config["ray"]["grid_search"].get("cpus_per_model_task", 0)
             grid_models = len(config["ray"]["grid_search"].get("models", []))
-            grid_total = grid_cpus * grid_models
-            total_strategy_cpus += grid_total
-            strategy_details.append(f"Grid Search: {grid_models} models × {grid_cpus} CPUs = {grid_total} CPUs")
+            grid_concurrent = config["ray"]["grid_search"].get("max_concurrent_trials", 0)
+            print(f"   🔍 Grid Search: {grid_models} models, {grid_concurrent} trials in parallel")
         
         if use_ax and "ax" in config["ray"]:
-            ax_cpus = config["ray"]["ax"].get("cpus_per_model_task", 0)
             ax_models = len(config["ray"]["ax"].get("models", []))
-            ax_total = ax_cpus * ax_models
-            total_strategy_cpus += ax_total
-            strategy_details.append(f"Ax Search: {ax_models} models × {ax_cpus} CPUs = {ax_total} CPUs")
+            ax_concurrent = config["ray"]["ax"].get("max_concurrent_trials", 0)
+            print(f"   🎯 Ax Search: {ax_models} models, {ax_concurrent} trials in parallel")
         
-        # Show utilization summary
-        utilization_percent = (total_strategy_cpus / global_cpus) * 100 if global_cpus > 0 else 0
-        
-        print(f"🏢 Global Building Capacity: {global_cpus} CPUs")
-        print(f"📊 Strategy Resource Usage:")
-        for detail in strategy_details:
-            print(f"   {detail}")
-        print(f"📈 Total Strategy CPUs: {total_strategy_cpus}")
-        print(f"📊 Utilization: {utilization_percent:.1f}%")
-        print(f"🔄 Remaining CPUs: {global_cpus - total_strategy_cpus}")
-        
-        # Efficiency rating
-        if utilization_percent > 95:
-            print("⚠️  WARNING: Very high resource utilization - consider reducing cpus_per_model_task")
-        elif utilization_percent < 50:
-            print("💡 SUGGESTION: Low resource utilization - you could increase cpus_per_model_task for better performance")
-        else:
-            print("✅ Good resource utilization")
+        print(f"\n💡 Single-level parallelism: Ray automatically manages resources")
+        print(f"✅ All trials run in parallel up to max_concurrent_trials limit")
         
         print("=" * 60)
     
@@ -2200,49 +2130,20 @@ def rayConfigurationPart7_GridSearch(project_config: Dict[str, Any]) -> Dict[str
                     model
                 )
 
-    # 7.2.3 CPU Resource Configuration for Grid Search
-    print("\n[7.2.3] Grid Search CPU Resource Configuration")
-    print("   🏢 Office Floor Analogy:")
-    print("   📊 cpus_per_model_task = Office floor budget for ONE model's entire tuning job")
-    print("   👷 max_concurrent_trials = Workers at desks (parallel trials) INSIDE one model job")
-    print("   ⚠️  Rules:")
-    print("     - cpus_per_model_task must be ≥ 2 (need room for trials)")
-    print("     - max_concurrent_trials must be < cpus_per_model_task (coordination CPU)")
-    print("     - Total strategy CPUs ≤ Global building capacity")
+    # 7.2.3 Concurrency Configuration for Grid Search
+    print("\n[7.2.3] Grid Search Concurrency Configuration")
+    print("   📊 Single-level parallelism: All trials run in parallel")
+    print("   💡 Ray automatically handles resource allocation")
+    print("   💡 max_concurrent_trials = How many trials run at the same time")
     print()
 
-    # Get office floor budget per model
-    grid_config["cpus_per_model_task"] = validate_integer_input(
-        "7.2.3.1 Enter office floor budget per model task for Grid Search (e.g., 4):",
+    grid_config["max_concurrent_trials"] = validate_integer_input(
+        "7.2.3.1 Enter max concurrent trials for Grid Search (e.g., 4):",
         default="4",
-        min_value=2
+        min_value=1
     )
 
-    # Get workers at desks with validation
-    while True:
-        grid_config["max_concurrent_trials"] = validate_integer_input(
-            "7.2.3.2 Enter workers at desks (max concurrent trials) for Grid Search:",
-            default=str(grid_config["cpus_per_model_task"] - 1),
-            min_value=1
-        )
-        
-        # Validate constraints
-        num_models = len(selected_models) if selected_models else 1
-        is_valid, message = validate_ray_resource_constraints(
-            num_cpus=8,  # Will be updated with actual global resources later
-            cpus_per_model_task=grid_config["cpus_per_model_task"],
-            max_concurrent_trials=grid_config["max_concurrent_trials"],
-            num_models=num_models
-        )
-        
-        print(f"   {message}")
-        
-        if not is_valid and "ERROR" in message:
-            continue
-        else:
-            break
-
-    print(f"   ✅ Grid Search Office: {grid_config['cpus_per_model_task']} CPUs per model, {grid_config['max_concurrent_trials']} workers at desks")
+    print(f"   ✅ Grid Search: {grid_config['max_concurrent_trials']} trials in parallel")
 
     grid_config["cv_folds"] = validate_integer_input(
         "7.2.4 Enter number of cross-validation folds for Grid Search:", default="5"
@@ -2320,46 +2221,20 @@ def rayConfigurationPart7_Ax(project_config: Dict[str, Any]) -> Dict[str, Any]:
             ax_config["model_configs"][model]["num_samples"] = model_trials
             print(f"   ✅ {model}: {model_trials} trials")
 
-    # 7.3.3 CPU Resource Configuration for Ax
-    print("\n[7.3.3] Ax CPU Resource Configuration")
-    print("   🏢 Office Floor Analogy:")
-    print("   📊 cpus_per_model_task = Office floor budget for ONE model's entire tuning job")
-    print("   👷 max_concurrent_trials = Workers at desks (parallel trials) INSIDE one model job")
-    print("   ⚠️  Rules:")
-    print("     - cpus_per_model_task must be ≥ 2 (need room for trials)")
-    print("     - max_concurrent_trials must be < cpus_per_model_task (coordination CPU)")
-    print("     - Total strategy CPUs ≤ Global building capacity")
+    # 7.3.3 Concurrency Configuration for Ax
+    print("\n[7.3.3] Ax Concurrency Configuration")
+    print("   📊 Single-level parallelism: All trials run in parallel")
+    print("   💡 Ray automatically handles resource allocation")
+    print("   💡 max_concurrent_trials = How many trials run at the same time")
     print("   🎯 Ax Limitation: max_concurrent_trials should be ≤ 3 for optimal Bayesian optimization")
     print()
 
-    # Get office floor budget per model
-    ax_config["cpus_per_model_task"] = validate_integer_input(
-        "7.3.3.1 Enter office floor budget per model task for Ax (e.g., 4):",
-        default="4",
-        min_value=2
-    )
-
-    # Get workers at desks with validation
     while True:
         ax_config["max_concurrent_trials"] = validate_integer_input(
-            "7.3.3.2 Enter workers at desks (max concurrent trials) for Ax (recommended: 2-3):",
+            "7.3.3.1 Enter max concurrent trials for Ax (recommended: 2-3):",
             default="3",
             min_value=1
         )
-        
-        # Validate constraints
-        num_models = len(selected_models) if selected_models else 1
-        is_valid, message = validate_ray_resource_constraints(
-            num_cpus=8,  # Will be updated with actual global resources later
-            cpus_per_model_task=ax_config["cpus_per_model_task"],
-            max_concurrent_trials=ax_config["max_concurrent_trials"],
-            num_models=num_models
-        )
-        
-        print(f"   {message}")
-        
-        if not is_valid and "ERROR" in message:
-            continue
         
         # Ax-specific warning for high concurrent trials
         if ax_config["max_concurrent_trials"] > 3:
@@ -2374,7 +2249,7 @@ def rayConfigurationPart7_Ax(project_config: Dict[str, Any]) -> Dict[str, Any]:
         
         break
 
-    print(f"   ✅ Ax Office: {ax_config['cpus_per_model_task']} CPUs per model, {ax_config['max_concurrent_trials']} workers at desks")
+    print(f"   ✅ Ax: {ax_config['max_concurrent_trials']} trials in parallel")
 
     ax_config["cv_folds"] = validate_integer_input(
         "7.3.4 Enter number of cross-validation folds for Ax:", default="5"

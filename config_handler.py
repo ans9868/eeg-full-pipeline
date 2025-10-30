@@ -2177,11 +2177,7 @@ class UnifiedConfigHandler:
     # Note: ax_total_trials is now per-model, access via ax_model_configs[model_name]["num_samples"]
     # Note: Ax constraints commented out for now (can be added later)
 
-    # Per-Strategy CPU Resource Properties
-    @property
-    def grid_search_cpus_per_model_task(self) -> int:
-        """Get CPU budget per model task for Grid Search."""
-        return int(self.grid_search_config.get("cpus_per_model_task", 4))
+    # Per-Strategy Concurrency Properties
 
     @property
     def grid_search_max_concurrent_trials(self) -> int:
@@ -2194,10 +2190,6 @@ class UnifiedConfigHandler:
             )
         )
 
-    @property
-    def ax_cpus_per_model_task(self) -> int:
-        """Get CPU budget per model task for Ax."""
-        return int(self.ax_config.get("cpus_per_model_task", 4))
 
     @property
     def ax_max_concurrent_trials(self) -> int:
@@ -2331,17 +2323,6 @@ class UnifiedConfigHandler:
         """Get total CPUs used by all strategies combined."""
         total_cpus = 0
         
-        # Grid Search CPUs
-        if self.uses_grid_search:
-            grid_models = len(self.grid_search_models)
-            grid_cpus_per_model = self.grid_search_cpus_per_model_task
-            total_cpus += grid_models * grid_cpus_per_model
-        
-        # Ax Search CPUs
-        if self.uses_ax:
-            ax_models = len(self.ax_models)
-            ax_cpus_per_model = self.ax_cpus_per_model_task
-            total_cpus += ax_models * ax_cpus_per_model
         
         return total_cpus
     
@@ -2559,16 +2540,6 @@ class UnifiedConfigHandler:
                 print(f"   🔄 Remaining CPUs: {self.ray_remaining_cpus}")
                 print(f"   ⭐ Efficiency Rating: {self.ray_resource_efficiency_rating}")
                 
-                # Show per-strategy details
-                if self.uses_grid_search:
-                    grid_models = len(self.grid_search_models)
-                    grid_cpus = self.grid_search_cpus_per_model_task
-                    print(f"   🔍 Grid Search: {grid_models} models × {grid_cpus} CPUs = {grid_models * grid_cpus} CPUs")
-                
-                if self.uses_ax:
-                    ax_models = len(self.ax_models)
-                    ax_cpus = self.ax_cpus_per_model_task
-                    print(f"   🎯 Ax Search: {ax_models} models × {ax_cpus} CPUs = {ax_models * ax_cpus} CPUs")
         
         print(f"✅ Configuration is valid and ready to use!")
 
