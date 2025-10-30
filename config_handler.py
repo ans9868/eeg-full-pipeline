@@ -1300,6 +1300,20 @@ class UnifiedConfigHandler:
                     else:
                         converted_params[param_name] = param_value
                 
+                elif model_name == 'Logistic Regression':
+                    if param_name == 'C':
+                        converted_params[param_name] = float(param_value)
+                    elif param_name == 'penalty':
+                        # Handle penalty which can be 'l1', 'l2', 'elasticnet', or None
+                        if str(param_value).lower() == 'none':
+                            converted_params[param_name] = None
+                        else:
+                            converted_params[param_name] = param_value  # Keep as string
+                    elif param_name == 'max_iter':
+                        converted_params[param_name] = int(param_value)
+                    else:
+                        converted_params[param_name] = param_value
+                
                 else:
                     # For other models, try to convert common numeric parameters
                     if param_name in ['n_estimators', 'max_depth', 'min_samples_split', 'min_samples_leaf', 
