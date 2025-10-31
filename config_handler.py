@@ -470,7 +470,7 @@ class UnifiedConfigHandler:
 
                 # Validate anova_selection_mode
                 anova_selection_mode = feature_transformation_config["anova_selection_mode"]
-                valid_selection_modes = ["numTopFeatures", "percentile"]
+                valid_selection_modes = ["numTopFeatures", "percentile", "fpr", "fdr", "fwe"]
                 if anova_selection_mode not in valid_selection_modes:
                     raise ValueError(f"anova_selection_mode must be one of: {valid_selection_modes}")
 
@@ -479,9 +479,9 @@ class UnifiedConfigHandler:
                 if anova_selection_mode == "numTopFeatures":
                     if not isinstance(anova_selection_threshold, int) or anova_selection_threshold <= 0:
                         raise ValueError("anova_selection_threshold must be a positive integer for numTopFeatures mode")
-                elif anova_selection_mode == "percentile":
+                elif anova_selection_mode in ["percentile", "fpr", "fdr", "fwe"]:
                     if not isinstance(anova_selection_threshold, (int, float)) or anova_selection_threshold <= 0 or anova_selection_threshold > 1:
-                        raise ValueError("anova_selection_threshold must be a float between 0 and 1 for percentile mode")
+                        raise ValueError(f"anova_selection_threshold must be a float between 0 and 1 for {anova_selection_mode} mode")
 
             # Cohen test configuration
             if "Cohen test (manual count)" in transformations:
