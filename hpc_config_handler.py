@@ -484,27 +484,27 @@ class UnifiedConfigHandler:
                         raise ValueError(f"anova_selection_threshold must be a float between 0 and 1 for {anova_selection_mode} mode")
 
             # Cohen test configuration
-            # if "Cohen test (manual count)" in transformations:
-            #     if "cohen_components" not in feature_transformation_config:
-            #         raise ValueError(
-            #             "Missing cohen_components for Cohen test (manual count) transformation"
-            #         )
-            #     cohen_components = feature_transformation_config["cohen_components"]
-            #     if not isinstance(cohen_components, int) or cohen_components <= 0:
-            #         raise ValueError("cohen_components must be a positive integer")
+            if "Cohen test (manual count)" in transformations:
+                if "cohen_components" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing cohen_components for Cohen test (manual count) transformation"
+                    )
+                cohen_components = feature_transformation_config["cohen_components"]
+                if not isinstance(cohen_components, int) or cohen_components <= 0:
+                    raise ValueError("cohen_components must be a positive integer")
 
-            # if "Cohen test (limit to % for example 0.05)" in transformations:
-            #     if "cohen_limit" not in feature_transformation_config:
-            #         raise ValueError(
-            #             "Missing cohen_limit for Cohen test (limit to %) transformation"
-            #         )
-            #     cohen_limit = feature_transformation_config["cohen_limit"]
-            #     if (
-            #         not isinstance(cohen_limit, (int, float))
-            #         or cohen_limit <= 0
-            #         or cohen_limit >= 1
-            #     ):
-            #         raise ValueError("cohen_limit must be a number between 0 and 1")
+            if "Cohen test (limit to % for example 0.05)" in transformations:
+                if "cohen_limit" not in feature_transformation_config:
+                    raise ValueError(
+                        "Missing cohen_limit for Cohen test (limit to %) transformation"
+                    )
+                cohen_limit = feature_transformation_config["cohen_limit"]
+                if (
+                    not isinstance(cohen_limit, (int, float))
+                    or cohen_limit <= 0
+                    or cohen_limit >= 1
+                ):
+                    raise ValueError("cohen_limit must be a number between 0 and 1")
 
     def dataLeakagePreventionPart5_validate(self) -> None:
         """Validate data leakage prevention configuration (dataLeakagePreventionPart5)."""
