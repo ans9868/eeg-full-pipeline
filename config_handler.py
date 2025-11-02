@@ -1844,6 +1844,11 @@ class UnifiedConfigHandler:
         return self.raw_config.get("project", {}).get("expose_ports", "No") == "Yes"
 
     @property
+    def recovery_mode(self) -> bool:
+        """Get recovery mode setting."""
+        return self.raw_config.get("project", {}).get("recovery_mode", False)
+
+    @property
     def base_output_dir(self) -> str:
         """Get base output directory."""
         return self.raw_config.get("project", {}).get("output_dir", "./data")
@@ -2052,8 +2057,15 @@ class UnifiedConfigHandler:
     def intra_test_train_split_train_ratio(self) -> float:
         """Get intra-test-train split train ratio."""
         dlp_config = self.raw_config.get("data_transformation_strategy", {})
+        # Try new unified config first
         intra_split_config = dlp_config.get("intra_test_train_split", {})
-        return intra_split_config.get("train_ratio")
+        if intra_split_config:
+            return intra_split_config.get("train_ratio")
+        # Fallback to deprecated config for backward compatibility
+        within_subject_config = dlp_config.get("within_subject_split", {})
+        if within_subject_config:
+            return within_subject_config.get("train_ratio")
+        return None
 
     @property
     def intra_test_train_split_test_ratio(self) -> float:
@@ -2064,15 +2076,29 @@ class UnifiedConfigHandler:
     def intra_test_train_split_seed(self) -> int:
         """Get intra-test-train split random seed."""
         dlp_config = self.raw_config.get("data_transformation_strategy", {})
+        # Try new unified config first
         intra_split_config = dlp_config.get("intra_test_train_split", {})
-        return intra_split_config.get("random_seed", self.global_random_seed)
+        if intra_split_config:
+            return intra_split_config.get("random_seed", self.global_random_seed)
+        # Fallback to deprecated config for backward compatibility
+        within_subject_config = dlp_config.get("within_subject_split", {})
+        if within_subject_config:
+            return within_subject_config.get("random_seed", self.global_random_seed)
+        return self.global_random_seed
 
     @property
     def intra_test_train_split_method(self) -> str:
         """Get intra-test-train split method."""
         dlp_config = self.raw_config.get("data_transformation_strategy", {})
+        # Try new unified config first
         intra_split_config = dlp_config.get("intra_test_train_split", {})
-        return intra_split_config.get("split_method", "random")
+        if intra_split_config:
+            return intra_split_config.get("split_method", "random")
+        # Fallback to deprecated config for backward compatibility
+        within_subject_config = dlp_config.get("within_subject_split", {})
+        if within_subject_config:
+            return within_subject_config.get("split_method", "random")
+        return "random"
 
     # Deprecated properties for backward compatibility
     @property
