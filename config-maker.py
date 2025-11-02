@@ -1273,7 +1273,6 @@ def dataLeakagePreventionPart5(
                 f"Default ({default_subjects} subjects - 1 per group per fold)",
                 f"Custom number of subjects",
                 "Leave-One-Subject-Out (Individual) - each subject as test",
-                "Random LPSO - Generate random folds with specified sizes",
             ],
         ).ask()
 
@@ -1329,126 +1328,6 @@ def dataLeakagePreventionPart5(
 
             config["data_transformation_strategy"]["lpso_subjects_per_group"] = count
             config["data_transformation_strategy"]["individual_lpso"] = True
-
-        elif "Random LPSO" in lpso_choice:
-            # Random LPSO - Generate random folds with specified sizes
-            print(f"   ✅ Using Random LPSO: Generate random folds with specified sizes")
-            print(f"   📊 This will generate random folds for variance comparison")
-            
-            # Ask for number of folds per size
-            num_folds = validate_integer_input(
-                "5.2.1.1 Enter number of random folds to generate per size (e.g., 100):",
-                default="30",
-                min_value=1
-            )
-            
-            # Ask for fold sizes (multiple sizes for comparison)
-            while True:
-                fold_sizes_input = questionary.text(
-                    "5.2.1.2 Enter fold sizes (comma-separated, e.g., '2, 6' for size 2 and size 6):"
-                ).ask()
-                
-                try:
-                    # Parse fold sizes
-                    fold_sizes = [int(s.strip()) for s in fold_sizes_input.split(",") if s.strip()]
-                    
-                    if not fold_sizes:
-                        print("[ERROR] Please enter at least one fold size.")
-                        continue
-                    
-                    # Validate fold sizes
-                    total_subjects = sum(len(paths) for paths in data_input_groups.values())
-                    valid_sizes = True
-                    
-                    for size in fold_sizes:
-                        if size <= 0:
-                            print(f"❌ ERROR: Invalid fold size: {size}. Must be positive.")
-                            valid_sizes = False
-                            break
-                        if size >= total_subjects:
-                            print(f"❌ ERROR: Fold size {size} >= total subjects {total_subjects}")
-                            print(f"   Fold size must be less than total subjects to leave training data.")
-                            valid_sizes = False
-                            break
-                    
-                    if not valid_sizes:
-                        continue
-                    
-                    print(f"   ✅ Validated fold sizes: {fold_sizes}")
-                    break
-                    
-                except ValueError:
-                    print("[ERROR] Please enter comma-separated integers (e.g., '2, 6').")
-                    continue
-            
-            # Ask for group balancing strategy
-            balance_choice = questionary.select(
-                "5.2.1.3 Group balancing strategy:",
-                choices=[
-                    "Balanced - Ensure equal subjects per group in each fold",
-                    "Random - Random selection across all subjects (may be unbalanced)"
-                ]
-            ).ask()
-            balance_by_group = "Balanced" in balance_choice
-            
-            if balance_by_group:
-                print(f"   ✅ Using balanced group selection")
-                print(f"   💡 Each fold will have equal subjects from each group")
-            else:
-                print(f"   ✅ Using random selection across all subjects")
-                print(f"   💡 Folds may have unbalanced group representation")
-            
-            # Generate folds for each size and combine into flat structure
-            print(f"\n   🔄 Generating random folds...")
-            all_lpso_folds = []
-            
-            for fold_size in fold_sizes:
-                print(f"\n   📊 Generating {num_folds} folds of size {fold_size}...")
-                try:
-                    folds, metadata = generate_random_lpso_folds(
-                        data_input_groups,
-                        num_folds=num_folds,
-                        fold_size=fold_size,
-                        random_seed=project_config["random_seed"],
-                        balance_by_group=balance_by_group
-                    )
-                    
-                    # Add all folds to the list
-                    all_lpso_folds.extend(folds)
-                    
-                    print(f"   ✅ Generated {len(folds)} folds of size {fold_size}")
-                    if balance_by_group:
-                        print(f"   📊 {metadata.get('subjects_per_group_per_fold', 'N/A')} subjects per group per fold")
-                    
-                except ValueError as e:
-                    print(f"   ❌ ERROR generating folds of size {fold_size}: {e}")
-                    raise
-            
-            # Create combined metadata matching standard LPSO structure
-            total_subjects = sum(len(paths) for paths in data_input_groups.values())
-            combined_metadata = {
-                "total_folds": len(all_lpso_folds),
-                "total_subjects": total_subjects,
-                "groups": list(data_input_groups.keys()),
-                "num_groups": len(data_input_groups),
-                "fold_generation_method": "random_sampling",
-                "fold_sizes": fold_sizes,
-                "folds_per_size": num_folds,
-                "balance_by_group": balance_by_group,
-                "random_seed": project_config["random_seed"],
-            }
-            
-            # Store using standard LPSO structure
-            config["data_transformation_strategy"]["lpso_folds"] = all_lpso_folds
-            config["data_transformation_strategy"]["lpso_metadata"] = combined_metadata
-            config["data_transformation_strategy"]["use_lpso"] = True
-            # Add lpso_subjects_per_group for backward compatibility (use first fold size)
-            config["data_transformation_strategy"]["lpso_subjects_per_group"] = fold_sizes[0]
-            
-            print(f"\n   ✅ Random LPSO configuration completed!")
-            print(f"   📊 Generated {len(all_lpso_folds)} total folds")
-            print(f"   📊 Fold sizes: {', '.join(map(str, fold_sizes))} ({num_folds} folds per size)")
-            print(f"   🎲 Random sampling for variance comparison")
 
         else:
             # Ask for custom number of subjects per group
@@ -1517,85 +1396,80 @@ def dataLeakagePreventionPart5(
                 except ValueError:
                     print("[ERROR] Please enter a valid integer.")
 
-        # Skip systematic fold generation if Random LPSO was selected (folds already generated)
-        # Check if lpso_folds already exist (created by Random LPSO)
-        skip_systematic_folds = "lpso_folds" in config["data_transformation_strategy"]
-        
-        if not skip_systematic_folds:
-            # Check for uneven group sizes and ask for handling strategy
-            group_sizes = {
-                group_name: len(paths) for group_name, paths in data_input_groups.items()
-            }
-            min_group_size = min(group_sizes.values())
-            max_group_size = max(group_sizes.values())
+        # Check for uneven group sizes and ask for handling strategy
+        group_sizes = {
+            group_name: len(paths) for group_name, paths in data_input_groups.items()
+        }
+        min_group_size = min(group_sizes.values())
+        max_group_size = max(group_sizes.values())
 
-            if min_group_size != max_group_size:
-                print(f"   ⚠️  Uneven group sizes detected:")
-                for group_name, size in group_sizes.items():
-                    print(f"      📊 {group_name}: {size} subjects")
+        if min_group_size != max_group_size:
+            print(f"   ⚠️  Uneven group sizes detected:")
+            for group_name, size in group_sizes.items():
+                print(f"      📊 {group_name}: {size} subjects")
 
-                # Ask for uneven handling strategy
-                uneven_handling_choice = questionary.select(
-                    "5.2.3 How should we handle uneven group sizes?",
-                    choices=[
-                        "Cutoff - Stop when any group runs out of subjects",
-                        "Wrap-around - Reuse subjects from beginning when group runs out",
-                    ],
-                ).ask()
+            # Ask for uneven handling strategy
+            uneven_handling_choice = questionary.select(
+                "5.2.3 How should we handle uneven group sizes?",
+                choices=[
+                    "Cutoff - Stop when any group runs out of subjects",
+                    "Wrap-around - Reuse subjects from beginning when group runs out",
+                ],
+            ).ask()
 
-                if "Cutoff" in uneven_handling_choice:
-                    uneven_handling = "cutoff"
-                    print(
-                        f"   ✅ Using cutoff strategy: will stop when any group runs out of subjects"
-                    )
-                else:
-                    uneven_handling = "wrap_around"
-                    print(
-                        f"   ✅ Using wrap-around strategy: will reuse subjects when group runs out"
-                    )
-
-                config["data_transformation_strategy"]["uneven_handling"] = uneven_handling
-            else:
-                # All groups have the same size, use default
+            if "Cutoff" in uneven_handling_choice:
                 uneven_handling = "cutoff"
-                config["data_transformation_strategy"]["uneven_handling"] = uneven_handling
-
-            # Generate LPSO folds
-            print(f"   🔄 Generating LPSO folds...")
-            try:
-                # Check if individual LPSO is enabled
-                individual_lpso = config["data_transformation_strategy"].get(
-                    "individual_lpso", False
+                print(
+                    f"   ✅ Using cutoff strategy: will stop when any group runs out of subjects"
+                )
+            else:
+                uneven_handling = "wrap_around"
+                print(
+                    f"   ✅ Using wrap-around strategy: will reuse subjects when group runs out"
                 )
 
-                lpso_folds, fold_metadata = generate_lpso_folds(
-                    data_input_groups,
-                    count,
-                    individual_lpso=individual_lpso,
-                    uneven_handling=uneven_handling,
-                    # random_seed=42
-                )
+            config["data_transformation_strategy"]["uneven_handling"] = uneven_handling
+        else:
+            # All groups have the same size, use default
+            uneven_handling = "cutoff"
+            config["data_transformation_strategy"]["uneven_handling"] = uneven_handling
 
-                # Store the folds in config
-                config["data_transformation_strategy"]["lpso_folds"] = lpso_folds
-                config["data_transformation_strategy"]["lpso_metadata"] = fold_metadata
+        # Generate LPSO folds
+        print(f"   🔄 Generating LPSO folds...")
+        try:
+            # Check if individual LPSO is enabled
+            individual_lpso = config["data_transformation_strategy"].get(
+                "individual_lpso", False
+            )
 
-                print(f"   ✅ Generated {len(lpso_folds)} LPSO folds")
-                print(f"   📊 Each fold leaves out {count} subjects per group")
-                print(f"   🎯 Total unique test combinations: {len(lpso_folds)}")
+            lpso_folds, fold_metadata = generate_lpso_folds(
+                data_input_groups,
+                count,
+                individual_lpso=individual_lpso,
+                uneven_handling=uneven_handling,
+                # random_seed=42
+            )
 
-                # Show example of first few folds
-                if len(lpso_folds) > 0:
-                    print(f"   📋 Example fold 1: {len(lpso_folds[0])} subjects")
-                    if len(lpso_folds) > 1:
-                        print(f"   📋 Example fold 2: {len(lpso_folds[1])} subjects")
+            # Store the folds in config
+            config["data_transformation_strategy"]["lpso_folds"] = lpso_folds
+            config["data_transformation_strategy"]["lpso_metadata"] = fold_metadata
 
-            except ValueError as e:
-                print(f"❌ ERROR generating LPSO folds: {e}")
-                exit(1)
+            print(f"   ✅ Generated {len(lpso_folds)} LPSO folds")
+            print(f"   📊 Each fold leaves out {count} subjects per group")
+            print(f"   🎯 Total unique test combinations: {len(lpso_folds)}")
 
-            # Set LPSO flag
-            config["data_transformation_strategy"]["use_lpso"] = True
+            # Show example of first few folds
+            if len(lpso_folds) > 0:
+                print(f"   📋 Example fold 1: {len(lpso_folds[0])} subjects")
+                if len(lpso_folds) > 1:
+                    print(f"   📋 Example fold 2: {len(lpso_folds[1])} subjects")
+
+        except ValueError as e:
+            print(f"❌ ERROR generating LPSO folds: {e}")
+            exit(1)
+
+        # Set LPSO flag
+        config["data_transformation_strategy"]["use_lpso"] = True
         
         # Ask about leaky LPSO (data leakage experiment)
         print("\n⚠️  LEAKY LPSO OPTION (Data Leakage Experiment)")
@@ -3840,51 +3714,34 @@ def build_config(target: str) -> Tuple[Dict[str, Any], str]:
 
     # Show LPSO information if applicable
     elif config.get("data_transformation_strategy", {}).get("use_lpso"):
-        # Check if metadata exists (both standard and random LPSO use same structure now)
-        if "lpso_metadata" in config["data_transformation_strategy"]:
-            lpso_metadata = config["data_transformation_strategy"]["lpso_metadata"]
-            total_folds = lpso_metadata.get("total_folds", "unknown")
-            fold_generation_method = lpso_metadata.get("fold_generation_method", "unknown")
-            total_subjects = lpso_metadata.get("total_subjects", "unknown")
+        lpso_metadata = config["data_transformation_strategy"]["lpso_metadata"]
+        total_folds = lpso_metadata.get("total_folds", "unknown")
+        subjects_per_group = lpso_metadata.get("subjects_per_group", "unknown")
+        total_subjects = lpso_metadata.get("total_subjects", "unknown")
 
-            # Check if this is random LPSO (has fold_sizes in metadata)
-            if "fold_sizes" in lpso_metadata:
-                # Random LPSO
-                fold_sizes = lpso_metadata.get("fold_sizes", [])
-                folds_per_size = lpso_metadata.get("folds_per_size", "unknown")
-                balance_by_group = lpso_metadata.get("balance_by_group", False)
-                balance_str = "Balanced" if balance_by_group else "Random"
-                
-                print(f"🎯 Random LPSO Cross-Validation: {total_folds} folds")
-                print(f"   📊 Fold sizes: {', '.join(map(str, fold_sizes))} ({folds_per_size} folds per size)")
-                print(f"   📈 Total subjects: {total_subjects}")
-                print(f"   🎲 Random sampling ({balance_str}) for variance comparison")
-            else:
-                # Standard LPSO (systematic)
-                subjects_per_group = lpso_metadata.get("subjects_per_group", "unknown")
-                print(f"🎯 LPSO Cross-Validation: {total_folds} folds")
-                print(f"   📊 Leave out {subjects_per_group} subjects per group per fold")
-                print(f"   📈 Total subjects: {total_subjects}")
-                print(f"   🔄 Each subject used as test data exactly once")
+        print(f"🎯 LPSO Cross-Validation: {total_folds} folds")
+        print(f"   📊 Leave out {subjects_per_group} subjects per group per fold")
+        print(f"   📈 Total subjects: {total_subjects}")
+        print(f"   🔄 Each subject used as test data exactly once")
 
-            # Show example of first fold if available
-            if config.get("data_transformation_strategy", {}).get("lpso_folds"):
-                first_fold = config["data_transformation_strategy"]["lpso_folds"][0]
-                if first_fold:
-                    # Extract subject IDs from first fold
-                    first_fold_subject_ids = []
-                    for test_path in first_fold:
-                        path_parts = test_path.split("/")
-                        filename = path_parts[-1]
-                        subject_id = (
-                            filename.replace("_task-eyesclosed_eeg.set", "")
-                            .replace("_eeg.set", "")
-                            .replace(".set", "")
-                            .replace(".fif", "")
-                        )
-                        first_fold_subject_ids.append(subject_id)
+        # Show example of first fold if available
+        if config.get("data_transformation_strategy", {}).get("lpso_folds"):
+            first_fold = config["data_transformation_strategy"]["lpso_folds"][0]
+            if first_fold:
+                # Extract subject IDs from first fold
+                first_fold_subject_ids = []
+                for test_path in first_fold:
+                    path_parts = test_path.split("/")
+                    filename = path_parts[-1]
+                    subject_id = (
+                        filename.replace("_task-eyesclosed_eeg.set", "")
+                        .replace("_eeg.set", "")
+                        .replace(".set", "")
+                        .replace(".fif", "")
+                    )
+                    first_fold_subject_ids.append(subject_id)
 
-                    print(f"   📋 Example fold 1: {', '.join(first_fold_subject_ids)} ({len(first_fold)} subjects)")
+                print(f"   📋 Example fold 1: {', '.join(first_fold_subject_ids)}")
 
     print("=" * 60)
 
@@ -4213,120 +4070,6 @@ def generate_lpso_folds(
         }
 
         return all_folds, metadata
-
-
-def generate_random_lpso_folds(
-    groups: Dict[str, List[str]],
-    num_folds: int,
-    fold_size: int,
-    random_seed: int,
-    balance_by_group: bool = True,
-) -> Tuple[List[List[str]], Dict[str, Any]]:
-    """
-    Generate random LPSO folds with specified size for variance comparison.
-    
-    Args:
-        groups: Dictionary of group names to subject paths
-        num_folds: Number of random folds to generate
-        fold_size: Number of subjects per fold
-        random_seed: Random seed for reproducibility
-        balance_by_group: If True, ensure balanced group representation
-    
-    Returns:
-        Tuple of (list_of_test_subject_lists, metadata_dict)
-    """
-    random.seed(random_seed)
-    
-    # Collect all subjects
-    all_subjects = []
-    subjects_by_group = {}
-    for group_name, paths in groups.items():
-        subjects_by_group[group_name] = paths.copy()
-        all_subjects.extend(paths)
-    
-    total_subjects = len(all_subjects)
-    num_groups = len(groups)
-    
-    # Validate fold size
-    if balance_by_group:
-        # For balanced selection, fold_size must be divisible by num_groups
-        if fold_size % num_groups != 0:
-            raise ValueError(
-                f"Fold size {fold_size} not evenly divisible by {num_groups} groups "
-                f"for balanced selection. Valid sizes: {num_groups}, {num_groups*2}, {num_groups*3}, etc."
-            )
-        
-        subjects_per_group_per_fold = fold_size // num_groups
-        
-        # Validate each group has enough subjects
-        min_group_size = min(len(paths) for paths in groups.values())
-        if subjects_per_group_per_fold > min_group_size:
-            raise ValueError(
-                f"Not enough subjects: need {subjects_per_group_per_fold} per group, "
-                f"but smallest group has {min_group_size} subjects. "
-                f"Maximum fold size for balanced selection: {min_group_size * num_groups}"
-            )
-    else:
-        # For random selection, just check total subjects
-        if fold_size >= total_subjects:
-            raise ValueError(
-                f"Fold size {fold_size} >= total subjects {total_subjects}. "
-                f"Fold size must be less than total subjects to leave training data."
-            )
-    
-    # Generate random folds
-    all_folds = []
-    
-    for fold_idx in range(num_folds):
-        if balance_by_group:
-            # Balanced: sample equal number from each group
-            fold_subjects = []
-            for group_name, group_subjects in groups.items():
-                # Sample without replacement within each fold
-                if subjects_per_group_per_fold > len(group_subjects):
-                    # If not enough subjects in this group, take all available
-                    selected = group_subjects.copy()
-                    print(
-                        f"   ⚠️  Warning: Fold {fold_idx + 1}, Group {group_name}: "
-                        f"Only {len(group_subjects)} subjects available (needed {subjects_per_group_per_fold})"
-                    )
-                else:
-                    selected = random.sample(
-                        group_subjects, 
-                        subjects_per_group_per_fold
-                    )
-                fold_subjects.extend(selected)
-            
-            # If we couldn't get enough subjects, raise error
-            if len(fold_subjects) < fold_size:
-                raise ValueError(
-                    f"Could not generate fold {fold_idx + 1}: Only got {len(fold_subjects)} subjects "
-                    f"instead of {fold_size}"
-                )
-                
-        else:
-            # Random: sample from all subjects
-            fold_subjects = random.sample(all_subjects, fold_size)
-        
-        all_folds.append(fold_subjects)
-    
-    # Create metadata
-    metadata = {
-        "total_folds": num_folds,
-        "fold_size": fold_size,
-        "subjects_per_fold": fold_size,
-        "total_subjects": total_subjects,
-        "groups": list(groups.keys()),
-        "num_groups": num_groups,
-        "fold_generation_method": "random_sampling",
-        "balance_by_group": balance_by_group,
-        "random_seed": random_seed,
-    }
-    
-    if balance_by_group:
-        metadata["subjects_per_group_per_fold"] = subjects_per_group_per_fold
-    
-    return all_folds, metadata
 
 
 def select_test_subjects_automatically(
