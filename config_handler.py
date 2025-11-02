@@ -547,9 +547,9 @@ class UnifiedConfigHandler:
 
         # Validate additional fields based on strategy
         if "LPSO (Leave-P-Subjects-Out)" in strategy:
+            # Both standard and random LPSO now use the same structure: lpso_folds and lpso_metadata
             required_lpso_fields = [
                 "use_lpso",
-                "lpso_subjects_per_group",
                 "lpso_folds",
                 "lpso_metadata",
             ]
@@ -561,15 +561,38 @@ class UnifiedConfigHandler:
             if not isinstance(data_leakage_config["use_lpso"], bool):
                 raise ValueError("use_lpso must be a boolean")
 
-            if not isinstance(data_leakage_config["lpso_subjects_per_group"], int):
-                raise ValueError("lpso_subjects_per_group must be an integer")
-
             if not isinstance(data_leakage_config["lpso_folds"], list):
                 raise ValueError("lpso_folds must be a list")
 
             if not isinstance(data_leakage_config["lpso_metadata"], dict):
                 raise ValueError("lpso_metadata must be a dictionary")
             
+            # Get metadata and check generation method
+            lpso_metadata = data_leakage_config["lpso_metadata"]
+            fold_generation_method = lpso_metadata.get("fold_generation_method", "unknown")
+            
+            # Check if this is random LPSO or standard LPSO by checking for fold_sizes
+            is_random_lpso = "fold_sizes" in lpso_metadata
+            
+            if is_random_lpso:
+                # Random LPSO validation - check for required fields in metadata
+                required_random_fields = ["fold_sizes", "folds_per_size", "balance_by_group", "random_seed"]
+                for field in required_random_fields:
+                    if field not in lpso_metadata:
+                        raise ValueError(f"Missing '{field}' in lpso_metadata for Random LPSO")
+                
+                fold_sizes = lpso_metadata["fold_sizes"]
+                if not isinstance(fold_sizes, list) or not fold_sizes:
+                    raise ValueError("lpso_metadata.fold_sizes must be a non-empty list")
+            else:
+                # Standard LPSO validation - check for subjects_per_group
+                if "subjects_per_group" not in lpso_metadata:
+                    raise ValueError("Missing 'subjects_per_group' in lpso_metadata for standard LPSO")
+                
+                if not isinstance(lpso_metadata["subjects_per_group"], int):
+                    raise ValueError("lpso_metadata.subjects_per_group must be an integer")
+            
+            # Common validation for both types
             # Get data input groups to calculate total subjects
             groups = self.groups
 
@@ -589,9 +612,16 @@ class UnifiedConfigHandler:
                         f"Please ensure at least one subject remains for training."
                     )
 
-            print(
-                f"✅ LPSO configuration validation passed: {len(self.lpso_folds)} folds, {total_subjects} total subjects"
-            )
+            if is_random_lpso:
+                fold_sizes = lpso_metadata["fold_sizes"]
+                print(
+                    f"✅ Random LPSO configuration validation passed: {len(self.lpso_folds)} folds, "
+                    f"fold sizes {fold_sizes}, {total_subjects} total subjects"
+                )
+            else:
+                print(
+                    f"✅ LPSO configuration validation passed: {len(self.lpso_folds)} folds, {total_subjects} total subjects"
+                )
             
             # Validate leaky LPSO configuration if present
             if "leaky_lpso" in data_leakage_config:
