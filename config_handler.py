@@ -120,12 +120,19 @@ class UnifiedConfigHandler:
             self.featureCreationPart3_validate()
         if "feature_transformation" in self.raw_config:
             self.featureTransformationsPart4_validate()
-        if "data_transformation_strategy" in self.raw_config:
+        # Only validate data leakage prevention for ML experiments
+        experiment_type = self.raw_config.get("project", {}).get("experiment_type", "")
+        if "data_transformation_strategy" in self.raw_config and experiment_type.startswith("ML "):
             self.dataLeakagePreventionPart5_validate()
+        elif "data_transformation_strategy" in self.raw_config and experiment_type == "Analysis (No Ray ML)":
+            print("ℹ️  Data transformation strategy present but skipping validation for Analysis (No Ray ML) experiment")
         if "pyspark" in self.raw_config:
             self.deploymentMethodPart6_validate()
-        if "ray" in self.raw_config:
+        # Only validate Ray configuration for ML experiments, not Analysis (No Ray ML)
+        if "ray" in self.raw_config and experiment_type != "Analysis (No Ray ML)":
             self.rayConfigurationPart7_validate()
+        elif "ray" in self.raw_config and experiment_type == "Analysis (No Ray ML)":
+            print("ℹ️  Ray configuration present but skipping validation for Analysis (No Ray ML) experiment")
 
         # Validate SLURM options if present (created by config-maker.py)
         # SLURM options are stored inside the project section
@@ -1705,9 +1712,13 @@ class UnifiedConfigHandler:
         self.preprocessingPart2_validate()
         self.featureCreationPart3_validate()
         self.featureTransformationsPart4_validate()
-        self.dataLeakagePreventionPart5_validate()
+        # Only validate data leakage prevention for ML experiments
+        if experiment_type.startswith("ML "):
+            self.dataLeakagePreventionPart5_validate()
         self.deploymentMethodPart6_validate()
-        self.rayConfigurationPart7_validate()
+        # Only validate Ray configuration for ML experiments, not Analysis (No Ray ML)
+        if experiment_type.startswith("ML "):
+            self.rayConfigurationPart7_validate()
 
         if include_slurm:
             self.slurmOptionsPart6_validate()
