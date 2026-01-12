@@ -1873,6 +1873,14 @@ class UnifiedConfigHandler:
             == "Yes"
         )
 
+    @property
+    def reuse_processed_subjects_across_experiments(self) -> bool:
+        """Get reuse_processed_subjects_across_experiments setting."""
+        return (
+            self.raw_config.get("data_input", {}).get("reuse_processed_subjects_across_experiments", "No")
+            == "Yes"
+        )
+
     # Preprocessing Properties
     @property
     def window_size(self) -> float:

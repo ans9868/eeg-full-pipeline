@@ -319,6 +319,10 @@ def dataInputPart1() -> Dict[str, Any]:
         "1.7 Reuse transformed data accross experiments (if the data and the data transformations are the same in another experiment in the ./data folder it will be reused).",
         choices=["Yes", "No"],
     ).ask()
+    config["data_input"]["reuse_processed_subjects_across_experiments"] = questionary.select(
+        "1.8 Reuse processed subjects across experiments (if the data, preprocessing, and feature extraction are the same in another experiment in the ./data folder it will be reused).",
+        choices=["Yes", "No"],
+    ).ask()
 
 
 
