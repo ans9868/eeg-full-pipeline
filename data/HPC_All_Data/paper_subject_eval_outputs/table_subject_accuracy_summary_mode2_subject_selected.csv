@@ -1,0 +1,25 @@
+experiment,pipeline,strategy,P,model,best_hp,selection_mode,n_folds,median_subject_acc,IQR_pp,min_subject_acc,max_subject_acc,CI_95_lo,CI_95_hi,is_best_model
+ANOVA_L_2_Random,FTest,Random-50,2,KNN,"{""metric"": ""euclidean"", ""n_neighbors"": 1, ""weights"": ""uniform""}",subject-selected,50,100.0,0.0,50.0,100.0,100.0,100.0,True
+ANOVA_L_2_Random,FTest,Random-50,2,MLP,"{""activation"": ""tanh"", ""alpha"": ""0.1"", ""hidden_layer_sizes"": [100]}",subject-selected,50,100.0,50.0,50.0,100.0,50.0,100.0,True
+ANOVA_L_2_Random,FTest,Random-50,2,SVM,"{""C"": ""0.1"", ""gamma"": ""auto"", ""kernel"": ""linear""}",subject-selected,50,100.0,50.0,50.0,100.0,100.0,100.0,True
+ANOVA_L_2_Random,FTest,Random-50,2,XGBoost,"{""learning_rate"": ""0.2"", ""max_depth"": ""3"", ""n_estimators"": ""100"", ""subsample"": ""0.7""}",subject-selected,50,100.0,50.0,0.0,100.0,50.0,100.0,True
+ANOVA_L_6_Random,FTest,Random-50,6,KNN,"{""metric"": ""euclidean"", ""n_neighbors"": 1, ""weights"": ""uniform""}",subject-selected,50,83.33,16.67,50.0,100.0,83.33,83.33,True
+ANOVA_L_6_Random,FTest,Random-50,6,MLP,"{""activation"": ""tanh"", ""alpha"": ""0.1"", ""hidden_layer_sizes"": [100]}",subject-selected,50,83.33,33.33,50.0,100.0,75.0,83.33,True
+ANOVA_L_6_Random,FTest,Random-50,6,SVM,"{""C"": ""0.1"", ""gamma"": ""auto"", ""kernel"": ""linear""}",subject-selected,50,83.33,16.67,50.0,100.0,75.0,83.33,True
+ANOVA_L_6_Random,FTest,Random-50,6,XGBoost,"{""learning_rate"": ""0.2"", ""max_depth"": ""3"", ""n_estimators"": ""100"", ""subsample"": ""0.7""}",subject-selected,50,83.33,16.67,50.0,100.0,66.67,83.33,True
+ANOVA_L_6_Uniform,FTest,Uniform-12,6,KNN,"{""metric"": ""euclidean"", ""n_neighbors"": 1, ""weights"": ""uniform""}",subject-selected,12,83.33,8.33,66.67,100.0,75.0,91.67,True
+ANOVA_L_6_Uniform,FTest,Uniform-12,6,MLP,"{""activation"": ""tanh"", ""alpha"": ""0.1"", ""hidden_layer_sizes"": [100]}",subject-selected,12,83.33,16.67,50.0,100.0,66.67,83.33,True
+ANOVA_L_6_Uniform,FTest,Uniform-12,6,SVM,"{""C"": ""0.1"", ""gamma"": ""auto"", ""kernel"": ""linear""}",subject-selected,12,83.33,20.83,50.0,100.0,66.67,91.67,True
+ANOVA_L_6_Uniform,FTest,Uniform-12,6,XGBoost,"{""learning_rate"": ""0.2"", ""max_depth"": ""3"", ""n_estimators"": ""100"", ""subsample"": ""0.7""}",subject-selected,12,75.0,33.33,50.0,100.0,50.0,83.33,False
+PCA_L_2_Random,PCA,Random-50,2,KNN,"{""metric"": ""euclidean"", ""n_neighbors"": 1, ""weights"": ""uniform""}",subject-selected,50,50.0,0.0,50.0,50.0,50.0,50.0,True
+PCA_L_2_Random,PCA,Random-50,2,MLP,"{""activation"": ""tanh"", ""alpha"": ""0.1"", ""hidden_layer_sizes"": [100]}",subject-selected,50,50.0,0.0,50.0,100.0,50.0,50.0,True
+PCA_L_2_Random,PCA,Random-50,2,SVM,"{""C"": ""0.1"", ""gamma"": ""auto"", ""kernel"": ""linear""}",subject-selected,50,50.0,0.0,50.0,50.0,50.0,50.0,True
+PCA_L_2_Random,PCA,Random-50,2,XGBoost,"{""learning_rate"": ""0.2"", ""max_depth"": ""3"", ""n_estimators"": ""100"", ""subsample"": ""0.7""}",subject-selected,50,50.0,0.0,50.0,100.0,50.0,50.0,True
+PCA_L_6_Random,PCA,Random-50,6,KNN,"{""metric"": ""euclidean"", ""n_neighbors"": 1, ""weights"": ""uniform""}",subject-selected,50,50.0,0.0,50.0,66.67,50.0,50.0,True
+PCA_L_6_Random,PCA,Random-50,6,MLP,"{""activation"": ""tanh"", ""alpha"": ""0.1"", ""hidden_layer_sizes"": [100]}",subject-selected,50,50.0,0.0,33.33,100.0,50.0,50.0,True
+PCA_L_6_Random,PCA,Random-50,6,SVM,"{""C"": ""0.1"", ""gamma"": ""auto"", ""kernel"": ""linear""}",subject-selected,50,50.0,0.0,50.0,50.0,50.0,50.0,True
+PCA_L_6_Random,PCA,Random-50,6,XGBoost,"{""learning_rate"": ""0.2"", ""max_depth"": ""3"", ""n_estimators"": ""100"", ""subsample"": ""0.7""}",subject-selected,50,50.0,0.0,33.33,83.33,50.0,50.0,True
+PCA_L_6_Uniform,PCA,Uniform-12,6,KNN,"{""metric"": ""euclidean"", ""n_neighbors"": 1, ""weights"": ""uniform""}",subject-selected,12,50.0,0.0,50.0,50.0,50.0,50.0,True
+PCA_L_6_Uniform,PCA,Uniform-12,6,MLP,"{""activation"": ""tanh"", ""alpha"": ""0.1"", ""hidden_layer_sizes"": [100]}",subject-selected,12,50.0,0.0,50.0,66.67,50.0,50.0,True
+PCA_L_6_Uniform,PCA,Uniform-12,6,SVM,"{""C"": ""0.1"", ""gamma"": ""auto"", ""kernel"": ""linear""}",subject-selected,12,50.0,0.0,50.0,50.0,50.0,50.0,True
+PCA_L_6_Uniform,PCA,Uniform-12,6,XGBoost,"{""learning_rate"": ""0.2"", ""max_depth"": ""3"", ""n_estimators"": ""100"", ""subsample"": ""0.7""}",subject-selected,12,50.0,0.0,50.0,66.67,50.0,50.0,True

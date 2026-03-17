@@ -1,0 +1,244 @@
+{
+  "model_name": "SVM",
+  "best_hyperparams": {
+    "C": "0.1",
+    "kernel": "linear",
+    "gamma": "auto"
+  },
+  "best_metrics": {
+    "test_accuracy": 0.5449224465905765,
+    "test_f1": 0.5786528900549803,
+    "test_precision": 0.7026781661424961,
+    "test_recall": 0.5449224465905765,
+    "train_accuracy": 0.5489525909592061,
+    "train_f1": 0.5851940132485757,
+    "train_precision": 0.7083022725629169,
+    "train_recall": 0.5489525909592061,
+    "std_test_accuracy": 0.0,
+    "std_train_accuracy": 0.0
+  },
+  "all_hyperparameter_results": [
+    {
+      "hyperparams": {
+        "C": "0.1",
+        "kernel": "linear",
+        "gamma": "auto"
+      },
+      "fold_results": [
+        {
+          "task_id": "SVM_0_5353",
+          "model_name": "SVM",
+          "fold_id": "0",
+          "hyperparams": {
+            "C": "0.1",
+            "kernel": "linear",
+            "gamma": "auto"
+          },
+          "test_results": {
+            "accuracy": 0.5449224465905765,
+            "f1": 0.5786528900549803,
+            "precision": 0.7026781661424961,
+            "recall": 0.5449224465905765
+          },
+          "train_results": {
+            "accuracy": 0.5489525909592061,
+            "f1": 0.5851940132485757,
+            "precision": 0.7083022725629169,
+            "recall": 0.5489525909592061
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "SVM",
+              "hyperparams": {
+                "C": 0.1,
+                "kernel": "linear",
+                "gamma": "auto"
+              }
+            },
+            "test_accuracy": 0.5449224465905765,
+            "test_f1": 0.5786528900549803,
+            "test_precision": 0.7026781661424961,
+            "test_recall": 0.5449224465905765,
+            "train_accuracy": 0.5489525909592061,
+            "train_f1": 0.5851940132485757,
+            "train_precision": 0.7083022725629169,
+            "train_recall": 0.5489525909592061
+          },
+          "test_accuracy": 0.5449224465905765,
+          "train_accuracy": 0.5489525909592061,
+          "worker_id": "worker_e404a37a78fa11fd5809d0642e8a59c099fa6d08efa58a8bc97b8e03"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.5449224465905765,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.5449224465905765,
+      "max_test_accuracy": 0.5449224465905765,
+      "mean_test_f1": 0.5786528900549803,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.7026781661424961,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.5449224465905765,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 0.5489525909592061,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 0.5489525909592061,
+      "max_train_accuracy": 0.5489525909592061,
+      "mean_train_f1": 0.5851940132485757,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 0.7083022725629169,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 0.5489525909592061,
+      "std_train_recall": 0.0
+    },
+    {
+      "hyperparams": {
+        "C": "0.1",
+        "kernel": "rbf",
+        "gamma": "auto"
+      },
+      "fold_results": [
+        {
+          "task_id": "SVM_0_1802",
+          "model_name": "SVM",
+          "fold_id": "0",
+          "hyperparams": {
+            "C": "0.1",
+            "kernel": "rbf",
+            "gamma": "auto"
+          },
+          "test_results": {
+            "accuracy": 0.04316652033947908,
+            "f1": 0.021317857996289307,
+            "precision": 0.04012079375668112,
+            "recall": 0.04316652033947908
+          },
+          "train_results": {
+            "accuracy": 0.042778390297684675,
+            "f1": 0.020313333294668057,
+            "precision": 0.03798003553133719,
+            "recall": 0.042778390297684675
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "SVM",
+              "hyperparams": {
+                "C": 0.1,
+                "kernel": "rbf",
+                "gamma": "auto"
+              }
+            },
+            "test_accuracy": 0.04316652033947908,
+            "test_f1": 0.021317857996289307,
+            "test_precision": 0.04012079375668112,
+            "test_recall": 0.04316652033947908,
+            "train_accuracy": 0.042778390297684675,
+            "train_f1": 0.020313333294668057,
+            "train_precision": 0.03798003553133719,
+            "train_recall": 0.042778390297684675
+          },
+          "test_accuracy": 0.04316652033947908,
+          "train_accuracy": 0.042778390297684675,
+          "worker_id": "worker_87d15ac571318474bbf40abce661abce4f1464207fcb101d1aca4a86"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.04316652033947908,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.04316652033947908,
+      "max_test_accuracy": 0.04316652033947908,
+      "mean_test_f1": 0.021317857996289307,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.04012079375668112,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.04316652033947908,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 0.042778390297684675,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 0.042778390297684675,
+      "max_train_accuracy": 0.042778390297684675,
+      "mean_train_f1": 0.020313333294668057,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 0.03798003553133719,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 0.042778390297684675,
+      "std_train_recall": 0.0
+    },
+    {
+      "hyperparams": {
+        "C": "0.1",
+        "kernel": "poly",
+        "gamma": "auto"
+      },
+      "fold_results": [
+        {
+          "task_id": "SVM_0_5698",
+          "model_name": "SVM",
+          "fold_id": "0",
+          "hyperparams": {
+            "C": "0.1",
+            "kernel": "poly",
+            "gamma": "auto"
+          },
+          "test_results": {
+            "accuracy": 0.03555750658472344,
+            "f1": 0.006421832711960262,
+            "precision": 0.004287146163107002,
+            "recall": 0.03555750658472344
+          },
+          "train_results": {
+            "accuracy": 0.03664094083057699,
+            "f1": 0.006691892531313551,
+            "precision": 0.004464219136390844,
+            "recall": 0.03664094083057699
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "SVM",
+              "hyperparams": {
+                "C": 0.1,
+                "kernel": "poly",
+                "gamma": "auto"
+              }
+            },
+            "test_accuracy": 0.03555750658472344,
+            "test_f1": 0.006421832711960262,
+            "test_precision": 0.004287146163107002,
+            "test_recall": 0.03555750658472344,
+            "train_accuracy": 0.03664094083057699,
+            "train_f1": 0.006691892531313551,
+            "train_precision": 0.004464219136390844,
+            "train_recall": 0.03664094083057699
+          },
+          "test_accuracy": 0.03555750658472344,
+          "train_accuracy": 0.03664094083057699,
+          "worker_id": "worker_0ecbbdab63d27777bd161a0e1fc38495c25fa78e9e60ef369555067b"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.03555750658472344,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.03555750658472344,
+      "max_test_accuracy": 0.03555750658472344,
+      "mean_test_f1": 0.006421832711960262,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.004287146163107002,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.03555750658472344,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 0.03664094083057699,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 0.03664094083057699,
+      "max_train_accuracy": 0.03664094083057699,
+      "mean_train_f1": 0.006691892531313551,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 0.004464219136390844,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 0.03664094083057699,
+      "std_train_recall": 0.0
+    }
+  ],
+  "total_tasks": 3,
+  "num_folds": 1,
+  "timestamp": "2025-11-01T02:44:26.963835"
+}

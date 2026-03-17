@@ -1,0 +1,8 @@
+delta_median_pp,cliffs_delta,p_value,test,n,comparison,model_a,model_b,exp_a,exp_b,n_folds_a,n_folds_b,n_x,n_y
+15.65,0.851,0.0,Wilcoxon signed-rank (paired),50.0,ANOVA vs PCA (Random-50),MLP,KNN,ANOVA_L_6_Random,PCA_L_6_Random,50,50,,
+15.88,0.833,0.0005,Wilcoxon signed-rank (paired),12.0,ANOVA vs PCA (Uniform-12),MLP,KNN,ANOVA_L_6_Uniform,PCA_L_6_Uniform,12,12,,
+0.59,0.15,0.4279,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50 (FTest),MLP,MLP,ANOVA_L_6_Random,ANOVA_L_6_Uniform,50,12,50.0,12.0
+0.82,0.087,0.6496,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50 (PCA),KNN,KNN,PCA_L_6_Random,PCA_L_6_Uniform,50,12,50.0,12.0
+-7.23,-0.319,0.006,Mann-Whitney U (unpaired),,P=6 vs P=2 (FTest),MLP,MLP,ANOVA_L_6_Random,ANOVA_L_2_Random,50,50,50.0,50.0
+-1.56,-0.167,0.1506,Mann-Whitney U (unpaired),,P=6 vs P=2 (PCA),KNN,KNN,PCA_L_6_Random,PCA_L_2_Random,50,50,50.0,50.0
+1.61,0.206,0.0008,Wilcoxon signed-rank (paired),50.0,MLP vs KNN (ANOVA Random-50),MLP,KNN,ANOVA_L_6_Random,ANOVA_L_6_Random,50,50,,

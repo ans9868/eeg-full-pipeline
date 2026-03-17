@@ -1,0 +1,50 @@
+{
+  "overall": {
+    "total_results": 600,
+    "total_models": 4,
+    "total_folds": 50,
+    "mean_accuracy": 0.5433039349848362,
+    "median_accuracy": 0.5253912902441003,
+    "std_accuracy": 0.09705141213771235,
+    "min_accuracy": 0.25566750629722923,
+    "max_accuracy": 0.9043683589138135
+  },
+  "per_model": {
+    "KNN": {
+      "total_tasks": 150,
+      "num_folds": 50,
+      "mean_accuracy": 0.5487538390393002,
+      "median_accuracy": 0.5421619205720853,
+      "std_accuracy": 0.08935365965657079,
+      "min_accuracy": 0.26040554962646745,
+      "max_accuracy": 0.7850877192982456
+    },
+    "XGBoost": {
+      "total_tasks": 150,
+      "num_folds": 50,
+      "mean_accuracy": 0.5475928634110678,
+      "median_accuracy": 0.5319904707289099,
+      "std_accuracy": 0.0872267281119906,
+      "min_accuracy": 0.27071005917159763,
+      "max_accuracy": 0.878286270691334
+    },
+    "SVM": {
+      "total_tasks": 150,
+      "num_folds": 50,
+      "mean_accuracy": 0.5317208904048304,
+      "median_accuracy": 0.5139737869633696,
+      "std_accuracy": 0.10407146328413888,
+      "min_accuracy": 0.25566750629722923,
+      "max_accuracy": 0.8403508771929824
+    },
+    "MLP (Neural Network)": {
+      "total_tasks": 150,
+      "num_folds": 50,
+      "mean_accuracy": 0.545148147084146,
+      "median_accuracy": 0.5241305731809974,
+      "std_accuracy": 0.10609048818580978,
+      "min_accuracy": 0.25566750629722923,
+      "max_accuracy": 0.9043683589138135
+    }
+  }
+}

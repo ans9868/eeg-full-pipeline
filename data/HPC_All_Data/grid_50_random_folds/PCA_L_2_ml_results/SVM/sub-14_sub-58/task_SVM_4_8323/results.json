@@ -1,0 +1,43 @@
+{
+  "task_id": "SVM_4_8323",
+  "model_name": "SVM",
+  "fold_id": "4",
+  "hyperparams": {
+    "C": "0.1",
+    "kernel": "rbf",
+    "gamma": "auto"
+  },
+  "test_results": {
+    "accuracy": 0.5470249520153551,
+    "f1": 0.41911550470202713,
+    "precision": 0.7593429486874032,
+    "recall": 0.5470249520153551
+  },
+  "train_results": {
+    "accuracy": 0.861034655323408,
+    "f1": 0.8599515371011455,
+    "precision": 0.8635759481946589,
+    "recall": 0.861034655323408
+  },
+  "detailed_results": {
+    "metadata": {
+      "model_name": "SVM",
+      "hyperparams": {
+        "C": 0.1,
+        "kernel": "rbf",
+        "gamma": "auto"
+      }
+    },
+    "test_accuracy": 0.5470249520153551,
+    "test_f1": 0.41911550470202713,
+    "test_precision": 0.7593429486874032,
+    "test_recall": 0.5470249520153551,
+    "train_accuracy": 0.861034655323408,
+    "train_f1": 0.8599515371011455,
+    "train_precision": 0.8635759481946589,
+    "train_recall": 0.861034655323408
+  },
+  "test_accuracy": 0.5470249520153551,
+  "train_accuracy": 0.861034655323408,
+  "worker_id": "worker_8217a94ca570b2d1b3a6d14e8bf975b5e1bcee7910192d8575a86d01"
+}

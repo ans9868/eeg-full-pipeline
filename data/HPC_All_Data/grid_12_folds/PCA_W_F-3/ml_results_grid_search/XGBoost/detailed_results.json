@@ -1,0 +1,254 @@
+{
+  "model_name": "XGBoost",
+  "best_hyperparams": {
+    "n_estimators": "100",
+    "max_depth": "6",
+    "learning_rate": "0.2",
+    "subsample": "0.7"
+  },
+  "best_metrics": {
+    "test_accuracy": 0.9032777290020486,
+    "test_f1": 0.9037013598665725,
+    "test_precision": 0.9052339873344215,
+    "test_recall": 0.9032777290020486,
+    "train_accuracy": 1.0,
+    "train_f1": 1.0,
+    "train_precision": 1.0,
+    "train_recall": 1.0,
+    "std_test_accuracy": 0.0,
+    "std_train_accuracy": 0.0
+  },
+  "all_hyperparameter_results": [
+    {
+      "hyperparams": {
+        "n_estimators": "100",
+        "max_depth": "6",
+        "learning_rate": "0.2",
+        "subsample": "0.7"
+      },
+      "fold_results": [
+        {
+          "task_id": "XGBoost_0_5116",
+          "model_name": "XGBoost",
+          "fold_id": "0",
+          "hyperparams": {
+            "n_estimators": "100",
+            "max_depth": "6",
+            "learning_rate": "0.2",
+            "subsample": "0.7"
+          },
+          "test_results": {
+            "accuracy": 0.9032777290020486,
+            "f1": 0.9037013598665725,
+            "precision": 0.9052339873344215,
+            "recall": 0.9032777290020486
+          },
+          "train_results": {
+            "accuracy": 1.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "XGBoost",
+              "hyperparams": {
+                "n_estimators": 100,
+                "max_depth": 6,
+                "learning_rate": 0.2,
+                "subsample": 0.7
+              }
+            },
+            "test_accuracy": 0.9032777290020486,
+            "test_f1": 0.9037013598665725,
+            "test_precision": 0.9052339873344215,
+            "test_recall": 0.9032777290020486,
+            "train_accuracy": 1.0,
+            "train_f1": 1.0,
+            "train_precision": 1.0,
+            "train_recall": 1.0
+          },
+          "test_accuracy": 0.9032777290020486,
+          "train_accuracy": 1.0,
+          "worker_id": "worker_aae7f83dd14df54a8973b135a4d734f97ba8e1132ab4ba855984f07e"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.9032777290020486,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.9032777290020486,
+      "max_test_accuracy": 0.9032777290020486,
+      "mean_test_f1": 0.9037013598665725,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.9052339873344215,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.9032777290020486,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 1.0,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 1.0,
+      "max_train_accuracy": 1.0,
+      "mean_train_f1": 1.0,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 1.0,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 1.0,
+      "std_train_recall": 0.0
+    },
+    {
+      "hyperparams": {
+        "n_estimators": "100",
+        "max_depth": "3",
+        "learning_rate": "0.2",
+        "subsample": "0.7"
+      },
+      "fold_results": [
+        {
+          "task_id": "XGBoost_0_3840",
+          "model_name": "XGBoost",
+          "fold_id": "0",
+          "hyperparams": {
+            "n_estimators": "100",
+            "max_depth": "3",
+            "learning_rate": "0.2",
+            "subsample": "0.7"
+          },
+          "test_results": {
+            "accuracy": 0.9023997658764998,
+            "f1": 0.9029159614681654,
+            "precision": 0.9043860016200297,
+            "recall": 0.9023997658764998
+          },
+          "train_results": {
+            "accuracy": 0.993311282616685,
+            "f1": 0.9933165660302516,
+            "precision": 0.9933558685670633,
+            "recall": 0.993311282616685
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "XGBoost",
+              "hyperparams": {
+                "n_estimators": 100,
+                "max_depth": 3,
+                "learning_rate": 0.2,
+                "subsample": 0.7
+              }
+            },
+            "test_accuracy": 0.9023997658764998,
+            "test_f1": 0.9029159614681654,
+            "test_precision": 0.9043860016200297,
+            "test_recall": 0.9023997658764998,
+            "train_accuracy": 0.993311282616685,
+            "train_f1": 0.9933165660302516,
+            "train_precision": 0.9933558685670633,
+            "train_recall": 0.993311282616685
+          },
+          "test_accuracy": 0.9023997658764998,
+          "train_accuracy": 0.993311282616685,
+          "worker_id": "worker_e035bba3c28ec6f56f376a35b26d32a4d3a9923a7599e6d894445be9"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.9023997658764998,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.9023997658764998,
+      "max_test_accuracy": 0.9023997658764998,
+      "mean_test_f1": 0.9029159614681654,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.9043860016200297,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.9023997658764998,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 0.993311282616685,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 0.993311282616685,
+      "max_train_accuracy": 0.993311282616685,
+      "mean_train_f1": 0.9933165660302516,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 0.9933558685670633,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 0.993311282616685,
+      "std_train_recall": 0.0
+    },
+    {
+      "hyperparams": {
+        "n_estimators": "100",
+        "max_depth": "9",
+        "learning_rate": "0.2",
+        "subsample": "0.7"
+      },
+      "fold_results": [
+        {
+          "task_id": "XGBoost_0_4824",
+          "model_name": "XGBoost",
+          "fold_id": "0",
+          "hyperparams": {
+            "n_estimators": "100",
+            "max_depth": "9",
+            "learning_rate": "0.2",
+            "subsample": "0.7"
+          },
+          "test_results": {
+            "accuracy": 0.8965466783728416,
+            "f1": 0.8968205460493136,
+            "precision": 0.8982052307848709,
+            "recall": 0.8965466783728416
+          },
+          "train_results": {
+            "accuracy": 1.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "XGBoost",
+              "hyperparams": {
+                "n_estimators": 100,
+                "max_depth": 9,
+                "learning_rate": 0.2,
+                "subsample": 0.7
+              }
+            },
+            "test_accuracy": 0.8965466783728416,
+            "test_f1": 0.8968205460493136,
+            "test_precision": 0.8982052307848709,
+            "test_recall": 0.8965466783728416,
+            "train_accuracy": 1.0,
+            "train_f1": 1.0,
+            "train_precision": 1.0,
+            "train_recall": 1.0
+          },
+          "test_accuracy": 0.8965466783728416,
+          "train_accuracy": 1.0,
+          "worker_id": "worker_206554e061cf21c2c265d6881c1465f991ac71f602f53f62f2113c21"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.8965466783728416,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.8965466783728416,
+      "max_test_accuracy": 0.8965466783728416,
+      "mean_test_f1": 0.8968205460493136,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.8982052307848709,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.8965466783728416,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 1.0,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 1.0,
+      "max_train_accuracy": 1.0,
+      "mean_train_f1": 1.0,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 1.0,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 1.0,
+      "std_train_recall": 0.0
+    }
+  ],
+  "total_tasks": 3,
+  "num_folds": 1,
+  "timestamp": "2025-11-01T02:32:25.927089"
+}

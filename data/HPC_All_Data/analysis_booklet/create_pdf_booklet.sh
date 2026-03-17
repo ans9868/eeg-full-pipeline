@@ -12,8 +12,9 @@ TEMP_MD="$BOOKLET_DIR/temp_combined_booklet.md"
 # Function to clean markdown (remove YAML frontmatter and emojis from headers)
 clean_markdown() {
     local file="$1"
-    # Remove YAML frontmatter (lines between --- at start)
-    awk '/^---$/{if(++c==2) exit} c<2{next} 1' "$file" | \
+    # Strip YAML frontmatter if present (first line must be ---)
+    # For files without frontmatter, pass through all content unchanged
+    awk 'BEGIN{in_fm=-1} NR==1 && /^---$/{in_fm=1;next} in_fm==1 && /^---$/{in_fm=2;next} in_fm==1{next} {print}' "$file" | \
     # Remove emojis from headers (common ones)
     sed -E 's/#+ [🎯👥🔍📈📊📋📑✅❌⚠️⭐🔬]+\s*//g' | \
     # Remove empty lines at start
@@ -132,6 +133,46 @@ for file in "$BOOKLET_DIR/03_clustering"/*.md; do
     fi
 done
 
+# Add performance tables (official accuracy summary + fold design)
+echo "# Performance Tables" >> "$TEMP_MD"
+echo "" >> "$TEMP_MD"
+
+if [ -f "$BOOKLET_DIR/04_performance_tables/official_accuracy_summary.md" ]; then
+    echo "## Official Accuracy Summary" >> "$TEMP_MD"
+    echo "" >> "$TEMP_MD"
+    clean_markdown "$BOOKLET_DIR/04_performance_tables/official_accuracy_summary.md" >> "$TEMP_MD"
+    echo "" >> "$TEMP_MD"
+    echo "\\newpage" >> "$TEMP_MD"
+    echo "" >> "$TEMP_MD"
+fi
+
+if [ -f "$BOOKLET_DIR/04_performance_tables/fold_design_reference.md" ]; then
+    echo "## Fold Design Reference" >> "$TEMP_MD"
+    echo "" >> "$TEMP_MD"
+    clean_markdown "$BOOKLET_DIR/04_performance_tables/fold_design_reference.md" >> "$TEMP_MD"
+    echo "" >> "$TEMP_MD"
+    echo "\\newpage" >> "$TEMP_MD"
+    echo "" >> "$TEMP_MD"
+fi
+
+for file in "$BOOKLET_DIR/04_performance_tables"/table_a_within_subject_control.md \
+            "$BOOKLET_DIR/04_performance_tables"/table_b_cross_subject_summary.md \
+            "$BOOKLET_DIR/04_performance_tables"/table_c_lpso_leaderboard.md \
+            "$BOOKLET_DIR/04_performance_tables"/table_d_holdout_sensitivity.md \
+            "$BOOKLET_DIR/04_performance_tables"/table1_within_subject_performance.md \
+            "$BOOKLET_DIR/04_performance_tables"/table2_within_vs_lpso.md \
+            "$BOOKLET_DIR/04_performance_tables"/table3_model_rankings_lpso.md \
+            "$BOOKLET_DIR/04_performance_tables"/statistical_significance_report.md; do
+    if [ -f "$file" ]; then
+        echo "## $(basename "$file" .md)" >> "$TEMP_MD"
+        echo "" >> "$TEMP_MD"
+        clean_markdown "$file" >> "$TEMP_MD"
+        echo "" >> "$TEMP_MD"
+        echo "\\newpage" >> "$TEMP_MD"
+        echo "" >> "$TEMP_MD"
+    fi
+done
+
 # Add biomarker analysis
 if [ -d "$BOOKLET_DIR/07_biomarkers" ]; then
     echo "# Biomarker Analysis" >> "$TEMP_MD"
@@ -222,6 +263,27 @@ if [ -d "$BOOKLET_DIR/08_variance_analysis" ]; then
         echo "\\newpage" >> "$TEMP_MD"
         echo "" >> "$TEMP_MD"
     fi
+fi
+
+# Add subject-level evaluation
+if [ -d "$BOOKLET_DIR/09_subject_level_analysis" ]; then
+    echo "# Subject-Level Evaluation" >> "$TEMP_MD"
+    echo "" >> "$TEMP_MD"
+
+    for file in "$BOOKLET_DIR/09_subject_level_analysis/01_subject_level_overview.md" \
+                "$BOOKLET_DIR/09_subject_level_analysis/02_subject_accuracy_summary.md" \
+                "$BOOKLET_DIR/09_subject_level_analysis/03_subject_statistical_tests.md" \
+                "$BOOKLET_DIR/09_subject_level_analysis/04_epoch_subject_correlation.md" \
+                "$BOOKLET_DIR/09_subject_level_analysis/05_figures_subject_level.md"; do
+        if [ -f "$file" ]; then
+            echo "## $(basename "$file" .md)" >> "$TEMP_MD"
+            echo "" >> "$TEMP_MD"
+            clean_markdown "$file" >> "$TEMP_MD"
+            echo "" >> "$TEMP_MD"
+            echo "\\newpage" >> "$TEMP_MD"
+            echo "" >> "$TEMP_MD"
+        fi
+    done
 fi
 
 # Add other analyses

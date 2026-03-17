@@ -30,7 +30,8 @@ per_subject_classification_analysis/
 │   ├── PCA_L_6_Random_per_subject_detailed.csv
 │   ├── PCA_L_6_Uniform_per_subject_summary.md
 │   ├── PCA_L_6_Uniform_per_subject_summary.csv
-│   └── PCA_L_6_Uniform_per_subject_detailed.csv
+│   ├── PCA_L_6_Uniform_per_subject_detailed.csv
+│   └── subject_accuracy_per_model.csv   (all experiments, per model)
 │
 └── Combined Reports:
     └── per_subject_summary_all_experiments.md
@@ -51,6 +52,10 @@ per_subject_classification_analysis/
 - Complete breakdown: `Subject`, `Fold`, `Model`, `Accuracy`
 - One row per subject×fold×model combination
 - Useful for detailed analysis and debugging
+
+### Subject Accuracy per Model (`subject_accuracy_per_model.csv`)
+- One row per (experiment, subject, model): `median_accuracy`, `mean_accuracy`, `n_folds`
+- Aggregated from the detailed CSVs; see [SUBJECT_ACCURACY_PER_MODEL.md](SUBJECT_ACCURACY_PER_MODEL.md) in the booklet.
 
 ## Experiments Analyzed
 

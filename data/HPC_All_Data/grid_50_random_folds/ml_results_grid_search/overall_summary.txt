@@ -1,0 +1,40 @@
+EEG ML Pipeline - Overall Results Summary
+============================================================
+
+Timestamp: 2025-11-03T15:29:20.887343
+Total Models: 4
+Successful Models: 4
+
+🏆 BEST MODEL:
+--------------------
+Model: MLP (Neural Network)
+Overall Accuracy: 71.38% (weighted by # of epochs) (±0.088)
+Train Accuracy: 0.8115
+Best Hyperparameters: {'hidden_layer_sizes': [100], 'activation': 'tanh', 'alpha': '0.1'}
+
+📊 MODEL RANKINGS (by Test Accuracy):
+----------------------------------------
+1. MLP (Neural Network)
+   Overall Accuracy: 71.38% (weighted by # of epochs) (±0.088)
+   Train Accuracy: 0.8115
+   Best Config: {'hidden_layer_sizes': [100], 'activation': 'tanh', 'alpha': '0.1'}
+
+2. SVM
+   Overall Accuracy: 71.15% (weighted by # of epochs) (±0.080)
+   Train Accuracy: 0.7944
+   Best Config: {'C': '0.1', 'kernel': 'linear', 'gamma': 'auto'}
+
+3. KNN
+   Overall Accuracy: 70.55% (weighted by # of epochs) (±0.071)
+   Train Accuracy: 0.8737
+   Best Config: {'n_neighbors': 15, 'weights': 'uniform', 'metric': 'euclidean'}
+
+4. XGBoost
+   Overall Accuracy: 67.54% (weighted by # of epochs) (±0.091)
+   Train Accuracy: 0.9999
+   Best Config: {'n_estimators': '100', 'max_depth': '9', 'learning_rate': '0.2', 'subsample': '0.7'}
+
+📈 ACCURACY STATISTICS:
+------------------------------
+Test Accuracy - Mean: 0.7015, Std: 0.0154, Range: 0.6754 - 0.7138
+Train Accuracy - Mean: 0.8699, Std: 0.0807, Range: 0.7944 - 0.9999

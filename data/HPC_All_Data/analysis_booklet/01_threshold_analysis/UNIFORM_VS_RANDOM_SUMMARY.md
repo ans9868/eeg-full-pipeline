@@ -9,9 +9,11 @@
 - Same threshold optimization methodology
 - Fair comparison using common subjects only
 
-**Key Finding:** **Random (50-fold) generally outperforms Uniform (12-fold)** for ANOVA features, with mixed results for PCA features.
+**Key Finding:** Random (50-fold) and Uniform (12-fold) produce **no statistically significant difference** in median accuracy for either ANOVA or PCA features (Mann-Whitney U: ANOVA p = 0.428, PCA p = 0.650). While Random tends to show slightly higher point estimates (+0.6 pp for ANOVA, +0.8 pp for PCA, both best-per-fold medians), the effect sizes are negligible to small (Cliff's δ = 0.15 and 0.09 respectively) and neither result clears the α = 0.05 threshold.
 
-**Important:** All comparisons use the **exact same test subjects** - uniform experiments were filtered to match random experiment subjects.
+**What IS significant:** ANOVA vs PCA is a large, highly significant difference (Δ = +15.7 pp, Cliff's δ = 0.85, Wilcoxon p < 0.001). The choice of fold strategy matters far less than the choice of feature pipeline.
+
+**Important:** All comparisons use the **exact same test subjects** - uniform experiments were filtered to match random experiment subjects. Statistical tests computed by `compute_real_statistics.py` (March 2026).
 
 ---
 
@@ -42,7 +44,7 @@
 
 **Note:** All comparisons use **45 same test subjects** (uniform filtered from 65 to match random).
 
-**Key Insight:** Random outperforms Uniform for **ALL models** in ANOVA_L_6, with improvements ranging from **1.5% to 12.0%**.
+**Key Insight:** Random shows higher point estimates than Uniform for most models in ANOVA_L_6 (Δ = +0.6 pp median across all runs), but this difference is **not statistically significant** (Mann-Whitney U p = 0.428, Cliff's δ = 0.15). The individual model differences shown above are threshold-optimised best-case accuracies, not fold-level medians.
 
 ### Threshold Differences
 
@@ -96,10 +98,11 @@
 
 ## 🎯 Key Takeaways
 
-### 1. **Random (50-fold) is Better for ANOVA Features**
-   - **ANOVA_L_6:** Random achieves **88.9%** vs Uniform's **83.1%**
-   - **Improvement:** +5.8% average across all models
-   - **Recommendation:** Use random (50-fold) cross-validation for ANOVA features
+### 1. **No Significant Difference Between Fold Strategies**
+   - **ANOVA_L_6:** Random median (best-per-fold) = **73.1%** vs Uniform = **72.6%** (Δ = +0.6 pp, p = 0.428 n.s.)
+   - **PCA_L_6:** Random median (best-per-fold) = **57.5%** vs Uniform = **56.7%** (Δ = +0.8 pp, p = 0.650 n.s.)
+   - **Note:** The 88.9% / 84.4% figures in the table above are threshold-optimised best-case accuracies using a subject-level AD-ratio method — not the same metric as fold-level medians.
+   - **Recommendation:** Either strategy is acceptable; Random-50 is preferred for its larger sample of fold estimates and tighter CIs
 
 ### 2. **Mixed Results for PCA Features**
    - **PCA_L_6:** Random slightly better overall (69.2% vs 69.2% best, but higher average)
@@ -116,11 +119,13 @@
    - **PCA:** Thresholds are extreme (0.30 or 0.70) for both strategies
    - **Recommendation:** Threshold optimization is still critical regardless of fold strategy
 
-### 5. **Best Overall Configuration**
+### 5. **Best Overall Configuration (threshold-optimised, subject-level)**
    - **Experiment:** ANOVA_L_6 with Random (50-fold)
    - **Model:** MLP (hidden=100 or 200_100_50)
    - **Threshold:** 0.45-0.55
-   - **Accuracy:** **88.9%**
+   - **Threshold-optimised accuracy:** **88.9%** (subject-level AD-ratio method)
+   - **Fold-level median (best-per-fold, 95% CI):** 73.1% [72.1%–76.2%]
+   - **Note:** These two metrics measure different things; see `statistical_significance_report.md` for the fold-level analysis
 
 ---
 
@@ -189,7 +194,7 @@
    - More folds = more data for threshold optimization
    - More stable threshold selection
 
-**Note:** Random outperforms Uniform even when using the **exact same test subjects**, confirming that fold strategy matters more than sample size differences.
+**Note:** The threshold-optimised accuracy differences shown above (Random vs Uniform) are not statistically significant at the fold level (Mann-Whitney U p = 0.428). The dominant driver of performance differences is **feature extraction method (ANOVA vs PCA)**, not fold strategy.
 
 ---
 
@@ -234,10 +239,10 @@
 ## 🎯 Final Recommendations
 
 ### For ANOVA Features
-1. ✅ **Use Random (50-fold) cross-validation**
-2. ✅ **Best model:** MLP with hidden=100 or 200_100_50
-3. ✅ **Optimal threshold:** 0.45-0.55
-4. ✅ **Expected accuracy:** ~89%
+1. ⚪ **Random (50-fold) preferred** (more fold samples, tighter CIs) — but no statistically significant accuracy difference vs Uniform (p = 0.428)
+2. ✅ **Best model:** MLP (fold-level median 73.1% [72.1%–76.2%]); MLP also best by threshold-optimised metric (~89%)
+3. ✅ **Optimal threshold (subject-level AD-ratio method):** 0.45-0.55
+4. ✅ **ANOVA significantly outperforms PCA** by ~15.7 pp (Cliff's δ = 0.85, p < 0.001) — this is the most important finding
 
 ### For PCA Features
 1. ⚠️ **Prefer Random (50-fold)** but test both
@@ -247,8 +252,8 @@
 
 ### General
 1. **Always optimize threshold** - don't use default 0.5
-2. **Random (50-fold) generally better** than Uniform (12-fold)
-3. **ANOVA features significantly outperform PCA** (20%+ difference)
+2. **Fold strategy (Uniform vs Random) has no statistically significant effect on accuracy** (Mann-Whitney U, both p > 0.4) — Random preferred for more fold estimates and tighter bootstrap CIs
+3. **ANOVA features significantly outperform PCA** (Δ ≈ +15.7 pp, Cliff's δ = 0.85, p < 0.001) — this is the dominant finding
 4. **Consider subject coverage** - more subjects generally better for reliability
 
 ---

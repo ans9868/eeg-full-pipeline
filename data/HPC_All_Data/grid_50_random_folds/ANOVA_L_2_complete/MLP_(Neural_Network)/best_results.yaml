@@ -1,0 +1,20 @@
+best_hyperparams:
+  activation: tanh
+  alpha: '0.1'
+  hidden_layer_sizes:
+  - 100
+best_metrics:
+  std_test_accuracy: 0.14650122640890773
+  std_train_accuracy: 0.021688848728953703
+  test_accuracy: 0.7431042446111578
+  test_f1: 0.7231739141984442
+  test_precision: 0.7818696393066079
+  test_recall: 0.7431042446111578
+  train_accuracy: 0.8035739380647171
+  train_f1: 0.7994389770618936
+  train_precision: 0.8136512465430172
+  train_recall: 0.8035739380647171
+model_name: MLP (Neural Network)
+num_folds: 50
+timestamp: '2025-11-03T15:51:14.213763'
+total_tasks: 150

@@ -1,0 +1,244 @@
+{
+  "model_name": "SVM",
+  "best_hyperparams": {
+    "C": "0.1",
+    "kernel": "linear",
+    "gamma": "auto"
+  },
+  "best_metrics": {
+    "test_accuracy": 0.9362013462101259,
+    "test_f1": 0.9364079008100992,
+    "test_precision": 0.9378421900889644,
+    "test_recall": 0.9362013462101259,
+    "train_accuracy": 0.9557148107313488,
+    "train_f1": 0.9557319558451315,
+    "train_precision": 0.9564524590151697,
+    "train_recall": 0.9557148107313488,
+    "std_test_accuracy": 0.0,
+    "std_train_accuracy": 0.0
+  },
+  "all_hyperparameter_results": [
+    {
+      "hyperparams": {
+        "C": "0.1",
+        "kernel": "linear",
+        "gamma": "auto"
+      },
+      "fold_results": [
+        {
+          "task_id": "SVM_0_6932",
+          "model_name": "SVM",
+          "fold_id": "0",
+          "hyperparams": {
+            "C": "0.1",
+            "kernel": "linear",
+            "gamma": "auto"
+          },
+          "test_results": {
+            "accuracy": 0.9362013462101259,
+            "f1": 0.9364079008100992,
+            "precision": 0.9378421900889644,
+            "recall": 0.9362013462101259
+          },
+          "train_results": {
+            "accuracy": 0.9557148107313488,
+            "f1": 0.9557319558451315,
+            "precision": 0.9564524590151697,
+            "recall": 0.9557148107313488
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "SVM",
+              "hyperparams": {
+                "C": 0.1,
+                "kernel": "linear",
+                "gamma": "auto"
+              }
+            },
+            "test_accuracy": 0.9362013462101259,
+            "test_f1": 0.9364079008100992,
+            "test_precision": 0.9378421900889644,
+            "test_recall": 0.9362013462101259,
+            "train_accuracy": 0.9557148107313488,
+            "train_f1": 0.9557319558451315,
+            "train_precision": 0.9564524590151697,
+            "train_recall": 0.9557148107313488
+          },
+          "test_accuracy": 0.9362013462101259,
+          "train_accuracy": 0.9557148107313488,
+          "worker_id": "worker_ac899559592da1e813500ab436130da9a33feaa37cf3a40fe7769b1a"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.9362013462101259,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.9362013462101259,
+      "max_test_accuracy": 0.9362013462101259,
+      "mean_test_f1": 0.9364079008100992,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.9378421900889644,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.9362013462101259,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 0.9557148107313488,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 0.9557148107313488,
+      "max_train_accuracy": 0.9557148107313488,
+      "mean_train_f1": 0.9557319558451315,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 0.9564524590151697,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 0.9557148107313488,
+      "std_train_recall": 0.0
+    },
+    {
+      "hyperparams": {
+        "C": "0.1",
+        "kernel": "rbf",
+        "gamma": "auto"
+      },
+      "fold_results": [
+        {
+          "task_id": "SVM_0_0345",
+          "model_name": "SVM",
+          "fold_id": "0",
+          "hyperparams": {
+            "C": "0.1",
+            "kernel": "rbf",
+            "gamma": "auto"
+          },
+          "test_results": {
+            "accuracy": 0.6210125841381329,
+            "f1": 0.6459633315872425,
+            "precision": 0.7230485400890079,
+            "recall": 0.6210125841381329
+          },
+          "train_results": {
+            "accuracy": 0.6565600882028666,
+            "f1": 0.6799946665992331,
+            "precision": 0.7506687282147613,
+            "recall": 0.6565600882028666
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "SVM",
+              "hyperparams": {
+                "C": 0.1,
+                "kernel": "rbf",
+                "gamma": "auto"
+              }
+            },
+            "test_accuracy": 0.6210125841381329,
+            "test_f1": 0.6459633315872425,
+            "test_precision": 0.7230485400890079,
+            "test_recall": 0.6210125841381329,
+            "train_accuracy": 0.6565600882028666,
+            "train_f1": 0.6799946665992331,
+            "train_precision": 0.7506687282147613,
+            "train_recall": 0.6565600882028666
+          },
+          "test_accuracy": 0.6210125841381329,
+          "train_accuracy": 0.6565600882028666,
+          "worker_id": "worker_e035bba3c28ec6f56f376a35b26d32a4d3a9923a7599e6d894445be9"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.6210125841381329,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.6210125841381329,
+      "max_test_accuracy": 0.6210125841381329,
+      "mean_test_f1": 0.6459633315872425,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.7230485400890079,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.6210125841381329,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 0.6565600882028666,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 0.6565600882028666,
+      "max_train_accuracy": 0.6565600882028666,
+      "mean_train_f1": 0.6799946665992331,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 0.7506687282147613,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 0.6565600882028666,
+      "std_train_recall": 0.0
+    },
+    {
+      "hyperparams": {
+        "C": "0.1",
+        "kernel": "poly",
+        "gamma": "auto"
+      },
+      "fold_results": [
+        {
+          "task_id": "SVM_0_6910",
+          "model_name": "SVM",
+          "fold_id": "0",
+          "hyperparams": {
+            "C": "0.1",
+            "kernel": "poly",
+            "gamma": "auto"
+          },
+          "test_results": {
+            "accuracy": 0.5548726953467954,
+            "f1": 0.6277989081389893,
+            "precision": 0.799358382959243,
+            "recall": 0.5548726953467954
+          },
+          "train_results": {
+            "accuracy": 0.5964718853362734,
+            "f1": 0.6788133434352125,
+            "precision": 0.8643742074897636,
+            "recall": 0.5964718853362734
+          },
+          "detailed_results": {
+            "metadata": {
+              "model_name": "SVM",
+              "hyperparams": {
+                "C": 0.1,
+                "kernel": "poly",
+                "gamma": "auto"
+              }
+            },
+            "test_accuracy": 0.5548726953467954,
+            "test_f1": 0.6277989081389893,
+            "test_precision": 0.799358382959243,
+            "test_recall": 0.5548726953467954,
+            "train_accuracy": 0.5964718853362734,
+            "train_f1": 0.6788133434352125,
+            "train_precision": 0.8643742074897636,
+            "train_recall": 0.5964718853362734
+          },
+          "test_accuracy": 0.5548726953467954,
+          "train_accuracy": 0.5964718853362734,
+          "worker_id": "worker_aae7f83dd14df54a8973b135a4d734f97ba8e1132ab4ba855984f07e"
+        }
+      ],
+      "num_folds": 1,
+      "mean_test_accuracy": 0.5548726953467954,
+      "std_test_accuracy": 0.0,
+      "min_test_accuracy": 0.5548726953467954,
+      "max_test_accuracy": 0.5548726953467954,
+      "mean_test_f1": 0.6277989081389893,
+      "std_test_f1": 0.0,
+      "mean_test_precision": 0.799358382959243,
+      "std_test_precision": 0.0,
+      "mean_test_recall": 0.5548726953467954,
+      "std_test_recall": 0.0,
+      "mean_train_accuracy": 0.5964718853362734,
+      "std_train_accuracy": 0.0,
+      "min_train_accuracy": 0.5964718853362734,
+      "max_train_accuracy": 0.5964718853362734,
+      "mean_train_f1": 0.6788133434352125,
+      "std_train_f1": 0.0,
+      "mean_train_precision": 0.8643742074897636,
+      "std_train_precision": 0.0,
+      "mean_train_recall": 0.5964718853362734,
+      "std_train_recall": 0.0
+    }
+  ],
+  "total_tasks": 3,
+  "num_folds": 1,
+  "timestamp": "2025-11-01T02:32:25.929066"
+}

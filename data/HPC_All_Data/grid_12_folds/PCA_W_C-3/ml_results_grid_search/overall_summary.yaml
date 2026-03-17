@@ -1,0 +1,61 @@
+accuracy_statistics:
+  test_accuracy_max: 0.9817091015510682
+  test_accuracy_mean: 0.8660374597600233
+  test_accuracy_min: 0.6448639157155399
+  test_accuracy_std: 0.13083330197481505
+  train_accuracy_max: 0.9960308710033076
+  train_accuracy_mean: 0.9276644615950018
+  train_accuracy_min: 0.7651598676957001
+  train_accuracy_std: 0.09517895387413018
+best_model:
+  best_hyperparams:
+    activation: tanh
+    alpha: '0.1'
+    hidden_layer_sizes:
+    - 200
+    - 100
+    - 50
+  best_test_accuracy: 0.9817091015510682
+  best_train_accuracy: 0.9960308710033076
+  model_name: MLP (Neural Network)
+  std_test_accuracy: 0.0
+model_rankings:
+- best_hyperparams:
+    activation: tanh
+    alpha: '0.1'
+    hidden_layer_sizes:
+    - 200
+    - 100
+    - 50
+  best_test_accuracy: 0.9817091015510682
+  best_train_accuracy: 0.9960308710033076
+  model_name: MLP (Neural Network)
+  std_test_accuracy: 0.0
+- best_hyperparams:
+    C: '0.1'
+    gamma: auto
+    kernel: linear
+  best_test_accuracy: 0.9362013462101259
+  best_train_accuracy: 0.9557148107313488
+  model_name: SVM
+  std_test_accuracy: 0.0
+- best_hyperparams:
+    learning_rate: '0.2'
+    max_depth: '3'
+    n_estimators: '100'
+    subsample: '0.7'
+  best_test_accuracy: 0.9013754755633596
+  best_train_accuracy: 0.9937522969496508
+  model_name: XGBoost
+  std_test_accuracy: 0.0
+- best_hyperparams:
+    metric: euclidean
+    n_neighbors: 7
+    weights: uniform
+  best_test_accuracy: 0.6448639157155399
+  best_train_accuracy: 0.7651598676957001
+  model_name: KNN
+  std_test_accuracy: 0.0
+successful_models: 4
+timestamp: '2025-11-01T02:31:57.452406'
+total_models: 4

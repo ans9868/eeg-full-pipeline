@@ -1,0 +1,51 @@
+delta_median_pp,cliffs_delta,p_value,test,n,strategy,model,comparison,acc_type,exp_a,exp_b,n_x,n_y
+15.94,0.793,0.0,Wilcoxon signed-rank (paired),50.0,Random-50,MLP,ANOVA vs PCA (Random-50),epoch,ANOVA_L_6_Random,PCA_L_6_Random,,
+14.04,0.786,0.0,Wilcoxon signed-rank (paired),50.0,Random-50,KNN,ANOVA vs PCA (Random-50),epoch,ANOVA_L_6_Random,PCA_L_6_Random,,
+14.56,0.771,0.0,Wilcoxon signed-rank (paired),50.0,Random-50,SVM,ANOVA vs PCA (Random-50),epoch,ANOVA_L_6_Random,PCA_L_6_Random,,
+11.52,0.657,0.0,Wilcoxon signed-rank (paired),50.0,Random-50,XGBoost,ANOVA vs PCA (Random-50),epoch,ANOVA_L_6_Random,PCA_L_6_Random,,
+33.33,0.802,0.0,Wilcoxon signed-rank (paired),50.0,Random-50,MLP,ANOVA vs PCA (Random-50),subject,ANOVA_L_6_Random,PCA_L_6_Random,,
+33.33,0.727,0.0,Wilcoxon signed-rank (paired),50.0,Random-50,KNN,ANOVA vs PCA (Random-50),subject,ANOVA_L_6_Random,PCA_L_6_Random,,
+33.33,0.796,0.0,Wilcoxon signed-rank (paired),50.0,Random-50,SVM,ANOVA vs PCA (Random-50),subject,ANOVA_L_6_Random,PCA_L_6_Random,,
+33.33,0.702,0.0,Wilcoxon signed-rank (paired),50.0,Random-50,XGBoost,ANOVA vs PCA (Random-50),subject,ANOVA_L_6_Random,PCA_L_6_Random,,
+16.65,0.861,0.0005,Wilcoxon signed-rank (paired),12.0,Uniform-12,MLP,ANOVA vs PCA (Uniform-12),epoch,ANOVA_L_6_Uniform,PCA_L_6_Uniform,,
+11.09,0.778,0.0005,Wilcoxon signed-rank (paired),12.0,Uniform-12,KNN,ANOVA vs PCA (Uniform-12),epoch,ANOVA_L_6_Uniform,PCA_L_6_Uniform,,
+14.22,0.75,0.0005,Wilcoxon signed-rank (paired),12.0,Uniform-12,SVM,ANOVA vs PCA (Uniform-12),epoch,ANOVA_L_6_Uniform,PCA_L_6_Uniform,,
+10.95,0.639,0.0093,Wilcoxon signed-rank (paired),12.0,Uniform-12,XGBoost,ANOVA vs PCA (Uniform-12),epoch,ANOVA_L_6_Uniform,PCA_L_6_Uniform,,
+33.33,0.917,0.001,Wilcoxon signed-rank (paired),12.0,Uniform-12,MLP,ANOVA vs PCA (Uniform-12),subject,ANOVA_L_6_Uniform,PCA_L_6_Uniform,,
+25.0,0.701,0.001,Wilcoxon signed-rank (paired),12.0,Uniform-12,KNN,ANOVA vs PCA (Uniform-12),subject,ANOVA_L_6_Uniform,PCA_L_6_Uniform,,
+33.33,0.75,0.002,Wilcoxon signed-rank (paired),12.0,Uniform-12,SVM,ANOVA vs PCA (Uniform-12),subject,ANOVA_L_6_Uniform,PCA_L_6_Uniform,,
+25.0,0.653,0.0195,Wilcoxon signed-rank (paired),12.0,Uniform-12,XGBoost,ANOVA vs PCA (Uniform-12),subject,ANOVA_L_6_Uniform,PCA_L_6_Uniform,,
+-0.59,-0.15,0.4279,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,MLP,Uniform-12 vs Random-50 (FTest),epoch,ANOVA_L_6_Uniform,ANOVA_L_6_Random,12.0,50.0
+-3.78,-0.137,0.4705,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,KNN,Uniform-12 vs Random-50 (FTest),epoch,ANOVA_L_6_Uniform,ANOVA_L_6_Random,12.0,50.0
+0.75,0.017,0.9361,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,SVM,Uniform-12 vs Random-50 (FTest),epoch,ANOVA_L_6_Uniform,ANOVA_L_6_Random,12.0,50.0
+-0.93,-0.113,0.5506,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,XGBoost,Uniform-12 vs Random-50 (FTest),epoch,ANOVA_L_6_Uniform,ANOVA_L_6_Random,12.0,50.0
+0.0,-0.165,0.3516,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,MLP,Uniform-12 vs Random-50 (FTest),subject,ANOVA_L_6_Uniform,ANOVA_L_6_Random,12.0,50.0
+0.0,-0.03,0.8713,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,KNN,Uniform-12 vs Random-50 (FTest),subject,ANOVA_L_6_Uniform,ANOVA_L_6_Random,12.0,50.0
+0.0,0.033,0.857,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,SVM,Uniform-12 vs Random-50 (FTest),subject,ANOVA_L_6_Uniform,ANOVA_L_6_Random,12.0,50.0
+-8.33,-0.193,0.2836,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,XGBoost,Uniform-12 vs Random-50 (FTest),subject,ANOVA_L_6_Uniform,ANOVA_L_6_Random,12.0,50.0
+-1.31,-0.117,0.5388,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,MLP,Uniform-12 vs Random-50 (PCA),epoch,PCA_L_6_Uniform,PCA_L_6_Random,12.0,50.0
+-0.82,-0.087,0.6496,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,KNN,Uniform-12 vs Random-50 (PCA),epoch,PCA_L_6_Uniform,PCA_L_6_Random,12.0,50.0
+1.09,0.053,0.7824,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,SVM,Uniform-12 vs Random-50 (PCA),epoch,PCA_L_6_Uniform,PCA_L_6_Random,12.0,50.0
+-0.36,-0.033,0.8656,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,XGBoost,Uniform-12 vs Random-50 (PCA),epoch,PCA_L_6_Uniform,PCA_L_6_Random,12.0,50.0
+0.0,-0.13,0.4186,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,MLP,Uniform-12 vs Random-50 (PCA),subject,PCA_L_6_Uniform,PCA_L_6_Random,12.0,50.0
+8.33,0.027,0.8832,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,KNN,Uniform-12 vs Random-50 (PCA),subject,PCA_L_6_Uniform,PCA_L_6_Random,12.0,50.0
+0.0,0.015,0.922,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,SVM,Uniform-12 vs Random-50 (PCA),subject,PCA_L_6_Uniform,PCA_L_6_Random,12.0,50.0
+0.0,-0.14,0.3544,Mann-Whitney U (unpaired),,Uniform-12 vs Random-50,XGBoost,Uniform-12 vs Random-50 (PCA),subject,PCA_L_6_Uniform,PCA_L_6_Random,12.0,50.0
+-7.23,-0.319,0.006,Mann-Whitney U (unpaired),,P6 vs P2,MLP,P=6 vs P=2 (FTest),epoch,ANOVA_L_6_Random,ANOVA_L_2_Random,50.0,50.0
+-4.89,-0.228,0.0498,Mann-Whitney U (unpaired),,P6 vs P2,KNN,P=6 vs P=2 (FTest),epoch,ANOVA_L_6_Random,ANOVA_L_2_Random,50.0,50.0
+-6.28,-0.267,0.0215,Mann-Whitney U (unpaired),,P6 vs P2,SVM,P=6 vs P=2 (FTest),epoch,ANOVA_L_6_Random,ANOVA_L_2_Random,50.0,50.0
+-5.01,-0.221,0.0575,Mann-Whitney U (unpaired),,P6 vs P2,XGBoost,P=6 vs P=2 (FTest),epoch,ANOVA_L_6_Random,ANOVA_L_2_Random,50.0,50.0
+-16.67,-0.268,0.0097,Mann-Whitney U (unpaired),,P6 vs P2,MLP,P=6 vs P=2 (FTest),subject,ANOVA_L_6_Random,ANOVA_L_2_Random,50.0,50.0
+-16.67,-0.32,0.002,Mann-Whitney U (unpaired),,P6 vs P2,KNN,P=6 vs P=2 (FTest),subject,ANOVA_L_6_Random,ANOVA_L_2_Random,50.0,50.0
+-16.67,-0.298,0.0067,Mann-Whitney U (unpaired),,P6 vs P2,SVM,P=6 vs P=2 (FTest),subject,ANOVA_L_6_Random,ANOVA_L_2_Random,50.0,50.0
+-16.67,-0.161,0.1406,Mann-Whitney U (unpaired),,P6 vs P2,XGBoost,P=6 vs P=2 (FTest),subject,ANOVA_L_6_Random,ANOVA_L_2_Random,50.0,50.0
+-0.86,-0.036,0.759,Mann-Whitney U (unpaired),,P6 vs P2,MLP,P=6 vs P=2 (PCA),epoch,PCA_L_6_Random,PCA_L_2_Random,50.0,50.0
+-1.56,-0.167,0.1506,Mann-Whitney U (unpaired),,P6 vs P2,KNN,P=6 vs P=2 (PCA),epoch,PCA_L_6_Random,PCA_L_2_Random,50.0,50.0
+-3.21,-0.164,0.1586,Mann-Whitney U (unpaired),,P6 vs P2,SVM,P=6 vs P=2 (PCA),epoch,PCA_L_6_Random,PCA_L_2_Random,50.0,50.0
+-1.57,-0.187,0.1075,Mann-Whitney U (unpaired),,P6 vs P2,XGBoost,P=6 vs P=2 (PCA),epoch,PCA_L_6_Random,PCA_L_2_Random,50.0,50.0
+0.0,0.102,0.2659,Mann-Whitney U (unpaired),,P6 vs P2,MLP,P=6 vs P=2 (PCA),subject,PCA_L_6_Random,PCA_L_2_Random,50.0,50.0
+0.0,0.25,0.0092,Mann-Whitney U (unpaired),,P6 vs P2,KNN,P=6 vs P=2 (PCA),subject,PCA_L_6_Random,PCA_L_2_Random,50.0,50.0
+0.0,0.025,0.7585,Mann-Whitney U (unpaired),,P6 vs P2,SVM,P=6 vs P=2 (PCA),subject,PCA_L_6_Random,PCA_L_2_Random,50.0,50.0
+0.0,0.03,0.7471,Mann-Whitney U (unpaired),,P6 vs P2,XGBoost,P=6 vs P=2 (PCA),subject,PCA_L_6_Random,PCA_L_2_Random,50.0,50.0
+1.61,0.206,0.0008,Wilcoxon signed-rank (paired),50.0,intra-experiment,MLP vs KNN,MLP vs KNN (ANOVA Random-50),epoch,ANOVA_L_6_Random,ANOVA_L_6_Random,,
+0.0,0.02,0.8551,Wilcoxon signed-rank (paired),50.0,intra-experiment,MLP vs KNN,MLP vs KNN (ANOVA Random-50),subject,ANOVA_L_6_Random,ANOVA_L_6_Random,,

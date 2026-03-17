@@ -1,0 +1,20 @@
+best_hyperparams:
+  learning_rate: '0.2'
+  max_depth: '6'
+  n_estimators: '100'
+  subsample: '0.7'
+best_metrics:
+  std_test_accuracy: 0.0
+  std_train_accuracy: 0.0
+  test_accuracy: 0.9032777290020486
+  test_f1: 0.9037013598665725
+  test_precision: 0.9052339873344215
+  test_recall: 0.9032777290020486
+  train_accuracy: 1.0
+  train_f1: 1.0
+  train_precision: 1.0
+  train_recall: 1.0
+model_name: XGBoost
+num_folds: 1
+timestamp: '2025-11-01T02:32:25.927089'
+total_tasks: 3

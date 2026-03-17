@@ -26,8 +26,12 @@ Each experiment has 3 data files:
 - `*_per_subject_detailed.csv` - Complete breakdown (subject × fold × model)
 - `*_per_subject_summary.md` - Human-readable report
 
+**Combined (all experiments, per model):**
+- **[subject_accuracy_per_model.csv](SUBJECT_ACCURACY_PER_MODEL.md)** - Subject accuracy per model (experiment, subject, model, median/mean accuracy, n_folds). See [SUBJECT_ACCURACY_PER_MODEL.md](SUBJECT_ACCURACY_PER_MODEL.md).
+
 ### 🔍 Combined Reports
 - **[per_subject_summary_all_experiments.md](per_subject_summary_all_experiments.md)** - All experiments in one document
+- **[SUBJECT_ACCURACY_PER_MODEL.md](SUBJECT_ACCURACY_PER_MODEL.md)** - Subject accuracy per model (CSV description and usage)
 
 ## Analysis Summary
 
@@ -71,7 +75,8 @@ per_subject_classification_analysis/
 ├── Experiment Reports (6 experiments × 3 files = 18 files)
 │   ├── {EXPERIMENT}_per_subject_summary.md
 │   ├── {EXPERIMENT}_per_subject_summary.csv
-│   └── {EXPERIMENT}_per_subject_detailed.csv
+│   ├── {EXPERIMENT}_per_subject_detailed.csv
+│   └── subject_accuracy_per_model.csv (all experiments × subjects × models)
 │
 └── Combined Reports
     ├── per_subject_summary_all_experiments.md

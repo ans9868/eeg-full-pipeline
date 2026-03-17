@@ -1,0 +1,19 @@
+best_hyperparams:
+  C: '0.1'
+  gamma: auto
+  kernel: rbf
+best_metrics:
+  std_test_accuracy: 0.11978514655717372
+  std_train_accuracy: 0.00492656069111067
+  test_accuracy: 0.6083734292966975
+  test_f1: 0.5385675903523748
+  test_precision: 0.7037037558542574
+  test_recall: 0.6083734292966975
+  train_accuracy: 0.8503655778402193
+  train_f1: 0.8490984869877541
+  train_precision: 0.852997716230028
+  train_recall: 0.8503655778402193
+model_name: SVM
+num_folds: 49
+timestamp: '2025-11-02T15:32:19.235530'
+total_tasks: 147

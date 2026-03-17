@@ -45,11 +45,11 @@
 **Statistical Analysis & Methodology:**
 
 7. **[UNCERTAINTY_AND_EFFECT_SIZE_ANALYSIS.md](01_threshold_analysis/UNCERTAINTY_AND_EFFECT_SIZE_ANALYSIS.md)** ⭐
-   - Bootstrapped 95% confidence intervals for accuracy estimates
-   - Cliff's delta effect size measures
-   - Statistical significance testing
-   - Example format: "Random 50-fold: 88.9% [CI: 85.2–92.6%], Δ=4.5 pts (Cliff's δ=0.62)"
-   - **Status:** ✅ CURRENT - STATISTICAL RIGOR
+   - Bootstrapped 95% confidence intervals for accuracy estimates (recomputed March 2026)
+   - Cliff's delta effect sizes and Mann-Whitney U p-values (all computed from data)
+   - **Key result:** Uniform-12 vs Random-50 — **no significant difference** (ANOVA p = 0.428, PCA p = 0.650)
+   - ⚠️ Previous version contained fabricated values — this version is computed from `all_experiments_combined.csv`
+   - **Status:** ✅ CURRENT - VERIFIED STATISTICAL ANALYSIS (March 2026)
 
 8. **[SAME_SUBJECTS_CONTROL_FLOWCHART.md](01_threshold_analysis/SAME_SUBJECTS_CONTROL_FLOWCHART.md)** ⭐
    - Visual flowchart of subject filtering methodology (65 → 45 subjects)
@@ -81,30 +81,35 @@
    - Summary across all experiments
    - Per-subject accuracy statistics
 
-4. **[analysis_summary.md](02_per_subject_analysis/analysis_summary.md)**
+4. **[SUBJECT_ACCURACY_PER_MODEL.md](02_per_subject_analysis/SUBJECT_ACCURACY_PER_MODEL.md)** ⭐
+   - Subject accuracy **per model** (experiment × subject × model)
+   - Documents `subject_accuracy_per_model.csv`: median/mean accuracy and n_folds per (experiment, subject, model)
+   - **Status:** ✅ CURRENT - DATA REFERENCE
+
+5. **[analysis_summary.md](02_per_subject_analysis/analysis_summary.md)**
    - Overall statistics
    - Per-model hyperparameter statistics
 
 **Methodology & Explanations:**
 
-5. [ANALYSIS_METHODOLOGY.md](02_per_subject_analysis/ANALYSIS_METHODOLOGY.md) - Methodology documentation
-6. [SUCCESS_RATE_CALCULATION_EXPLANATION.md](02_per_subject_analysis/SUCCESS_RATE_CALCULATION_EXPLANATION.md) - Calculation methods
-7. [IDENTICAL_RESULTS_INVESTIGATION.md](02_per_subject_analysis/IDENTICAL_RESULTS_INVESTIGATION.md) ⭐ - Investigation of identical results anomaly in ANOVA_L_6
+6. [ANALYSIS_METHODOLOGY.md](02_per_subject_analysis/ANALYSIS_METHODOLOGY.md) - Methodology documentation
+7. [SUCCESS_RATE_CALCULATION_EXPLANATION.md](02_per_subject_analysis/SUCCESS_RATE_CALCULATION_EXPLANATION.md) - Calculation methods
+8. [IDENTICAL_RESULTS_INVESTIGATION.md](02_per_subject_analysis/IDENTICAL_RESULTS_INVESTIGATION.md) ⭐ - Investigation of identical results anomaly in ANOVA_L_6
    - Explains why all models appeared to have identical variance/success rates
    - Documents the investigation process and root cause
    - **Status:** ✅ CURRENT - IMPORTANT CORRECTION
-8. [HYPERPARAMETER_VARIATIONS.md](02_per_subject_analysis/HYPERPARAMETER_VARIATIONS.md) ⭐ - Hyperparameter variations across experiments
+9. [HYPERPARAMETER_VARIATIONS.md](02_per_subject_analysis/HYPERPARAMETER_VARIATIONS.md) ⭐ - Hyperparameter variations across experiments
    - Documents that no model×HP combinations have identical hyperparameters across all 4 experiments
    - Shows hyperparameter differences by model type (KNN, MLP, SVM, XGBoost)
    - **Status:** ✅ CURRENT - IMPORTANT FINDING
 
 **Per-Experiment Tables:**
 
-8. [ANOVA_L_2_Random_per_subject_tables.md](02_per_subject_analysis/ANOVA_L_2_Random_per_subject_tables.md)
-9. [ANOVA_L_6_Random_per_subject_tables.md](02_per_subject_analysis/ANOVA_L_6_Random_per_subject_tables.md)
-10. [PCA_L_2_Random_per_subject_tables.md](02_per_subject_analysis/PCA_L_2_Random_per_subject_tables.md)
-11. [PCA_L_6_Random_per_subject_tables.md](02_per_subject_analysis/PCA_L_6_Random_per_subject_tables.md)
-12. [per_subject_tables_all_experiments.md](02_per_subject_analysis/per_subject_tables_all_experiments.md)
+10. [ANOVA_L_2_Random_per_subject_tables.md](02_per_subject_analysis/ANOVA_L_2_Random_per_subject_tables.md)
+11. [ANOVA_L_6_Random_per_subject_tables.md](02_per_subject_analysis/ANOVA_L_6_Random_per_subject_tables.md)
+12. [PCA_L_2_Random_per_subject_tables.md](02_per_subject_analysis/PCA_L_2_Random_per_subject_tables.md)
+13. [PCA_L_6_Random_per_subject_tables.md](02_per_subject_analysis/PCA_L_6_Random_per_subject_tables.md)
+14. [per_subject_tables_all_experiments.md](02_per_subject_analysis/per_subject_tables_all_experiments.md)
 
 **Per-Experiment Summaries:**
 
@@ -165,8 +170,28 @@ These reports analyze per-subject success rate variance (>50% accuracy) for each
 
 ## 📊 04. Performance Tables
 
-1. [performance_tables.md](04_performance_tables/performance_tables.md)
-2. [fold_instability_tables.md](04_performance_tables/fold_instability_tables.md)
+1. **[official_accuracy_summary.md](04_performance_tables/official_accuracy_summary.md)** ⭐ **OFFICIAL NUMBERS**
+   - Best model per experiment, per-model leaderboards for all LPSO experiments
+   - Both median conventions: "all runs" and "best per fold"
+   - Verified from `all_experiments_combined.csv` (2,736 rows, Feb 2026 audit)
+   - **Status:** ✅ CURRENT - PRIMARY ACCURACY REFERENCE
+
+2. **[statistical_significance_report.md](04_performance_tables/statistical_significance_report.md)** ⭐ **STATISTICS**
+   - Complete bootstrap CIs, Cliff's δ, and hypothesis tests for all LPSO experiments
+   - Wilcoxon signed-rank (paired, same folds): model vs model, ANOVA vs PCA
+   - Mann-Whitney U (unpaired): Uniform-12 vs Random-50, P=6 vs P=2
+   - **Key finding:** ANOVA vs PCA is the only large, significant result (δ = 0.85, p < 0.001)
+   - Generated by `compute_real_statistics.py` — all values verified from CSV
+   - **Status:** ✅ CURRENT - PRIMARY STATISTICAL REFERENCE (March 2026)
+
+3. **[fold_design_reference.md](04_performance_tables/fold_design_reference.md)** ⭐ **METHODOLOGY**
+   - How each experiment was constructed (P, #folds, #subjects, models, HP configs)
+   - Subject coverage note for P=2 (49 of 65 subjects)
+   - Data integrity summary
+   - **Status:** ✅ CURRENT - FOLD DESIGN DOCUMENTATION
+
+3. [performance_tables.md](04_performance_tables/performance_tables.md)
+4. [fold_instability_tables.md](04_performance_tables/fold_instability_tables.md)
 3. [mlp_hidden100_tanh_alpha01_performance.md](04_performance_tables/mlp_hidden100_tanh_alpha01_performance.md)
 4. [mlp_anova_fold_details.md](04_performance_tables/mlp_anova_fold_details.md)
 5. [mlp_hidden100_tanh_alpha01_anova_l_2_performance.md](04_performance_tables/mlp_hidden100_tanh_alpha01_anova_l_2_performance.md)
@@ -417,7 +442,55 @@ These reports analyze per-subject success rate variance (>50% accuracy) for each
 
 ---
 
-## 📑 06. Indexes & Documentation
+## � 09. Subject-Level Evaluation (NEW — March 2026)
+
+Moves beyond epoch-level accuracy to ask: can the model correctly identify whether an
+individual subject has Alzheimer's Disease, using majority vote over all their epochs?
+
+**Main Reports:**
+
+1. **[01_subject_level_overview.md](09_subject_level_analysis/01_subject_level_overview.md)** ⭐ **START HERE**
+   - AD-ratio majority-vote decision rule (τ = 0.5)
+   - Label mapping (alz → AD → label=0, cntrl → Control → label=1)
+   - Quantisation warning: P=6 → subject_acc ∈ {0%, 16.67%, ..., 100%}
+   - HP selection modes (Mode 1: epoch-selected; Mode 2: subject-selected)
+   - **Status:** ✅ CURRENT
+
+2. **[02_subject_accuracy_summary.md](09_subject_level_analysis/02_subject_accuracy_summary.md)** ⭐
+   - Mode 1 subject accuracy table: 6 experiments × 4 models, median / IQR / 95% CI
+   - **ANOVA: median subject_acc = 83.33% at P=6** (+10 pp over epoch accuracy)
+   - **PCA: median subject_acc = 50.00%** — chance level across all models
+   - **Status:** ✅ CURRENT - KEY RESULT
+
+3. **[03_subject_statistical_tests.md](09_subject_level_analysis/03_subject_statistical_tests.md)**
+   - All 7 acceptance criteria **PASS** at subject level (same methodology as `compute_real_statistics.py`)
+   - ANOVA vs PCA delta = **+33 pp** at subject level (vs +11–17 pp at epoch level)
+   - Wilcoxon signed-rank tests, Mann-Whitney U, all p-values reported
+   - **Status:** ✅ CURRENT - STATISTICAL VERIFICATION
+
+4. **[04_epoch_subject_correlation.md](09_subject_level_analysis/04_epoch_subject_correlation.md)**
+   - Pearson r = 0.84 (ANOVA MLP), 0.67 (PCA KNN) over 50 random folds
+   - Strong epoch–subject correlation for ANOVA; moderate for PCA
+   - Validates epoch accuracy as a proxy for ANOVA but not PCA
+   - **Status:** ✅ CURRENT
+
+5. **[05_figures_subject_level.md](09_subject_level_analysis/05_figures_subject_level.md)**
+   - 5 embedded figures: accuracy distributions (P=6, P=2), scatter plots, delta violin
+   - **Status:** ✅ CURRENT
+
+**Key Findings Summary:**
+
+- **ANOVA achieves 83.33% median subject accuracy** at P=6 (100% at P=2), surpassing
+  its own epoch-level performance by ~10 percentage points
+- **PCA collapses to 50% (chance)** at the subject level despite ~60–66% epoch accuracy
+- The ANOVA–PCA advantage is amplified at subject level: +33 pp vs +11–17 pp at epoch level
+- Epoch–subject correlation is strong for ANOVA (r > 0.80) but only moderate for PCA
+
+**Source:** `subject_level_evaluation.py` and `paper_subject_eval_outputs/`
+
+---
+
+## �📑 06. Indexes & Documentation
 
 1. **[THRESHOLD_ANALYSIS_FILES_INDEX.md](06_indexes/THRESHOLD_ANALYSIS_FILES_INDEX.md)** ⭐
    - Complete index of threshold analysis files
@@ -439,10 +512,11 @@ These reports analyze per-subject success rate variance (>50% accuracy) for each
 
 ### For Threshold Analysis:
 1. **Start Here:** [anova_pca_L6_L2_threshold_analysis.md](01_threshold_analysis/anova_pca_L6_L2_threshold_analysis.md)
-2. **Quick Summary:** [UNIFORM_VS_RANDOM_SUMMARY.md](01_threshold_analysis/UNIFORM_VS_RANDOM_SUMMARY.md)
-3. **Statistical Rigor:** [UNCERTAINTY_AND_EFFECT_SIZE_ANALYSIS.md](01_threshold_analysis/UNCERTAINTY_AND_EFFECT_SIZE_ANALYSIS.md) - Bootstrapped CIs & effect sizes
-4. **Methodology:** [SAME_SUBJECTS_CONTROL_FLOWCHART.md](01_threshold_analysis/SAME_SUBJECTS_CONTROL_FLOWCHART.md) - Subject filtering process
-5. **File Status:** [THRESHOLD_ANALYSIS_FILES_INDEX.md](06_indexes/THRESHOLD_ANALYSIS_FILES_INDEX.md)
+2. **Quick Summary:** [UNIFORM_VS_RANDOM_SUMMARY.md](01_threshold_analysis/UNIFORM_VS_RANDOM_SUMMARY.md) — updated March 2026 with correct statistical framing
+3. **Statistical Rigor (verified):** [statistical_significance_report.md](04_performance_tables/statistical_significance_report.md) — bootstrap CIs, Cliff's δ, hypothesis tests computed from data
+4. **Uncertainty & Effect Sizes:** [UNCERTAINTY_AND_EFFECT_SIZE_ANALYSIS.md](01_threshold_analysis/UNCERTAINTY_AND_EFFECT_SIZE_ANALYSIS.md) — recomputed March 2026 (previous values were fabricated)
+5. **Methodology:** [SAME_SUBJECTS_CONTROL_FLOWCHART.md](01_threshold_analysis/SAME_SUBJECTS_CONTROL_FLOWCHART.md) - Subject filtering process
+6. **File Status:** [THRESHOLD_ANALYSIS_FILES_INDEX.md](06_indexes/THRESHOLD_ANALYSIS_FILES_INDEX.md)
 
 ### For Per-Subject Analysis:
 1. **[SUBJECT_SUCCESS_RATE_VARIANCE_SUMMARY.md](02_per_subject_analysis/SUBJECT_SUCCESS_RATE_VARIANCE_SUMMARY.md)** ⭐ START HERE
@@ -474,20 +548,37 @@ These reports analyze per-subject success rate variance (>50% accuracy) for each
    - XGBoost dominance analysis
    - Model performance rankings
 
+### For Subject-Level Evaluation (Section 09 — NEW):
+1. **[01_subject_level_overview.md](09_subject_level_analysis/01_subject_level_overview.md)** ⭐ START HERE
+   - Methodology: AD-ratio majority vote, label mapping, quantisation warning
+   - HP selection modes (Mode 1: epoch-selected, Mode 2: subject-selected)
+2. **[02_subject_accuracy_summary.md](09_subject_level_analysis/02_subject_accuracy_summary.md)** ⭐
+   - Full Mode 1 subject accuracy table (24 rows: 6 experiments × 4 models)
+   - ANOVA median = 83.33% at P=6; PCA median = 50.00% (chance) at P=6
+   - +10 pp gain over epoch accuracy for ANOVA via majority voting
+3. **[03_subject_statistical_tests.md](09_subject_level_analysis/03_subject_statistical_tests.md)**
+   - All 7 acceptance criteria pass at subject level
+   - Per-model Wilcoxon/Mann-Whitney tests on subject accuracy vectors
+   - ANOVA vs PCA delta = +33 pp at subject level (vs +11–17 pp at epoch level)
+4. **[04_epoch_subject_correlation.md](09_subject_level_analysis/04_epoch_subject_correlation.md)**
+   - Pearson r = 0.84 (ANOVA MLP), 0.67 (PCA KNN) across 50 random folds
+   - Strong epoch–subject tracking for ANOVA; moderate for PCA
+5. **[05_figures_subject_level.md](09_subject_level_analysis/05_figures_subject_level.md)**
+   - 5 figures: subject accuracy distributions (P=6 and P=2), scatter plots, delta violin
+
 ---
 
 ## 📊 Statistics
 
-- **Total Files:** 82 markdown files (cleaned - removed 11 replaced/outdated files, added markdown_files_index.md and variance analyses)
-- **Categories:** 8 main categories (added Biomarker Analysis and Variance Analysis)
-- **Primary Analysis Files:** 10 current/recommended files (added ANOVA variance analysis and comparison)
-- **Index Files:** 4 files (added markdown_files_index.md for comprehensive .md file listing)
+- **Total Files:** 87 markdown files (added 5-file subject-level evaluation section)
+- **Categories:** 9 main categories (added Subject-Level Evaluation)
+- **Primary Analysis Files:** 15 current/recommended files
+- **Index Files:** 4 files
 - **Status:** All files copied (not moved) from original locations
 - **Cleanup:** Removed all replaced/outdated intermediate versions
 
 ---
 
-*Booklet created: December 12, 2025*  
-*All files are copies - originals remain in their original locations*
-
-
+*Booklet created: December 12, 2025 | Last updated: March 2, 2026*  
+*Statistical values verified and corrected March 2026 — see `compute_real_statistics.py` and `statistical_significance_report.md`*
+*Subject-level evaluation added March 2026 — see `subject_level_evaluation.py` and `paper_subject_eval_outputs/`*
