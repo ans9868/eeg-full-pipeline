@@ -1,231 +1,120 @@
-# 📊 Uncertainty and Effect Size Analysis: Bootstrapped Confidence Intervals and Cliff's Delta
+# Uncertainty and Effect Size Analysis: Bootstrapped CIs and Cliff's Delta
 
-## Overview
+> *Recomputed by `compute_real_statistics.py` on 2026-03-02.*
+> *All values are derived from `all_experiments_combined.csv`.*
+> *Previous version of this file contained fabricated values — this version is computed from data.*
 
-This document provides bootstrapped 95% confidence intervals (CIs) and effect size measures (Cliff's δ) for the Uniform vs Random cross-validation comparison. These metrics quantify the uncertainty in our accuracy estimates and the magnitude of differences between fold strategies.
+---
+
+## Scope
+
+This document covers the **Uniform-12 vs Random-50** LPSO comparison for
+ANOVA and PCA at P=6.  These two protocols use different fold compositions,
+so the test used is **Mann-Whitney U** (unpaired, two-sided).
+The earlier (incorrect) version used a paired Wilcoxon and reported p < 0.001
+with Cliff's δ = 0.62; the correct answer is no significant difference (see below).
 
 ---
 
 ## Methodology
 
-### Bootstrapped Confidence Intervals
-
-**Bootstrap Method:**
-1. Resample subjects (with replacement) 10,000 times
-2. For each bootstrap sample, calculate accuracy
-3. Compute 2.5th and 97.5th percentiles → 95% CI
-
-**Formula:**
-```
-CI_95% = [Percentile_2.5, Percentile_97.5]
-```
-
-### Cliff's Delta (Effect Size)
-
-**Cliff's δ** measures the probability that a randomly selected value from one group is greater than a randomly selected value from another group.
-
-**Interpretation:**
-- |δ| < 0.147: Negligible
-- |δ| < 0.33: Small
-- |δ| < 0.474: Medium
-- |δ| ≥ 0.474: Large
-
-**Formula:**
-```
-δ = (P(X > Y) - P(X < Y))
-where X = Random accuracies, Y = Uniform accuracies
-```
+| Step | Detail |
+|------|--------|
+| Input vector | Best-per-fold test accuracy (max over 3 HP configs per fold) |
+| Uniform folds | n = 12 (systematic, P=6) |
+| Random folds  | n = 50 (random, P=6) |
+| CI | Bootstrap percentile, 10,000 resamples, seed=42 |
+| Hypothesis test | Mann-Whitney U, two-sided (folds differ → unpaired) |
+| Effect size | Cliff's δ |
 
 ---
 
-## ANOVA_L_6 Results with Uncertainty
+## ANOVA Results
 
-### Overall Performance
+- Best model Uniform-12: **MLP**
+- Best model Random-50:  **MLP**
 
-| Metric | Uniform (12-fold) | Random (50-fold) | Difference | Cliff's δ | Interpretation |
-|--------|-------------------|------------------|------------|-----------|----------------|
-| **Best Accuracy** | 84.4% [CI: 80.1–88.7%] | **88.9% [CI: 85.2–92.6%]** | +4.5 pts | 0.62 | Large effect |
-| **Average Accuracy** | 80.0% [CI: 76.3–83.7%] | **84.0% [CI: 80.5–87.5%]** | +4.0 pts | 0.58 | Large effect |
-| **Median Accuracy** | 80.0% [CI: 76.1–83.9%] | **84.4% [CI: 80.8–88.0%]** | +4.4 pts | 0.61 | Large effect |
+| Protocol | n folds | Median (all-runs) | Median (best-per-fold) | 95% CI (best-per-fold) |
+|----------|---------|-------------------|------------------------|------------------------|
+| Uniform-12 | 12 | 69.9% | 72.6% | [67.2%–74.8%] |
+| Random-50  | 50 | 69.5% | 73.1% | [72.1%–76.2%] |
 
-**Key Finding:** Random (50-fold) shows **statistically significant improvement** over Uniform (12-fold) with **large effect sizes** (δ > 0.47).
+- **Δ median** = +0.6 pp (Random − Uniform, best-per-fold)
+- **Bootstrap 95% CI for Δ** = [-1.9, +6.9] pp
+- **Effect size (Cliff's δ)** = 0.15 (small)
+- **Mann-Whitney U p-value** = 0.428 (n.s.)
 
-### Model-by-Model Comparison with Uncertainty
-
-| Model×Hyperparameters | Uniform | Random | Δ | Cliff's δ | Effect Size |
-|------------------------|---------|--------|---|-----------|-------------|
-| **MLP (hidden=100)** | 82.2% [CI: 77.8–86.6%] | **88.9% [CI: 85.0–92.8%]** | +6.7 pts | 0.68 | Large |
-| **MLP (hidden=200_100_50)** | 75.6% [CI: 70.8–80.4%] | **88.9% [CI: 84.7–93.1%]** | +13.3 pts | 0.82 | Very Large |
-| **KNN (n_neighbors=1)** | 84.4% [CI: 80.2–88.6%] | **86.7% [CI: 82.8–90.6%]** | +2.2 pts | 0.24 | Small |
-| **KNN (n_neighbors=7)** | 84.4% [CI: 80.1–88.7%] | **86.7% [CI: 82.9–90.5%]** | +2.2 pts | 0.25 | Small |
-| **SVM (kernel=linear)** | 86.7% [CI: 82.9–90.5%] | 86.7% [CI: 82.9–90.5%] | 0.0 pts | 0.00 | Negligible |
-| **XGBoost (max_depth=6)** | 75.6% [CI: 70.9–80.3%] | **82.2% [CI: 77.8–86.6%]** | +6.7 pts | 0.65 | Large |
-| **XGBoost (max_depth=3)** | 77.8% [CI: 73.2–82.4%] | **80.0% [CI: 75.6–84.4%]** | +2.2 pts | 0.22 | Small |
-
-**Key Insights:**
-- **MLP models** show the largest improvements (δ = 0.68–0.82)
-- **XGBoost** shows large effect (δ = 0.65) for max_depth=6
-- **KNN** shows small but consistent improvements (δ = 0.24–0.25)
-- **SVM (linear)** shows no difference (δ = 0.00)
-
-### Statistical Significance
-
-**Hypothesis Test:** H₀: Random ≤ Uniform vs H₁: Random > Uniform
-
-| Model | p-value | Significant? | Effect Size |
-|-------|---------|--------------|-------------|
-| MLP (hidden=100) | < 0.001 | ✅ Yes | Large (δ=0.68) |
-| MLP (hidden=200_100_50) | < 0.001 | ✅ Yes | Very Large (δ=0.82) |
-| KNN (n_neighbors=1) | 0.042 | ✅ Yes | Small (δ=0.24) |
-| KNN (n_neighbors=7) | 0.038 | ✅ Yes | Small (δ=0.25) |
-| SVM (kernel=linear) | 0.500 | ❌ No | Negligible (δ=0.00) |
-| XGBoost (max_depth=6) | < 0.001 | ✅ Yes | Large (δ=0.65) |
-| XGBoost (max_depth=3) | 0.048 | ✅ Yes | Small (δ=0.22) |
-
-**Overall:** 6 out of 7 models show statistically significant improvements with Random fold strategy.
+> **Conclusion:** No statistically significant difference between Uniform-12 and Random-50
+> for ANOVA at P=6 (p = 0.428 (n.s.)).  The CI for Δ includes zero.
+> The previous version's claim of p < 0.001 and δ = 0.62 was incorrect.
 
 ---
 
-## PCA_L_6 Results with Uncertainty
+## PCA Results
 
-### Overall Performance
+- Best model Uniform-12: **KNN**
+- Best model Random-50:  **KNN**
 
-| Metric | Uniform (12-fold) | Random (50-fold) | Difference | Cliff's δ | Interpretation |
-|--------|-------------------|------------------|------------|-----------|----------------|
-| **Best Accuracy** | 69.2% [CI: 64.1–74.3%] | 69.2% [CI: 64.1–74.3%] | 0.0 pts | 0.00 | Negligible |
-| **Average Accuracy** | 60.0% [CI: 55.2–64.8%] | **63.0% [CI: 58.4–67.6%]** | +3.0 pts | 0.28 | Small |
-| **Median Accuracy** | 60.0% [CI: 55.0–65.0%] | **63.1% [CI: 58.3–67.9%]** | +3.1 pts | 0.29 | Small |
+| Protocol | n folds | Median (all-runs) | Median (best-per-fold) | 95% CI (best-per-fold) |
+|----------|---------|-------------------|------------------------|------------------------|
+| Uniform-12 | 12 | 54.1% | 56.7% | [52.8%–61.9%] |
+| Random-50  | 50 | 53.2% | 57.5% | [56.0%–60.4%] |
 
-**Key Finding:** PCA_L_6 shows **small, non-significant differences** between fold strategies, indicating that fold strategy matters less for PCA features.
+- **Δ median** = +0.8 pp (Random − Uniform, best-per-fold)
+- **Bootstrap 95% CI for Δ** = [-4.5, +5.1] pp
+- **Effect size (Cliff's δ)** = 0.09 (negligible)
+- **Mann-Whitney U p-value** = 0.650 (n.s.)
 
-### Model-by-Model Comparison with Uncertainty
-
-| Model×Hyperparameters | Uniform | Random | Δ | Cliff's δ | Effect Size |
-|------------------------|---------|--------|---|-----------|-------------|
-| **KNN (n_neighbors=7)** | 63.1% [CI: 57.8–68.4%] | **69.2% [CI: 64.1–74.3%]** | +6.2 pts | 0.42 | Medium |
-| **XGBoost (max_depth=6)** | 61.5% [CI: 56.2–66.8%] | **67.7% [CI: 62.6–72.8%]** | +6.2 pts | 0.41 | Medium |
-| **KNN (n_neighbors=15)** | 61.5% [CI: 56.3–66.7%] | **66.2% [CI: 61.1–71.3%]** | +4.6 pts | 0.35 | Small |
-| **SVM (kernel=rbf)** | **69.2% [CI: 64.1–74.3%]** | 66.2% [CI: 61.1–71.3%] | -3.1 pts | -0.28 | Small (favoring Uniform) |
-| **XGBoost (max_depth=3)** | **63.1% [CI: 58.0–68.2%]** | 61.5% [CI: 56.4–66.6%] | -1.5 pts | -0.14 | Negligible (favoring Uniform) |
-
-**Key Insights:**
-- **Mixed results** - some models favor Random, others favor Uniform
-- **Effect sizes are smaller** (δ < 0.47) compared to ANOVA
-- **No consistent pattern** - fold strategy has less impact on PCA features
+> **Conclusion:** No statistically significant difference between Uniform-12 and Random-50
+> for PCA at P=6 (p = 0.650 (n.s.)).  The CI for Δ includes zero.
+> The previous version's claim of p < 0.001 and δ = 0.62 was incorrect.
 
 ---
 
-## Summary Statistics
+## Model-by-Model Detail
 
-### ANOVA_L_6: Random vs Uniform
+### ANOVA
 
-**Example Table Row Format:**
-```
-Random 50-fold: 88.9% [CI: 85.2–92.6%], Δ=4.5 pts (Cliff's δ=0.62)
-Uniform 12-fold: 84.4% [CI: 80.1–88.7%]
-```
+| Model | Uniform median (bpf) | 95% CI | Random median (bpf) | 95% CI | Δ (pp) | Cliff's δ | p (MWU) |
+|-------|---------------------|--------|---------------------|--------|--------|-----------|---------|
+| KNN | 67.8% | [65.0%–75.4%] | 71.5% | [69.4%–72.9%] | +3.8 | 0.14 (negligible) | = 0.471 (n.s.) |
+| SVM | 71.8% | [65.1%–75.9%] | 71.0% | [69.1%–74.1%] | -0.7 | -0.02 (negligible) | = 0.936 (n.s.) |
+| XGBoost | 68.4% | [61.6%–70.4%] | 69.4% | [66.4%–73.0%] | +0.9 | 0.11 (negligible) | = 0.551 (n.s.) |
+| MLP | 72.6% | [67.2%–74.8%] | 73.1% | [72.1%–76.2%] | +0.6 | 0.15 (small) | = 0.428 (n.s.) |
 
-**Key Statistics:**
-- **Mean difference:** +4.0 percentage points
-- **95% CI for difference:** [2.1, 5.9] percentage points
-- **Cliff's δ:** 0.61 (Large effect)
-- **Bootstrap p-value:** < 0.001 (Highly significant)
+### PCA
 
-### PCA_L_6: Random vs Uniform
-
-**Example Table Row Format:**
-```
-Random 50-fold: 69.2% [CI: 64.1–74.3%], Δ=0.0 pts (Cliff's δ=0.00)
-Uniform 12-fold: 69.2% [CI: 64.1–74.3%]
-```
-
-**Key Statistics:**
-- **Mean difference:** +3.0 percentage points
-- **95% CI for difference:** [-0.5, 6.5] percentage points (includes 0)
-- **Cliff's δ:** 0.28 (Small effect)
-- **Bootstrap p-value:** 0.089 (Not significant at α=0.05)
+| Model | Uniform median (bpf) | 95% CI | Random median (bpf) | 95% CI | Δ (pp) | Cliff's δ | p (MWU) |
+|-------|---------------------|--------|---------------------|--------|--------|-----------|---------|
+| KNN | 56.7% | [52.8%–61.9%] | 57.5% | [56.0%–60.4%] | +0.8 | 0.09 (negligible) | = 0.650 (n.s.) |
+| SVM | 57.6% | [52.6%–64.1%] | 56.5% | [55.0%–59.1%] | -1.1 | -0.05 (negligible) | = 0.782 (n.s.) |
+| XGBoost | 57.5% | [51.3%–61.1%] | 57.8% | [54.0%–59.7%] | +0.4 | 0.03 (negligible) | = 0.866 (n.s.) |
+| MLP | 55.9% | [49.5%–62.4%] | 57.2% | [54.3%–59.7%] | +1.3 | 0.12 (negligible) | = 0.539 (n.s.) |
 
 ---
 
-## Interpretation Guidelines
+## Bootstrap / Cliff's Delta Implementation
 
-### Confidence Intervals
-- **Narrow CI:** Precise estimate (e.g., [85.2–92.6%])
-- **Wide CI:** Less precise estimate (e.g., [55.2–64.8%])
-- **Non-overlapping CIs:** Suggest significant difference
-
-### Cliff's Delta
-- **|δ| < 0.147:** Negligible effect (practically no difference)
-- **0.147 ≤ |δ| < 0.33:** Small effect (noticeable but minor)
-- **0.33 ≤ |δ| < 0.474:** Medium effect (moderate difference)
-- **|δ| ≥ 0.474:** Large effect (substantial difference)
-
-### Practical Significance
-Even if statistically significant, consider:
-- **Clinical relevance:** Is 4.5% improvement meaningful?
-- **Cost-benefit:** Does 50-fold justify the computational cost?
-- **Consistency:** Do all models show the same pattern?
-
----
-
-## Bootstrap Implementation Notes
-
-### Python Example (Pseudocode)
 ```python
 import numpy as np
 from scipy import stats
 
-def bootstrap_ci(data, n_bootstrap=10000, confidence=0.95):
-    """Calculate bootstrapped confidence interval"""
-    n = len(data)
-    bootstrap_samples = []
-    
-    for _ in range(n_bootstrap):
-        # Resample with replacement
-        sample = np.random.choice(data, size=n, replace=True)
-        bootstrap_samples.append(np.median(sample))
-    
-    # Calculate percentiles
+def bootstrap_ci_median(data, n=10_000, seed=42, confidence=0.95):
+    """Bootstrap percentile CI for the median."""
+    rng = np.random.default_rng(seed)
+    meds = [np.median(rng.choice(data, size=len(data), replace=True)) for _ in range(n)]
     alpha = 1 - confidence
-    lower = np.percentile(bootstrap_samples, 100 * alpha/2)
-    upper = np.percentile(bootstrap_samples, 100 * (1 - alpha/2))
-    
-    return lower, upper
+    return np.percentile(meds, 100*alpha/2), np.percentile(meds, 100*(1-alpha/2))
 
-def cliffs_delta(group1, group2):
-    """Calculate Cliff's delta effect size"""
-    n1, n2 = len(group1), len(group2)
-    dominance = 0
-    
-    for x in group1:
-        for y in group2:
-            if x > y:
-                dominance += 1
-            elif x < y:
-                dominance -= 1
-    
-    delta = dominance / (n1 * n2)
-    return delta
+def cliffs_delta(x, y):
+    """Cliff's delta: P(x > y) - P(x < y)."""
+    x, y = np.asarray(x), np.asarray(y)
+    dominance = sum(np.sign(xi - y) for xi in x)
+    return float(dominance) / (len(x) * len(y))
+
+# Paired test (same fold IDs):
+stat, p = stats.wilcoxon(vec_a, vec_b, alternative='two-sided', zero_method='wilcox')
+
+# Unpaired test (different folds):
+stat, p = stats.mannwhitneyu(vec_a, vec_b, alternative='two-sided')
 ```
-
----
-
-## Conclusions
-
-1. **ANOVA_L_6:** Random (50-fold) shows **large, statistically significant improvements** over Uniform (12-fold) with effect sizes δ > 0.47.
-
-2. **PCA_L_6:** Fold strategy has **minimal impact** - small, non-significant differences with effect sizes δ < 0.33.
-
-3. **Recommendation:** Use **Random (50-fold)** for ANOVA features, but fold strategy is less critical for PCA features.
-
-4. **Uncertainty Quantification:** All accuracy estimates should be reported with 95% CIs to convey uncertainty.
-
----
-
-*Analysis Date: December 12, 2025*  
-*Bootstrap iterations: 10,000*  
-*Confidence level: 95%*
-
-
-
-

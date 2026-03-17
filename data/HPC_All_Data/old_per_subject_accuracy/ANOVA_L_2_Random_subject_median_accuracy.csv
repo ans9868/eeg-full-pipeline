@@ -1,0 +1,66 @@
+Subject,Median_Accuracy_Current_Method,N_Folds,N_Model_Observations,Calculation_Method,Note
+sub-1,0.5814,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-2,0.6627,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-3,0.7626,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-4,0.7575,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-5,0.6924,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-6,0.5818,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-7,0.8168,3,12,Median of 12 accuracies (across 3 folds × multiple models),Mixed: 12 accuracies from 3 fold(s) and multiple models
+sub-8,0.8425,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-9,N/A,0,0,No data,Subject not in test folds
+sub-10,N/A,0,0,No data,Subject not in test folds
+sub-11,0.6442,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-12,N/A,0,0,No data,Subject not in test folds
+sub-13,0.4286,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-14,0.6752,3,12,Median of 12 accuracies (across 3 folds × multiple models),Mixed: 12 accuracies from 3 fold(s) and multiple models
+sub-15,0.6290,4,16,Median of 16 accuracies (across 4 folds × multiple models),Mixed: 16 accuracies from 4 fold(s) and multiple models
+sub-16,0.9081,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-17,0.8571,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-18,0.7518,6,24,Median of 24 accuracies (across 6 folds × multiple models),Mixed: 24 accuracies from 6 fold(s) and multiple models
+sub-19,0.6505,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-20,N/A,0,0,No data,Subject not in test folds
+sub-21,0.6942,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-22,0.7352,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-23,0.7229,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-24,0.8725,3,12,Median of 12 accuracies (across 3 folds × multiple models),Mixed: 12 accuracies from 3 fold(s) and multiple models
+sub-25,N/A,0,0,No data,Subject not in test folds
+sub-26,N/A,0,0,No data,Subject not in test folds
+sub-27,N/A,0,0,No data,Subject not in test folds
+sub-28,0.6693,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-29,N/A,0,0,No data,Subject not in test folds
+sub-30,0.8451,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-31,N/A,0,0,No data,Subject not in test folds
+sub-32,N/A,0,0,No data,Subject not in test folds
+sub-33,0.7831,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-34,N/A,0,0,No data,Subject not in test folds
+sub-35,0.6285,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-36,0.6076,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-37,0.7850,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-38,0.6198,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-39,0.7310,3,12,Median of 12 accuracies (across 3 folds × multiple models),Mixed: 12 accuracies from 3 fold(s) and multiple models
+sub-40,0.7352,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-41,0.7307,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-42,0.8758,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-43,N/A,0,0,No data,Subject not in test folds
+sub-44,0.7206,4,16,Median of 16 accuracies (across 4 folds × multiple models),Mixed: 16 accuracies from 4 fold(s) and multiple models
+sub-45,N/A,0,0,No data,Subject not in test folds
+sub-46,N/A,0,0,No data,Subject not in test folds
+sub-47,0.7652,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-48,0.8274,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-49,0.8418,4,16,Median of 16 accuracies (across 4 folds × multiple models),Mixed: 16 accuracies from 4 fold(s) and multiple models
+sub-50,0.5338,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-51,0.6278,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-52,N/A,0,0,No data,Subject not in test folds
+sub-53,N/A,0,0,No data,Subject not in test folds
+sub-54,0.7534,4,16,Median of 16 accuracies (across 4 folds × multiple models),Mixed: 16 accuracies from 4 fold(s) and multiple models
+sub-55,0.9196,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-56,0.7271,3,12,Median of 12 accuracies (across 3 folds × multiple models),Mixed: 12 accuracies from 3 fold(s) and multiple models
+sub-57,0.7810,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-58,0.7877,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-59,0.4658,3,12,Median of 12 accuracies (across 3 folds × multiple models),Mixed: 12 accuracies from 3 fold(s) and multiple models
+sub-60,0.6294,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-61,0.5507,3,12,Median of 12 accuracies (across 3 folds × multiple models),Mixed: 12 accuracies from 3 fold(s) and multiple models
+sub-62,0.8441,3,12,Median of 12 accuracies (across 3 folds × multiple models),Mixed: 12 accuracies from 3 fold(s) and multiple models
+sub-63,0.5875,2,8,Median of 8 accuracies (across 2 folds × multiple models),Mixed: 8 accuracies from 2 fold(s) and multiple models
+sub-64,0.8386,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models
+sub-65,0.6495,1,4,Median of 4 accuracies (across 1 folds × multiple models),Mixed: 4 accuracies from 1 fold(s) and multiple models

@@ -1,0 +1,11 @@
+🚀 TRIAL STARTED
+Model: XGBoost
+Fold: within_subject_split (fold_idx=0)
+Trial ID: 3764c48f
+Config: {
+  "n_estimators": 131,
+  "max_depth": 8,
+  "learning_rate": 0.09619058359414338,
+  "subsample": 0.7682371158152819
+}
+

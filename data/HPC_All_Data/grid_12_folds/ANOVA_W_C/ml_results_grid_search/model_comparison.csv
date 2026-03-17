@@ -1,0 +1,5 @@
+model_name,best_test_accuracy,std_test_accuracy,best_train_accuracy,std_train_accuracy,test_f1,test_precision,test_recall,num_folds,total_tasks,best_hyperparams
+XGBoost,0.9493707930933567,0.0,0.9998897464167585,0.0,0.949297147669392,0.9495722022246279,0.9493707930933567,1,3,"{'n_estimators': '100', 'max_depth': '9', 'learning_rate': '0.2', 'subsample': '0.7'}"
+MLP (Neural Network),0.8444541995902839,0.0,0.8527379639838295,0.0,0.8430929156759988,0.8473913290257288,0.8444541995902839,1,3,"{'hidden_layer_sizes': [200, 100, 50], 'activation': 'tanh', 'alpha': '0.1'}"
+KNN,0.8415276558384548,0.0,0.8678794560823226,0.0,0.8416408450112871,0.8418715036669197,0.8415276558384548,1,3,"{'n_neighbors': 15, 'weights': 'uniform', 'metric': 'euclidean'}"
+SVM,0.7821188176763243,0.0,0.7842337375964719,0.0,0.7765596352288598,0.7939110218224217,0.7821188176763243,1,3,"{'C': '0.1', 'kernel': 'linear', 'gamma': 'auto'}"

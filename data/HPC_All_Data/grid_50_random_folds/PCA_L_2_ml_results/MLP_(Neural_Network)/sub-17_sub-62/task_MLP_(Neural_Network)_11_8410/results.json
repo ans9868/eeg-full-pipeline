@@ -1,0 +1,47 @@
+{
+  "task_id": "MLP_(Neural_Network)_11_8410",
+  "model_name": "MLP (Neural Network)",
+  "fold_id": "11",
+  "hyperparams": {
+    "hidden_layer_sizes": [
+      100
+    ],
+    "activation": "tanh",
+    "alpha": "0.1"
+  },
+  "test_results": {
+    "accuracy": 0.5910290237467019,
+    "f1": 0.5194827593285128,
+    "precision": 0.7791314015486639,
+    "recall": 0.5910290237467019
+  },
+  "train_results": {
+    "accuracy": 0.9822442513410923,
+    "f1": 0.9822445858218638,
+    "precision": 0.9822449905631504,
+    "recall": 0.9822442513410923
+  },
+  "detailed_results": {
+    "metadata": {
+      "model_name": "MLP (Neural Network)",
+      "hyperparams": {
+        "hidden_layer_sizes": [
+          100
+        ],
+        "activation": "tanh",
+        "alpha": 0.1
+      }
+    },
+    "test_accuracy": 0.5910290237467019,
+    "test_f1": 0.5194827593285128,
+    "test_precision": 0.7791314015486639,
+    "test_recall": 0.5910290237467019,
+    "train_accuracy": 0.9822442513410923,
+    "train_f1": 0.9822445858218638,
+    "train_precision": 0.9822449905631504,
+    "train_recall": 0.9822442513410923
+  },
+  "test_accuracy": 0.5910290237467019,
+  "train_accuracy": 0.9822442513410923,
+  "worker_id": "worker_a614f3ee07b933183ba43483c2c3c5c26e2402af965e046815e82d5d"
+}

@@ -1,0 +1,19 @@
+best_hyperparams:
+  metric: euclidean
+  n_neighbors: 15
+  weights: uniform
+best_metrics:
+  std_test_accuracy: 0.09837429256507929
+  std_train_accuracy: 0.00333306201528129
+  test_accuracy: 0.5719673374999472
+  test_f1: 0.529780202844628
+  test_precision: 0.6146962594198137
+  test_recall: 0.5719673374999472
+  train_accuracy: 0.9050081527533163
+  train_f1: 0.9050146056595688
+  train_precision: 0.9050659549040138
+  train_recall: 0.9050081527533163
+model_name: KNN
+num_folds: 49
+timestamp: '2025-11-02T15:32:19.233786'
+total_tasks: 147

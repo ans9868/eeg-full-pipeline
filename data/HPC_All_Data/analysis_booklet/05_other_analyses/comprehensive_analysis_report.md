@@ -9,9 +9,9 @@ This report provides a comprehensive analysis comparing experiments from:
 **Key Findings:**
 - **Overall Performance**: Grid 50 Random Folds shows slightly higher average accuracy (0.6318) compared to Grid 12 Folds (0.6272), a difference of +0.73%
 - **Data Volume**: Grid 50 Random Folds has 6.3x more results (2120 vs 336), providing more comprehensive coverage
-- **Variance**: Grid 50 Random Folds shows significantly lower standard deviation (0.0948 vs 0.1375), indicating 31.1% reduction in variance
-- **ANOVA Performance**: Grid 50 Random Folds' ANOVA configs achieve exceptional performance (0.9834 best accuracy) comparable to within-subject configs
-- **ANOVA vs PCA**: ANOVA-based configs significantly outperform PCA-based configs (+16.34 percentage points) in Grid 50 Random Folds
+- **Variance**: Grid 50 Random Folds shows lower raw standard deviation (0.0948 vs 0.1375, 31.1% reduction) — this reflects more folds providing a tighter distribution, not a true per-fold improvement (fold strategy vs accuracy: Mann-Whitney U p = 0.428 for ANOVA, p = 0.650 for PCA, both n.s.)
+- **ANOVA Performance**: Grid 50 Random Folds' ANOVA configs achieve exceptional threshold-optimised performance (0.9834 best accuracy) comparable to within-subject configs
+- **ANOVA vs PCA**: ANOVA-based configs significantly outperform PCA-based configs (+15.7 pp median, Cliff's δ = 0.85, Wilcoxon p < 0.001) — this is the dominant finding
 
 ---
 
@@ -113,7 +113,7 @@ Grid 50 Random Folds uses random Leave-P-Subjects-Out cross-validation with 50 r
 - **Worst Performing Config**: PCA_L_2 (0.5433 mean, 0.5488 best) - Leave-2-out with PCA features
 - **Highest Variance**: Anova_L_2_incomplete (0.1435 std dev) - more variable with fewer subjects
 - **Most Stable**: PCA_L_6 (0.0115 std dev) - most consistent results
-- **ANOVA vs PCA**: ANOVA-based configs significantly outperform PCA-based configs
+- **ANOVA vs PCA**: ANOVA-based configs significantly outperform PCA-based configs (Wilcoxon p < 0.001, Cliff's δ = 0.85 — large effect)
   - ANOVA average: **0.7135** (mean across Anova_L_2 and Anova_L_6)
   - PCA average: **0.5501** (mean across PCA_L_2 and PCA_L_6)
   - Difference: **+16.34 percentage points** (+29.7%)
@@ -160,7 +160,7 @@ Grid 50 Random Folds uses random Leave-P-Subjects-Out cross-validation with 50 r
 
 **Key Findings:**
 - **Grid 50 Random Folds shows slightly higher average accuracy** (+0.73%), when including ANOVA configs
-- **Grid 50 Random Folds has significantly lower variance** (31.1% reduction), suggesting much more consistent results
+- **Grid 50 Random Folds has lower raw variance** (31.1% reduction in std dev) — this reflects more folds producing a tighter distribution; fold-strategy accuracy difference is **not statistically significant** (Mann-Whitney U p = 0.428)
 - **Grid 50 Random Folds has comparable maximum accuracy** (0.9834 vs 0.9817)
 - **Grid 50 Random Folds provides 6.3x more data points**, offering much better statistical power
 - **The updated analysis reveals better performance** for Grid 50 Random Folds when properly including ANOVA config data
@@ -221,15 +221,15 @@ The 3.50% difference in mean accuracy is relatively small. Grid 50 Random Folds 
 
 ## Conclusions
 
-1. **Overall Performance**: Grid 50 Random Folds shows slightly higher average performance (+0.73%) when including ANOVA configs, with significantly lower variance (31.1% reduction).
+1. **Overall Performance**: Grid 50 Random Folds shows slightly higher average performance (+0.73%) when including ANOVA configs, with lower raw variance (31.1% std dev reduction — fold strategy accuracy difference is not statistically significant, Mann-Whitney U p = 0.428).
 
-2. **Statistical Robustness**: Grid 50 Random Folds provides significantly better statistical power with 6.3x more data points and much more consistent results (lower variance by 31.1%).
+2. **Statistical Power**: Grid 50 Random Folds provides greater statistical power with 6.3x more data points and lower raw variance (31.1% std dev reduction), yielding tighter bootstrap confidence intervals.
 
 3. **Model Consistency**: Grid 50 Random Folds shows more uniform model performance, with SVM performing best in PCA configs and MLP achieving exceptional results (0.98+) in ANOVA configs.
 
 4. **Configuration Impact**: ANOVA-based configs show substantial advantage (+16.34 percentage points) over PCA-based configs in Grid 50 Random Folds. The ANOVA configs achieve exceptional performance (0.98+ best accuracy) comparable to Grid 12 Folds' within-subject configs.
 
-5. **ANOVA Advantage**: Grid 50 Random Folds' ANOVA configs significantly outperform PCA configs, with MLP achieving 0.9834 accuracy in Anova_L_2_incomplete.
+5. **ANOVA Advantage**: Grid 50 Random Folds' ANOVA configs significantly outperform PCA configs (Wilcoxon p < 0.001, Cliff's δ = 0.85, Δ = +15.7 pp median), with MLP achieving 0.9834 threshold-optimised accuracy in Anova_L_2_incomplete.
 
 6. **Recommendation**: Grid 50 Random Folds provides better statistical power and shows superior performance in ANOVA-based configurations. The random fold approach with 50 folds provides more comprehensive coverage and lower variance.
 

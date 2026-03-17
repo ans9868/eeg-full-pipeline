@@ -1,0 +1,81 @@
+{
+  "timestamp": "2025-11-01T02:32:25.929077",
+  "total_models": 4,
+  "successful_models": 4,
+  "model_rankings": [
+    {
+      "model_name": "MLP (Neural Network)",
+      "best_test_accuracy": 0.9811237928007024,
+      "best_train_accuracy": 0.9950753399485484,
+      "std_test_accuracy": 0.0,
+      "best_hyperparams": {
+        "hidden_layer_sizes": [
+          200,
+          100,
+          50
+        ],
+        "activation": "tanh",
+        "alpha": "0.1"
+      }
+    },
+    {
+      "model_name": "SVM",
+      "best_test_accuracy": 0.9362013462101259,
+      "best_train_accuracy": 0.9557148107313488,
+      "std_test_accuracy": 0.0,
+      "best_hyperparams": {
+        "C": "0.1",
+        "kernel": "linear",
+        "gamma": "auto"
+      }
+    },
+    {
+      "model_name": "XGBoost",
+      "best_test_accuracy": 0.9032777290020486,
+      "best_train_accuracy": 1.0,
+      "std_test_accuracy": 0.0,
+      "best_hyperparams": {
+        "n_estimators": "100",
+        "max_depth": "6",
+        "learning_rate": "0.2",
+        "subsample": "0.7"
+      }
+    },
+    {
+      "model_name": "KNN",
+      "best_test_accuracy": 0.6448639157155399,
+      "best_train_accuracy": 0.7651598676957001,
+      "std_test_accuracy": 0.0,
+      "best_hyperparams": {
+        "n_neighbors": 7,
+        "weights": "uniform",
+        "metric": "euclidean"
+      }
+    }
+  ],
+  "best_model": {
+    "model_name": "MLP (Neural Network)",
+    "best_test_accuracy": 0.9811237928007024,
+    "best_train_accuracy": 0.9950753399485484,
+    "std_test_accuracy": 0.0,
+    "best_hyperparams": {
+      "hidden_layer_sizes": [
+        200,
+        100,
+        50
+      ],
+      "activation": "tanh",
+      "alpha": "0.1"
+    }
+  },
+  "accuracy_statistics": {
+    "test_accuracy_mean": 0.8663666959321041,
+    "test_accuracy_std": 0.13083575167659692,
+    "test_accuracy_min": 0.6448639157155399,
+    "test_accuracy_max": 0.9811237928007024,
+    "train_accuracy_mean": 0.9289875045938993,
+    "train_accuracy_std": 0.09613040620776267,
+    "train_accuracy_min": 0.7651598676957001,
+    "train_accuracy_max": 1.0
+  }
+}

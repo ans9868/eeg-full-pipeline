@@ -1,0 +1,142 @@
+#!/usr/bin/env python
+"""
+Table D: Hold-Out Size Sensitivity (Variance Stress Test)
+
+4-row table: (F-test | PCA) × (P=6 | P=2), fixed model×HP per feature set.
+
+Fixed configurations (best-performing model for each feature set, identical
+HP used in BOTH P=6 and P=2 so that cohort size is the only variable):
+  F-test  →  MLP,  hidden_layer_sizes=[100]
+  PCA     →  SVM,  kernel=rbf
+
+The IQR ratio column (P=2 IQR ÷ P=6 IQR) quantifies variance inflation
+directly attributable to smaller hold-out cohort size.
+
+Data source: all_experiments_combined.csv  (LPSO_Random_50 rows)
+"""
+
+import numpy as np
+import pandas as pd
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+DATA_CSV = BASE_DIR / "all_experiments_combined.csv"
+
+# Fixed model × HP keyword to use for each feature set.
+# Using a substring match on the hyperparams JSON string keeps us robust to
+# key-ordering differences in the stored JSON.
+FIXED_CONFIGS = [
+    # (display_feature, display_P, experiment_name, model, hp_substring)
+    ("F-test", "P = 6", "ANOVA_L_6_Random", "MLP", "100"),
+    ("F-test", "P = 2", "ANOVA_L_2_Random", "MLP", "100"),
+    ("PCA",    "P = 6", "PCA_L_6_Random",   "SVM", "rbf"),
+    ("PCA",    "P = 2", "PCA_L_2_Random",   "SVM", "rbf"),
+]
+
+# For the IQR-ratio column: which row index is the P=6 baseline for each pair
+IQR_RATIO_BASELINE = {1: 0, 3: 2}   # row index of P=2 → row index of its P=6
+
+
+def get_vals(lpso, exp, model, hp_substr):
+    """Return 50 fold accuracy values (%) for the matching HP config."""
+    sub = lpso[(lpso["experiment"] == exp) & (lpso["model"] == model)]
+    matched = next(
+        (hp for hp in sub["hyperparams"].unique() if hp_substr in hp), None
+    )
+    if matched is None:
+        raise ValueError(f"No HP matching '{hp_substr}' found for {exp}/{model}")
+    return sub[sub["hyperparams"] == matched]["test_accuracy"].values * 100, matched
+
+
+def main():
+    df   = pd.read_csv(DATA_CSV)
+    lpso = df[df["experiment_type"] == "LPSO_Random_50"].copy()
+
+    rows = []
+    for feat, p_label, exp, model, hp_substr in FIXED_CONFIGS:
+        vals, matched_hp = get_vals(lpso, exp, model, hp_substr)
+        rows.append({
+            "feat":    feat,
+            "p":       p_label,
+            "model":   model,
+            "hp":      matched_hp,
+            "median":  np.median(vals),
+            "iqr":     np.percentile(vals, 75) - np.percentile(vals, 25),
+            "min":     vals.min(),
+            "max":     vals.max(),
+        })
+
+    # Pretty-print to console
+    print("=" * 90)
+    print("TABLE D: Hold-Out Size Sensitivity (Variance Stress Test)")
+    print("  Fixed model×HP per feature set; only P varies between rows")
+    print("=" * 90)
+    for i, r in enumerate(rows):
+        ratio_str = ""
+        if i in IQR_RATIO_BASELINE:
+            ratio = r["iqr"] / rows[IQR_RATIO_BASELINE[i]]["iqr"]
+            ratio_str = f"  IQR ratio vs P=6: {ratio:.1f}×"
+        print(
+            f"  {r['feat']:6s}  {r['p']:4s}  {r['model']:8s}  "
+            f"med={r['median']:5.1f}%  iqr={r['iqr']:5.1f}pp  "
+            f"range={r['min']:5.1f}%–{r['max']:5.1f}%{ratio_str}"
+        )
+
+    # ── Markdown table ──────────────────────────────────────────────────────
+    header = (
+        "| Feature | P | Model (HP) | Median | IQR (pp) | Min – Max | IQR Ratio |\n"
+        "|---------|---|------------|--------|----------|-----------|-----------|\n"
+    )
+    body = ""
+    for i, r in enumerate(rows):
+        import json
+        d = json.loads(r["hp"])
+        if r["model"] == "MLP":
+            hp_disp = f"layers={d.get('hidden_layer_sizes')}"
+        elif r["model"] == "SVM":
+            hp_disp = f"kernel={d.get('kernel')}"
+        elif r["model"] == "XGBoost":
+            hp_disp = f"depth={d.get('max_depth')}"
+        else:
+            hp_disp = f"k={d.get('n_neighbors')}"
+
+        if i in IQR_RATIO_BASELINE:
+            ratio = r["iqr"] / rows[IQR_RATIO_BASELINE[i]]["iqr"]
+            ratio_str = f"**{ratio:.1f}×**"
+        else:
+            ratio_str = "—"
+
+        body += (
+            f"| {r['feat']} "
+            f"| {r['p']} "
+            f"| {r['model']} ({hp_disp}) "
+            f"| {r['median']:.1f}% "
+            f"| {r['iqr']:.1f} "
+            f"| {r['min']:.1f}% – {r['max']:.1f}% "
+            f"| {ratio_str} |\n"
+        )
+
+    markdown = (
+        "# Table D. Hold-Out Size Sensitivity (Variance Stress Test)\n\n"
+        + header + body
+        + "\n---\n\n"
+        "**Methodology:** Each feature set is evaluated with a single fixed "
+        "model and hyperparameter configuration across both P values "
+        "(F-test → MLP, layers=[100]; PCA → SVM, kernel=rbf). "
+        "Statistics are computed from n = 50 random-LPSO folds. "
+        "The IQR ratio quantifies variance inflation attributable solely to "
+        "cohort size, since the model and HP are held constant.\n\n"
+        "*Generated by `create_table_d_holdout_sensitivity.py`*\n"
+    )
+
+    output_file = BASE_DIR / "table_d_holdout_sensitivity.md"
+    output_file.write_text(markdown)
+    print(f"\n{'='*90}")
+    print(markdown)
+    print(f"✅ Saved to: {output_file}")
+    print("=" * 90)
+
+
+if __name__ == '__main__':
+    main()
+

@@ -1,0 +1,45 @@
+{
+  "task_id": "XGBoost_24_8809",
+  "model_name": "XGBoost",
+  "fold_id": "24",
+  "hyperparams": {
+    "n_estimators": "100",
+    "max_depth": "6",
+    "learning_rate": "0.2",
+    "subsample": "0.7"
+  },
+  "test_results": {
+    "accuracy": 0.7105882352941176,
+    "f1": 0.7098590971272231,
+    "precision": 0.7777107180520756,
+    "recall": 0.7105882352941176
+  },
+  "train_results": {
+    "accuracy": 0.9838950379306056,
+    "f1": 0.9838831166033906,
+    "precision": 0.9839801374820213,
+    "recall": 0.9838950379306056
+  },
+  "detailed_results": {
+    "metadata": {
+      "model_name": "XGBoost",
+      "hyperparams": {
+        "n_estimators": 100,
+        "max_depth": 6,
+        "learning_rate": 0.2,
+        "subsample": 0.7
+      }
+    },
+    "test_accuracy": 0.7105882352941176,
+    "test_f1": 0.7098590971272231,
+    "test_precision": 0.7777107180520756,
+    "test_recall": 0.7105882352941176,
+    "train_accuracy": 0.9838950379306056,
+    "train_f1": 0.9838831166033906,
+    "train_precision": 0.9839801374820213,
+    "train_recall": 0.9838950379306056
+  },
+  "test_accuracy": 0.7105882352941176,
+  "train_accuracy": 0.9838950379306056,
+  "worker_id": "worker_ef8b29c4ce411cd6c9d38243c4e8d1e6dda6267809f7e306fc6fbc52"
+}
