@@ -1,5 +1,27 @@
 ## eeg-full-pipeline
 
+TODO:
+Ranked by effort vs. impression on a hiring manager skimming the repo for 5 minutes:
+
+30 Minutes — Do Today
+Write a real README with a system architecture diagram (even ASCII). Hiring managers look at the README and leave. Right now there's no clear "here's what this does and why it's impressive" landing page.
+Add a one-line badge for the GitHub Actions CI. Green checkmark = instant credibility.
+2 Hours — This Weekend
+git rm the dead code (old_ray_tuner/, config2lvl/, *_depricated*, temp_docs/, __pycache__). A hiring manager clicking into data_io_depricated.py (misspelled) forms an opinion fast.
+Add a .gitignore that actually works. .DS_Store and __pycache__ files tracked in git screams "first repo."
+Fix the depricated → deprecated typo anywhere it appears. Small thing, noticed immediately.
+One Afternoon — Next Weekend
+Strip the 4GB of data from git. This is the single thing that makes the repo look amateur. Push results to a GitHub Release or Zenodo. The repo should clone in seconds, not minutes.
+Add a PROJECT_STRUCTURE.md or a tree in the README showing the architecture. The modular design is genuinely good — but nobody will discover that by browsing directories.
+What NOT to Bother With
+Don't refactor the 4K-line files. Nobody reads them during hiring.
+Don't add Ray Tuner tests for a project they're leaving.
+Don't restructure the config system.
+Don't touch the analysis scripts.
+The brutal truth: hiring managers spend 2-5 minutes on a repo. They read the README, glance at the directory structure, maybe open one file, check if CI passes. Everything above targets exactly that window. The deep architecture is already strong — it just needs a front door that doesn't have dirty laundry on the porch.
+
+
+
 <pre><code>
 eeg-full-pipeline/
 ├── config/
