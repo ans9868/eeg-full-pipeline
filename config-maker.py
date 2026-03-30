@@ -1861,6 +1861,29 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
     """
     config = {}
 
+    def ask_float_input(
+        prompt: str,
+        default: str,
+        min_value: Optional[float] = None,
+        max_value: Optional[float] = None,
+    ) -> float:
+        """Prompt for a float with optional min/max validation."""
+        while True:
+            value_str = questionary.text(prompt, default=default).ask()
+            try:
+                value = float(value_str)
+            except (TypeError, ValueError):
+                print("[ERROR] Please enter a valid decimal number.")
+                continue
+
+            if min_value is not None and value < min_value:
+                print(f"[ERROR] Value must be >= {min_value}")
+                continue
+            if max_value is not None and value > max_value:
+                print(f"[ERROR] Value must be <= {max_value}")
+                continue
+            return value
+
     # 6.1 PySpark Resource Configuration
     if target == "pyspark" or target == "pyspark-only" or target == "full":
         print("\n[6.1] PySpark Resource Configuration")
@@ -1894,6 +1917,29 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
             config["pyspark"]["shuffle_partitions"] = validate_integer_input(
                 "6.1.6 Enter shuffle partitions:", default="8"
             )
+            config["pyspark"]["auto_batch_size"] = questionary.select(
+                "6.1.7 Enable automatic memory-based subject batching?",
+                choices=["Yes", "No"],
+            ).ask()
+            config["pyspark"]["max_subjects_per_batch"] = validate_integer_input(
+                "6.1.8 Maximum subjects per batch (hard cap):",
+                default="6",
+            )
+            config["pyspark"]["memory_budget_percent"] = ask_float_input(
+                "6.1.9 Memory budget percent for batching (0-100):",
+                default="45",
+                min_value=1.0,
+                max_value=95.0,
+            )
+            config["pyspark"]["memory_safety_buffer_mb"] = validate_integer_input(
+                "6.1.10 Memory safety buffer in MB (headroom):",
+                default="1024",
+                min_value=0,
+            )
+            config["pyspark"]["allow_swap_for_budget"] = questionary.select(
+                "6.1.11 Allow swap memory to be included in batch budget?",
+                choices=["Yes", "No"],
+            ).ask()
         else:
             # Use defaults
             config["pyspark"] = {
@@ -1902,6 +1948,11 @@ def deploymentMethodPart6(target: str, deployment_method: str) -> Dict[str, Any]
                 "executor_memory": 6,
                 "executor_cores": 2,
                 "shuffle_partitions": 8,
+                "auto_batch_size": "Yes",
+                "max_subjects_per_batch": 6,
+                "memory_budget_percent": 45.0,
+                "memory_safety_buffer_mb": 1024,
+                "allow_swap_for_budget": "Yes",
             }
 
     # 6.2 SLURM Configuration (if Singularity with Slurm is selected)
@@ -4199,4 +4250,3 @@ if __name__ == "__main__":
 
     config, config_name = build_config(target=target)
     save_config(config, config_name)
-

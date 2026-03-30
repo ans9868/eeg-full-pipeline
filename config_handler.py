@@ -747,6 +747,54 @@ class UnifiedConfigHandler:
             if pyspark_config[field] is None:
                 raise ValueError(f"PySpark field '{field}' is None")
 
+        # Optional batching fields
+        if "auto_batch_size" in pyspark_config:
+            auto_batch = pyspark_config["auto_batch_size"]
+            if auto_batch not in ["Yes", "No"]:
+                raise ValueError("pyspark.auto_batch_size must be 'Yes' or 'No'")
+
+        # max_subjects_per_batch is the preferred key; keep subject_batch_size as fallback alias
+        max_subjects_val = None
+        if "max_subjects_per_batch" in pyspark_config:
+            max_subjects_val = pyspark_config["max_subjects_per_batch"]
+        elif "subject_batch_size" in pyspark_config:
+            max_subjects_val = pyspark_config["subject_batch_size"]
+
+        if max_subjects_val is not None:
+            try:
+                max_subjects_int = int(max_subjects_val)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"pyspark.max_subjects_per_batch must be an integer, got: {max_subjects_val}"
+                )
+            if max_subjects_int < 1:
+                raise ValueError("pyspark.max_subjects_per_batch must be >= 1")
+
+        if "memory_budget_percent" in pyspark_config:
+            try:
+                pct = float(pyspark_config["memory_budget_percent"])
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"pyspark.memory_budget_percent must be numeric, got: {pyspark_config['memory_budget_percent']}"
+                )
+            if not (1.0 <= pct <= 95.0):
+                raise ValueError("pyspark.memory_budget_percent must be between 1 and 95")
+
+        if "memory_safety_buffer_mb" in pyspark_config:
+            try:
+                buffer_mb = float(pyspark_config["memory_safety_buffer_mb"])
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"pyspark.memory_safety_buffer_mb must be numeric, got: {pyspark_config['memory_safety_buffer_mb']}"
+                )
+            if buffer_mb < 0:
+                raise ValueError("pyspark.memory_safety_buffer_mb must be >= 0")
+
+        if "allow_swap_for_budget" in pyspark_config:
+            allow_swap = pyspark_config["allow_swap_for_budget"]
+            if allow_swap not in ["Yes", "No"]:
+                raise ValueError("pyspark.allow_swap_for_budget must be 'Yes' or 'No'")
+
     def rayConfigurationPart7_validate(self) -> None:
         """Validate Ray configuration with multiple search strategies (rayConfigurationPart7)."""
         ray_config = self.raw_config.get("ray", {})
@@ -2493,6 +2541,39 @@ class UnifiedConfigHandler:
     def get_pyspark_config(self) -> Dict[str, Any]:
         """Get PySpark configuration."""
         return self.raw_config.get("pyspark", {})
+
+    @property
+    def auto_batch_size(self) -> bool:
+        """Whether automatic memory-based batching is enabled."""
+        return self.get_pyspark_config().get("auto_batch_size", "Yes") == "Yes"
+
+    @property
+    def max_subjects_per_batch(self) -> int:
+        """
+        Hard cap for subjects per batch.
+        Supports legacy alias 'subject_batch_size'.
+        """
+        pyspark_config = self.get_pyspark_config()
+        value = pyspark_config.get(
+            "max_subjects_per_batch",
+            pyspark_config.get("subject_batch_size", 6)
+        )
+        return int(value)
+
+    @property
+    def memory_budget_percent(self) -> float:
+        """Percent of available memory used for batch budget calculation."""
+        return float(self.get_pyspark_config().get("memory_budget_percent", 45.0))
+
+    @property
+    def memory_safety_buffer_mb(self) -> float:
+        """Fixed memory headroom kept free during batching."""
+        return float(self.get_pyspark_config().get("memory_safety_buffer_mb", 1024.0))
+
+    @property
+    def allow_swap_for_budget(self) -> bool:
+        """Whether swap memory should be included in available memory budget."""
+        return self.get_pyspark_config().get("allow_swap_for_budget", "Yes") == "Yes"
 
     def get_ray_config(self) -> Dict[str, Any]:
         """Get Ray configuration."""
