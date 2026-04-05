@@ -1,0 +1,218 @@
+project:
+  name: PCA_W_C_v1
+  output_dir: ./data
+  experiment_type: ML Classification
+  subjects_or_events: subjects
+  deployment_method: Singularity with Slurm
+  random_seed: 42
+  expose_ports: 'No'
+  config_name: config_PCA_W_C_v1_11-01-2026_1525.yaml
+  slurm_options:
+    build: --time=00:30:00 --mem=32G --cpus-per-task=16 --account=pr_126_tandon_priority
+    pyspark: --time=00:30:00 --mem=20G --cpus-per-task=6 --account=pr_126_tandon_priority
+    ray: --time=00:30:00 --mem=20G --cpus-per-task=14 --account=pr_126_tandon_priority
+data_input:
+  groups:
+    alz:
+    - /scratch/ans9868/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-003/eeg/sub-003_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-004/eeg/sub-004_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-005/eeg/sub-005_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-006/eeg/sub-006_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-007/eeg/sub-007_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-008/eeg/sub-008_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-009/eeg/sub-009_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-010/eeg/sub-010_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-011/eeg/sub-011_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-012/eeg/sub-012_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-013/eeg/sub-013_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-014/eeg/sub-014_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-015/eeg/sub-015_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-016/eeg/sub-016_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-017/eeg/sub-017_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-018/eeg/sub-018_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-019/eeg/sub-019_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-020/eeg/sub-020_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-021/eeg/sub-021_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-022/eeg/sub-022_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-023/eeg/sub-023_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-024/eeg/sub-024_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-025/eeg/sub-025_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-026/eeg/sub-026_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-027/eeg/sub-027_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-028/eeg/sub-028_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-029/eeg/sub-029_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-030/eeg/sub-030_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-031/eeg/sub-031_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-032/eeg/sub-032_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-033/eeg/sub-033_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-034/eeg/sub-034_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-035/eeg/sub-035_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-036/eeg/sub-036_task-eyesclosed_eeg.set
+    cntrl:
+    - /scratch/ans9868/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-039/eeg/sub-039_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-040/eeg/sub-040_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-041/eeg/sub-041_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-042/eeg/sub-042_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-043/eeg/sub-043_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-044/eeg/sub-044_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-045/eeg/sub-045_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-046/eeg/sub-046_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-047/eeg/sub-047_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-048/eeg/sub-048_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-049/eeg/sub-049_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-050/eeg/sub-050_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-051/eeg/sub-051_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-052/eeg/sub-052_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-053/eeg/sub-053_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-054/eeg/sub-054_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-055/eeg/sub-055_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-056/eeg/sub-056_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-057/eeg/sub-057_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-058/eeg/sub-058_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-059/eeg/sub-059_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-060/eeg/sub-060_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-061/eeg/sub-061_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-062/eeg/sub-062_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-063/eeg/sub-063_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-064/eeg/sub-064_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-065/eeg/sub-065_task-eyesclosed_eeg.set
+  reuse_processed_subjects: 'Yes'
+  save_processed_subjects: 'Yes'
+  reuse_transformed: 'Yes'
+  save_transformed: 'Yes'
+  reuse_transformed_across_experiments: 'Yes'
+  reuse_processed_subjects_across_experiments: 'Yes'
+preprocessing:
+  bands:
+    Delta:
+    - 0.5
+    - 4
+    Theta:
+    - 4
+    - 8
+    Alpha:
+    - 8
+    - 12
+    Beta:
+    - 12
+    - 30
+  window_size: 3.0
+  sliding_window: 0.5
+  reject_by_annotation: 'Yes'
+  normalize_psd: 'Yes'
+  use_epoch_rejection: 'Yes'
+  epoch_rejection:
+    reject: 800.0
+    flat: 0.3
+  extreme_datapoint_removal: null
+feature_extraction:
+  method: welch
+  features:
+    per_channel_across_bands:
+    - band_power
+    - none
+    per_channel_per_band:
+    - relative_band_power
+  show_intermediate_results: 'No'
+  show_intermediate_counts: 'No'
+  output_format: ml
+feature_transformation:
+  transformations:
+  - Z-score standardization
+  - PCA (retain 95% variance)
+  synthetic: None
+data_transformation_strategy:
+  strategy: Within-subject (intra subject split) train/test split (80/20 per subject)
+    - each subject contributes to both train and test
+  intra_test_train_split:
+    train_ratio: 0.8
+    random_seed: 42
+    split_method: random
+  shuffle_transformed_data: 'Yes'
+pyspark:
+  master: 4
+  driver_memory: 4
+  executor_memory: 3
+  executor_cores: 2
+  shuffle_partitions: 65
+ray:
+  search_strategies:
+  - grid_search
+  grid_search:
+    models:
+    - XGBoost
+    - MLP (Neural Network)
+    - KNN
+    - SVM
+    model_configs:
+      XGBoost:
+        use_default: false
+        hyperparameters:
+          n_estimators:
+          - '100'  # Fixed for all 3 (your data showed 100 worked well)
+          max_depth:
+          - '3'
+          - '6'
+          - '9'  # Vary tree depth (depth 6 worked great in your data!)
+          learning_rate:
+          - '0.2'  # Fixed for all 3
+          subsample:
+          - '0.7'  # Fixed for all 3
+      MLP (Neural Network):
+        use_default: false
+        hyperparameters:
+          hidden_layer_sizes:
+          - - 100
+          - - 150
+            - 50
+          - - 200
+            - 100
+            - 50
+          activation:
+          - tanh  # Fixed for all 3
+          alpha:
+          - '0.1'  # Fixed for all 3
+      KNN:
+        use_default: false
+        hyperparameters:
+          n_neighbors:
+          - 1
+          - 7
+          - 15
+          weights:
+          - uniform  # Fixed for all 3
+          metric:
+          - euclidean  # Fixed for all 3
+      SVM:
+        use_default: false
+        hyperparameters:
+          C:
+          - '0.1'  # Fixed for all 3 (same regularization)
+          kernel:
+          - linear
+          - rbf
+          - poly  # 3 different kernels
+          gamma:
+          - auto  # Fixed for all 3 (linear doesn't use gamma, poly/rbf do)
+    max_concurrent_trials: 16 
+    cv_folds: 5
+  metric: accuracy
+  mode: max
+  graph_data_visualization:
+    save_prediction_outputs: 'Yes'
+    best_models_graph: 'Yes'
+    per_model_accross_hyperparameters_graph: 'Yes'
+    per_model_per_hyperparameter_across_folds_graph: 'Yes'
+    per_subject_analysis_graph: 'Yes'
+    per_subject_top_n_models: 5
+    per_subject_hyperparameter_analysis: 'Yes'
+  resources:
+    num_cpus: 24
+    memory_gb: 40
+    object_store_memory_gb: 20
+    num_gpus: 0
+

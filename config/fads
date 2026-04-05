@@ -1,0 +1,103 @@
+project:
+  name: lpso
+  output_dir: ./data
+  experiment_type: ML Classification
+  subjects_or_events: subjects
+  deployment_method: Docker
+  random_seed: 42
+  config_name: config_lpso_24-09-2025_1954.yaml
+data_input:
+  groups:
+    alz:
+    - /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+    - /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+    cntrl:
+    - /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+    - /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+  reuse_processed_subjects: 'Yes'
+  save_processed_subjects: 'Yes'
+  reuse_transformed: 'Yes'
+  save_transformed: 'Yes'
+preprocessing:
+  bands:
+    Delta:
+    - 0.5
+    - 4
+  window_size: 3.0
+  sliding_window: 0.0
+  reject_by_annotation: 'Yes'
+  normalize_psd: 'Yes'
+  use_epoch_rejection: 'Yes'
+  epoch_rejection:
+    reject: 600.0
+    flat: 0.3
+  extreme_datapoint_removal: null
+feature_extraction:
+  method: welch
+  features:
+    per_channel_across_bands:
+    - band_power
+    - none
+    per_channel_per_band:
+    - band_power
+  show_intermediate_results: 'No'
+  show_intermediate_counts: 'No'
+  output_format: ml
+feature_transformation:
+  transformations:
+  - MinMax scaler
+  synthetic: None
+  minmax_range:
+  - -1.0
+  - 1.0
+data_transformation_strategy:
+  strategy: LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation
+    (recommended for small datasets)
+  lpso_subjects_per_group: 2
+  uneven_handling: cutoff
+  lpso_folds:
+  - - /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+    - /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+  - - /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+    - /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+  lpso_metadata:
+    total_folds: 2
+    subjects_per_group: 2
+    subjects_per_group_per_fold: 1
+    total_subjects: 4
+    groups:
+    - alz
+    - cntrl
+    num_groups: 2
+    fold_generation_method: systematic_ordered
+  use_lpso: true
+pyspark:
+  master: '6'
+  driver_memory: '6'
+  executor_memory: '6'
+  executor_cores: '2'
+  shuffle_partitions: '8'
+ray:
+  search_strategies:
+  - grid_search
+  grid_search:
+    models:
+    - KNN
+    model_configs:
+      KNN:
+        use_default: true
+    max_concurrent: '4'
+    cv_folds: '5'
+  graph_data_visualization:
+    save_prediction_outputs: 'Yes'
+    best_models_graph: 'Yes'
+    per_model_accross_hyperparameters_graph: 'Yes'
+    per_model_per_hyperparameter_across_folds_graph: 'Yes'
+    per_subject_analysis_graph: 'Yes'
+    per_subject_hyperparameter_analysis: 'Yes'
+  resources:
+    num_cpus: '4'
+    memory_gb: '8'
+    object_store_memory_gb: '4'
+    num_gpus: 0
+    dashboard_port: '8265'
