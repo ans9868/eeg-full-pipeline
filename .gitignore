@@ -159,6 +159,8 @@ transformed/
 # Container files
 *.sif
 containers/
+simplifiedPyspark/artifacts/
+simplifiedPyspark/singularity/
 
 # SLURM
 *.out
