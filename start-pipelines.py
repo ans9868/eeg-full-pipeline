@@ -381,9 +381,22 @@ def run_docker_container(container_type: str, config_path: str) -> None:
     for port_mapping in ports:
         docker_cmd.extend(["-p", port_mapping])
 
-    # Add volume mounts
+    # Add volume mounts (normalize host paths to absolute real paths for Docker reliability)
     for host_path, container_path in mount_mappings:
-        docker_cmd.extend(["-v", f"{host_path}:{container_path}"])
+        host_path_obj = Path(host_path).expanduser()
+        try:
+            # strict=True ensures we fail early with a clear message if a mount source is missing
+            host_path_resolved = host_path_obj.resolve(strict=True)
+        except FileNotFoundError:
+            print(
+                f"{EMOJI_ERROR} Mount source path does not exist: {host_path_obj}"
+            )
+            print(
+                f"{EMOJI_INFO} Please verify this host path exists before running Docker."
+            )
+            sys.exit(1)
+
+        docker_cmd.extend(["-v", f"{host_path_resolved}:{container_path}"])
 
     # Add image and command
     docker_cmd.extend([config["docker_image"]] + command_parts)
