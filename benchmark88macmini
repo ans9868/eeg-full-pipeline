@@ -1,0 +1,1090 @@
+✅ Config handler cleaned
+📋 Copying unified config-handler.py to build context...
+cp ./config_handler.py ./config_handler_temp.py
+✅ Config handler copied successfully
+docker build -t eeg-spark-pipeline:latest .
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.37kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/bitnamilegacy/spark:4.0.0
+#2 DONE 0.4s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 127.70kB done
+#4 DONE 0.0s
+
+#5 [ 1/14] FROM docker.io/bitnamilegacy/spark:4.0.0@sha256:8112420cfd8c553528e50e6452b9d3a09f4d1d436b7186527070c121b01bde49
+#5 resolve docker.io/bitnamilegacy/spark:4.0.0@sha256:8112420cfd8c553528e50e6452b9d3a09f4d1d436b7186527070c121b01bde49 0.0s done
+#5 DONE 0.0s
+
+#6 [ 8/14] COPY entrypoint.sh /entrypoint.sh
+#6 CACHED
+
+#7 [ 7/14] RUN echo "spark:x:1001:1001:Spark User:/opt/bitnami/spark:/bin/bash" > /opt/bitnami/spark/tmp/nss_passwd &&     echo "root:x:0:0:Root User:/root:/bin/bash" >> /opt/bitnami/spark/tmp/nss_passwd &&     echo "spark:x:1001:" > /opt/bitnami/spark/tmp/nss_group &&     echo "root:x:0:" >> /opt/bitnami/spark/tmp/nss_group &&     chmod 666 /opt/bitnami/spark/tmp/nss_passwd &&     chmod 666 /opt/bitnami/spark/tmp/nss_group
+#7 CACHED
+
+#8 [13/14] COPY ./run_all_tests.py /app/run_all_tests.py
+#8 CACHED
+
+#9 [ 2/14] WORKDIR /app
+#9 CACHED
+
+#10 [ 5/14] RUN groupadd -g 1001 spark &&     useradd -u 1001 -g spark -m -s /bin/bash -d /opt/bitnami/spark spark
+#10 CACHED
+
+#11 [ 4/14] RUN pip3 install --no-cache-dir -r requirements.txt
+#11 CACHED
+
+#12 [ 9/14] RUN chmod +x /entrypoint.sh
+#12 CACHED
+
+#13 [ 6/14] RUN mkdir -p /opt/bitnami/spark/tmp &&     mkdir -p /tmp/spark-warehouse &&     mkdir -p /tmp/.ivy2 &&     mkdir -p /tmp/numba_cache &&     mkdir -p /tmp/.cache/matplotlib &&     chown -R spark:spark /opt/bitnami/spark &&     chown -R spark:spark /tmp/spark-warehouse &&     chown -R spark:spark /tmp/.ivy2 &&     chown -R spark:spark /tmp/numba_cache &&     chown -R spark:spark /tmp/.cache/matplotlib &&     chmod -R 755 /opt/bitnami/spark/tmp &&     chmod -R 755 /tmp/spark-warehouse &&     chmod -R 755 /tmp/.ivy2 &&     chmod -R 755 /tmp/numba_cache &&     chmod -R 755 /tmp/.cache/matplotlib
+#13 CACHED
+
+#14 [10/14] COPY ./eeg_spark_etl/ ./eeg_spark_etl/
+#14 CACHED
+
+#15 [ 3/14] COPY ./requirements/docker.txt requirements.txt
+#15 CACHED
+
+#16 [12/14] COPY ./config_handler_temp.py /app/config_handler.py
+#16 CACHED
+
+#17 [11/14] COPY ./main.py /app/main.py
+#17 CACHED
+
+#18 [14/14] COPY ./tests/ ./tests/
+#18 CACHED
+
+#19 exporting to image
+#19 exporting layers done
+#19 exporting manifest sha256:5532b29cfcb4412092fdc84aec031dfc5e16fae202c7fab96f4645f7a4f62131 done
+#19 exporting config sha256:d4d67c61cd6d4fceb71296c20ae08238216a3488a052fab27b9177c2afcedc60 done
+#19 exporting attestation manifest sha256:90f32c4cebe41af6c0769e438fe9cfbe15fd60fbc6340c837ba477f281d29998 0.0s done
+#19 exporting manifest list sha256:a9b36950f4129ee6737561d401d13e6204e65a428e56f5ad698bdeb20f902ce7 done
+#19 naming to docker.io/library/eeg-spark-pipeline:latest done
+#19 unpacking to docker.io/library/eeg-spark-pipeline:latest done
+#19 DONE 0.1s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "NSS_WRAPPER_PASSWD") (line 63)
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/pjuk9aawuw3a95n3o4b4ravuz
+/Library/Developer/CommandLineTools/usr/bin/make clean-config-handler
+✅ Config handler cleaned
+docker tag eeg-spark-pipeline:latest nour333/eeg-spark-pipeline:latest
+docker push nour333/eeg-spark-pipeline:latest
+The push refers to repository [docker.io/nour333/eeg-spark-pipeline]
+660e2e101d65: Waiting
+5ccb989c430c: Waiting
+824f9a1de650: Waiting
+1424f8078e20: Waiting
+14805f93c13f: Waiting
+d41b6d9192be: Waiting
+cb2ba385afd6: Waiting
+c49bf3472362: Waiting
+9b04ac6a9ff5: Waiting
+2616fccdc59b: Waiting
+3a8a96a5baaf: Waiting
+cefb4e54d3eb: Waiting
+f8080ba60d09: Waiting
+690ac18026d2: Waiting
+12324e379e27: Waiting
+14805f93c13f: Waiting
+d41b6d9192be: Waiting
+cb2ba385afd6: Waiting
+c49bf3472362: Waiting
+9b04ac6a9ff5: Waiting
+2616fccdc59b: Waiting
+3a8a96a5baaf: Waiting
+cefb4e54d3eb: Waiting
+f8080ba60d09: Waiting
+690ac18026d2: Waiting
+12324e379e27: Waiting
+660e2e101d65: Waiting
+5ccb989c430c: Waiting
+824f9a1de650: Waiting
+1424f8078e20: Waiting
+2616fccdc59b: Waiting
+3a8a96a5baaf: Layer already exists
+cefb4e54d3eb: Waiting
+f8080ba60d09: Waiting
+690ac18026d2: Waiting
+12324e379e27: Waiting
+660e2e101d65: Waiting
+5ccb989c430c: Waiting
+824f9a1de650: Waiting
+1424f8078e20: Layer already exists
+14805f93c13f: Waiting
+d41b6d9192be: Waiting
+cb2ba385afd6: Waiting
+c49bf3472362: Waiting
+9b04ac6a9ff5: Layer already exists
+c49bf3472362: Waiting
+2616fccdc59b: Waiting
+cefb4e54d3eb: Waiting
+f8080ba60d09: Waiting
+690ac18026d2: Waiting
+12324e379e27: Waiting
+660e2e101d65: Waiting
+5ccb989c430c: Waiting
+824f9a1de650: Waiting
+14805f93c13f: Waiting
+d41b6d9192be: Waiting
+cb2ba385afd6: Waiting
+push access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed
+make: *** [push] Error 1
+🧹 Cleaning config handler...
+✅ Config handler cleaned
+📋 Copying unified config-handler.py to build context...
+cp ./config_handler.py ./config_handler_temp.py
+✅ Config handler copied successfully
+docker build -t eeg-ray-tuner:latest .
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.68kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.10-slim
+#2 DONE 0.3s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 121.06kB done
+#4 DONE 0.0s
+
+#5 [ 1/13] FROM docker.io/library/python:3.10-slim@sha256:2a8c7d9efdae9b636de80a187a4ce31374ffb3883a7be06232d25a96e8538bf4
+#5 resolve docker.io/library/python:3.10-slim@sha256:2a8c7d9efdae9b636de80a187a4ce31374ffb3883a7be06232d25a96e8538bf4 done
+#5 DONE 0.0s
+
+#6 [ 7/13] WORKDIR /app
+#6 CACHED
+
+#7 [ 5/13] RUN python -c "import ray; import ray.tune; print('Ray and Ray Tune installed successfully')"
+#7 CACHED
+
+#8 [10/13] RUN chmod +x /entrypoint.sh
+#8 CACHED
+
+#9 [ 3/13] COPY ./requirements/docker.txt requirements.txt
+#9 CACHED
+
+#10 [ 2/13] RUN apt-get update && apt-get install -y     gcc     g++     curl     wget     && rm -rf /var/lib/apt/lists/*
+#10 CACHED
+
+#11 [ 4/13] RUN pip3 install --no-cache-dir -r requirements.txt
+#11 CACHED
+
+#12 [ 6/13] RUN python -c "import ray; print(f'Ray version: {ray.__version__}')"
+#12 CACHED
+
+#13 [ 8/13] RUN mkdir -p /app/logs/ray-events/driver     && mkdir -p /app/logs/ray-events/workers     && mkdir -p /app/logs/ray-events/system     && mkdir -p /app/logs/ray-events/trials
+#13 CACHED
+
+#14 [11/13] COPY eeg_ray_tuner/ ./eeg_ray_tuner/
+#14 CACHED
+
+#15 [12/13] COPY main.py .
+#15 CACHED
+
+#16 [ 9/13] COPY entrypoint.sh /entrypoint.sh
+#16 CACHED
+
+#17 [13/13] COPY config_handler_temp.py ./config_handler.py
+#17 CACHED
+
+#18 exporting to image
+#18 exporting layers done
+#18 exporting manifest sha256:c6b49bc710ace82b43ba993e04ebc587346f6f838291d96bba27c0baa90f7aa2 done
+#18 exporting config sha256:dabc9cf6998c69ac5bd0c7d76d9f3eb748934091518d68ffb302cbbaeda1575f done
+#18 exporting attestation manifest sha256:84e65ae0e543354c4a055b38418f270892d0146131fe71ab0199c33034c99109 0.0s done
+#18 exporting manifest list sha256:9aa17f7f3f4f54badf6dd15d6047a1cdd7757c5c37530940ad8f5c67925dec6e done
+#18 naming to docker.io/library/eeg-ray-tuner:latest done
+#18 unpacking to docker.io/library/eeg-ray-tuner:latest done
+#18 DONE 0.1s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - UndefinedVar: Usage of undefined variable '$PYTHONPATH' (line 42)
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/y4x3zjbsgfgq8vmq69nr2lt8d
+/Library/Developer/CommandLineTools/usr/bin/make clean-config-handler
+🧹 Cleaning config handler...
+✅ Config handler cleaned
+docker tag eeg-ray-tuner:latest nour333/eeg-ray-tuner:latest
+docker push nour333/eeg-ray-tuner:latest
+The push refers to repository [docker.io/nour333/eeg-ray-tuner]
+e19ff677dccf: Waiting
+4f4fb700ef54: Waiting
+1e0e64e707cf: Waiting
+7600cf23665e: Waiting
+6a058ea19f9a: Waiting
+ae6991ab6f10: Waiting
+e3d675b6cf90: Waiting
+a98261855397: Waiting
+80e2e0ad42a4: Waiting
+316d7ea33617: Waiting
+51365f04b688: Waiting
+5451a8c78bf7: Waiting
+38f033bc5c10: Waiting
+c42865624c5f: Waiting
+af5c53fc717c: Waiting
+0e11e088d3ed: Waiting
+10f9985e01c8: Waiting
+e3d675b6cf90: Waiting
+a98261855397: Waiting
+80e2e0ad42a4: Waiting
+316d7ea33617: Waiting
+51365f04b688: Waiting
+5451a8c78bf7: Waiting
+38f033bc5c10: Waiting
+c42865624c5f: Waiting
+af5c53fc717c: Waiting
+0e11e088d3ed: Waiting
+10f9985e01c8: Waiting
+e19ff677dccf: Waiting
+4f4fb700ef54: Waiting
+1e0e64e707cf: Waiting
+7600cf23665e: Waiting
+6a058ea19f9a: Waiting
+ae6991ab6f10: Waiting
+316d7ea33617: Waiting
+51365f04b688: Waiting
+5451a8c78bf7: Waiting
+38f033bc5c10: Waiting
+c42865624c5f: Waiting
+af5c53fc717c: Waiting
+0e11e088d3ed: Waiting
+10f9985e01c8: Waiting
+e19ff677dccf: Waiting
+4f4fb700ef54: Waiting
+1e0e64e707cf: Waiting
+7600cf23665e: Waiting
+6a058ea19f9a: Waiting
+ae6991ab6f10: Waiting
+e3d675b6cf90: Waiting
+a98261855397: Waiting
+80e2e0ad42a4: Waiting
+1e0e64e707cf: Waiting
+7600cf23665e: Waiting
+6a058ea19f9a: Waiting
+ae6991ab6f10: Waiting
+e3d675b6cf90: Waiting
+a98261855397: Waiting
+80e2e0ad42a4: Waiting
+316d7ea33617: Waiting
+51365f04b688: Waiting
+5451a8c78bf7: Waiting
+38f033bc5c10: Waiting
+c42865624c5f: Waiting
+af5c53fc717c: Waiting
+0e11e088d3ed: Waiting
+10f9985e01c8: Waiting
+e19ff677dccf: Waiting
+4f4fb700ef54: Waiting
+5451a8c78bf7: Waiting
+38f033bc5c10: Waiting
+c42865624c5f: Waiting
+af5c53fc717c: Waiting
+0e11e088d3ed: Waiting
+10f9985e01c8: Waiting
+e19ff677dccf: Waiting
+4f4fb700ef54: Waiting
+1e0e64e707cf: Waiting
+7600cf23665e: Waiting
+6a058ea19f9a: Waiting
+ae6991ab6f10: Waiting
+e3d675b6cf90: Waiting
+a98261855397: Waiting
+80e2e0ad42a4: Waiting
+316d7ea33617: Waiting
+51365f04b688: Waiting
+51365f04b688: Layer already exists
+5451a8c78bf7: Layer already exists
+38f033bc5c10: Waiting
+c42865624c5f: Waiting
+af5c53fc717c: Waiting
+0e11e088d3ed: Waiting
+10f9985e01c8: Waiting
+e19ff677dccf: Waiting
+4f4fb700ef54: Layer already exists
+1e0e64e707cf: Layer already exists
+7600cf23665e: Waiting
+6a058ea19f9a: Waiting
+ae6991ab6f10: Waiting
+e3d675b6cf90: Layer already exists
+a98261855397: Waiting
+80e2e0ad42a4: Waiting
+316d7ea33617: Waiting
+316d7ea33617: Waiting
+38f033bc5c10: Waiting
+c42865624c5f: Waiting
+af5c53fc717c: Waiting
+0e11e088d3ed: Waiting
+10f9985e01c8: Waiting
+e19ff677dccf: Waiting
+7600cf23665e: Waiting
+6a058ea19f9a: Waiting
+ae6991ab6f10: Waiting
+a98261855397: Waiting
+80e2e0ad42a4: Waiting
+push access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed
+make: *** [push] Error 1
+[ENTRYPOINT] creating the .ivy2 folder and running the start command
+[ENTRYPOINT] Spark 4.0.0
+[ENTRYPOINT] Set HADOOP_USER_NAME=spark
+[ENTRYPOINT] Current user context: spark (UID: 1001)
+[ENTRYPOINT] USER not set or invalid, detecting from UID
+[ENTRYPOINT] Running as spark user, set USER=spark
+[ENTRYPOINT] Using built-in user configuration: spark
+[ENTRYPOINT] Post detection and setting of user context: spark (UID: 1001)
+[ENTRYPOINT] Set the path and timestamp for the spark-driver log file
+[ENTRYPOINT] spark environment and logging configured
+[ENTRYPOINT] Running: spark-submit --conf spark.jars.ivy=/tmp/.ivy2 /app/main.py --config /app/config.yaml
+WARNING: Using incubator modules: jdk.incubator.vector
+🔧 Loading configuration from: /app/config.yaml
+📋 Configuration loaded successfully!
+🔍 Validating configuration...
+✅ LPSO configuration validation passed: 2 folds, 4 total subjects
+✅ Standard LPSO: No data leakage (default)
+⚠️  WARNING: Using deprecated 'max_concurrent' field. Please use 'max_concurrent_trials' instead.
+💡 INFO: Low resource utilization (0.0%)
+   💡 You could increase max_concurrent_trials for better performance
+   📊 Resource Summary: 0/4 CPUs used
+✅ Configuration validation completed!
+✅ Configuration loaded and validated successfully!
+🔍 Validating all configuration sections...
+✅ LPSO configuration validation passed: 2 folds, 4 total subjects
+✅ Standard LPSO: No data leakage (recommended)
+⚠️  WARNING: Using deprecated 'max_concurrent' field. Please use 'max_concurrent_trials' instead.
+💡 INFO: Low resource utilization (0.0%)
+   💡 You could increase max_concurrent_trials for better performance
+   📊 Resource Summary: 0/4 CPUs used
+✅ All configuration sections validated successfully!
+
+📋 Configuration Summary:
+   Strategy: LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)
+   Project: lpso
+   Output: data/lpso
+   📊 Train-Tune-Test Mode: Disabled (standard LPSO)
+🔍 Checking mounted data accessibility...
+📁 Found 4 file paths to check
+✓ /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+✓ /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+✓ /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+✓ /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+
+📊 Data accessibility summary:
+   Total paths: 4
+   Accessible: 4
+   Inaccessible: 0
+✅ All data paths are accessible!
+
+
+🔄 Setting up output directory structure...
+✅ Output directory created: data/lpso
+📁 Creating stage directories...
+   ✅ Created: data/lpso/processed_subjects
+   ✅ Created: data/lpso/transformed
+
+📋 Config copied to output directory:
+   Source: /app/config.yaml
+   Destination: data/lpso/config_20251105_192823.yaml
+
+⚠️  No _SUCCESS flag found in transformed directory
+🔄 Transformed data not found or config changed - proceeding with processing...
+
+🚀 Initializing Spark and processing subjects...
+🚀 Building PySpark session...
+✅ session_builder: Using UnifiedConfigHandler
+  ✅ Found 'master': 6
+  ✅ Found 'driver_memory': 6
+  ✅ Found 'executor_memory': 6
+  ✅ Found 'executor_cores': 2
+  ✅ Found 'shuffle_partitions': 8
+🚀 USER already set to 'spark', using for Java user.name and 'spark' for Hadoop operations
+   ✅ PYTHONPATH configured for executors
+✅ PySpark session created successfully!
+   Spark Version: 4.0.0
+   Available Cores: 6
+   Master: local[6]
+   User Context: Hadoop='spark', Java='spark', Current UID=1001, USER='spark'
+✅ process_subjects: Using UnifiedConfigHandler
+   📋 Config project: lpso
+🔧 Configuration already validated in main.py
+🔄 Processing subjects using DataFrames...
+   📁 Output directory: data/lpso
+🔄 Intelligent partitioning: at most x partitions for x subjects
+📊 Intelligent partitioning: Small dataset, 4 subjects → 4 partitions
+📊 DataFrame partitioning info:
+   Subjects count: 4
+   DataFrame partitions: 4
+   Rows per partition: [0, 2, 0, 2]
+   Processing subjects...
+🔍 Checking for existing processed subjects data...
+   Reuse flag: Yes
+   Check path: data/lpso/processed_subjects
+❌ Config hash mismatch for processed_subjects - saved: d7e0c58f..., current: 28bc7e84...
+⚠️  Config hash mismatch for processed subjects
+🔄 STEP 1: PROCEEDING - Processing subjects (feature extraction)...
+🔄 STEP 1: PROCESSING SUBJECTS - Feature extraction using UDTF...
+   🔄 Using UDTF approach: SQL with TABLE ProcessSubjectUDTF
+🔄 Generating ML schema from first subject...
+/app/eeg_spark_etl/processing/process_subjects.py:219: RuntimeWarning: Data will be preloaded. preload=False or a string preload is not supported when the data is stored in the .set file
+  raw_eeglab = mne.io.read_raw_eeglab(sample_subject["Path"], preload=False, verbose=False)
+✅ Generated ML schema with 4 fields
+🔄 STEP 2: ENCODING GROUPS TO LABELS FOR ML (GLOBAL ENCODING)...
+🔄 Checking for group/label encoding requirements...
+   🔬 Experiment type: ML Classification
+   🔄 Group column found, no label column - encoding groups to labels...
+   🔧 Fitting StringIndexer on group data...
+✅ ProcessSubjectUDTF: Using config from closure [PID: 253, Thread: 281473854003328]✅ ProcessSubjectUDTF: Using config from closure [PID: 251, Thread: 281473854003328]
+
+   📋 Config project: lpso
+   📋 Config project: lpso
+   🧠 Expected electrodes: 19 channels
+   🧠 Expected electrodes: 19 channels
+✅ ProcessSubjectUDTF: Using config from closure [PID: 255, Thread: 281473854003328]
+   📋 Config project: lpso
+   🧠 Expected electrodes: 19 channels
+🔄 Processing subject: 1
+✅ ProcessSubjectUDTF: Using config from closure [PID: 249, Thread: 281473854003328]
+   📋 Config project: lpso
+   🧠 Expected electrodes: 19 channels
+🔄 Processing subject: 37
+   ✅ Electrode validation passed for 1
+   🔍 Configuring epoch rejection for 1...
+   📊 Reject threshold: 600.0μV, Flat threshold: 0.3μV
+   ✅ Electrode validation passed for 37
+   ✅ Created 93 epochs for subject 1
+🔄 Processing 93 epochs for subject 1...
+   🔍 Configuring epoch rejection for 37...
+   📊 Reject threshold: 600.0μV, Flat threshold: 0.3μV
+   ✅ Created 122 epochs for subject 37
+🔄 Processing 122 epochs for subject 37...
+🔄 Processing subject: 2
+   ✅ Electrode validation passed for 2
+   🔍 Configuring epoch rejection for 2...
+   📊 Reject threshold: 600.0μV, Flat threshold: 0.3μV
+   ✅ Created 129 epochs for subject 2
+🔄 Processing 129 epochs for subject 2...
+🔄 Processing subject: 38
+   ✅ Electrode validation passed for 38
+   🔍 Configuring epoch rejection for 38...
+   📊 Reject threshold: 600.0μV, Flat threshold: 0.3μV
+   ✅ Created 136 epochs for subject 38
+🔄 Processing 136 epochs for subject 38...
+   ✅ Encoded 2 groups to labels: {'alz': 0, 'cntrl': 1}
+   📊 Label distribution:
+💾 STEP 4: SAVE CONFIGURED - Saving processed subjects...
+   📁 Saving to directory: data/lpso/processed_subjects
+   🔄 Creating fresh DataFrame from cached data to avoid serialization issues...
+   ✅ Created fresh DataFrame without problematic UDF references
+   💾 Saving processed subjects to: data/lpso/processed_subjects
+   ✅ Successfully saved processed subjects
+   🔐 Saving configuration hash for reproducibility...
+💾 Saved config hash for processed_subjects: 28bc7e84...
+   ✅ Successfully saved processed subjects!
+🔄 STEP 5: APPLYING FEATURE TRANSFORMATIONS...
+🎯 LPSO (Leave-P-Subjects-Out) processing enabled...
+   📊 Processing 2 LPSO folds...
+   📈 Each fold leaves out 2 subjects per group
+   🔄 Processing LPSO fold 1/2...
+      📁 Test subjects: [1, 37]
+🔧 Loading configuration from: /tmp/tmp0u9k5soa.yaml
+📋 Configuration loaded successfully!
+🔍 Validating configuration...
+⚠️  WARNING: Using deprecated 'max_concurrent' field. Please use 'max_concurrent_trials' instead.
+💡 INFO: Low resource utilization (0.0%)
+   💡 You could increase max_concurrent_trials for better performance
+   📊 Resource Summary: 0/4 CPUs used
+✅ Configuration validation completed!
+✅ Configuration loaded and validated successfully!
+🔄 Applying feature transformations...
+✅ transform_features: Using UnifiedConfigHandler
+🔧 Transformation configured: ['MinMax scaler']
+🔍 SplitManager: Strategy = '1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)'
+📊 Found 4 total subjects in configuration
+⚠️  Warning: Expected 0 test subjects, found 2
+📊 Manual split: 2 train, 2 test subjects
+🔧 Building transformation pipeline for: MinMax scaler
+   Transformations will be applied in the order selected
+   [1/1] Processing: MinMax scaler
+      📊 Adding MinMaxTransformer
+✅ Pipeline built with 1 transformers
+🎯 Updating pipeline for LPSO fold 1...
+🎯 LPSO Fold 1: 2 train, 2 test subjects
+   Test subjects: [1, 37]
+🎯 Standard LPSO strategy: splitting FIRST, then fitting on train data only
+🔍 SplitManager: DataFrame columns: ['SubjectID', 'EpochID', 'Group', 'features', 'label']
+🔧 Fitting 1 transformers...
+   [1/1] Fitting MinMaxTransformer
+   📊 Feature dimension (before MinMaxTransformer): 38
+🔍 DEBUG - MinMaxTransformer.fit() called with 265 rows
+🔧 MinMaxTransformer: Filtered to 265 train samples for fitting
+🔧 MinMaxTransformer: Fitting MinMaxScaler on DenseVector features
+   Range: [-1.0, 1.0]
+✅ MinMaxTransformer fitted using PySpark ML MinMaxScaler (range [-1.0, 1.0])
+      ✅ MinMaxTransformer fitted successfully
+✅ All transformers fitted successfully
+🔄 Transforming data through 1 transformers...
+   [1/1] Applying MinMaxTransformer
+   📊 Feature dimension (before MinMaxTransformer): 38
+🔍 DEBUG - MinMaxTransformer.transform() called with 265 rows
+🔄 Applying MinMax scaling to DenseVector features...
+✅ MinMaxTransformer applied using PySpark ML MinMaxScaler (range [-1.0, 1.0]) - DEBUG
+🔍 DEBUG - MinMaxTransformer.transform() returning 265 rows
+   📊 Feature dimension (after MinMaxTransformer): 38
+      ✅ MinMaxTransformer applied successfully
+✅ Pipeline transformation completed
+🔄 Transforming data through 1 transformers...
+   [1/1] Applying MinMaxTransformer
+   📊 Feature dimension (before MinMaxTransformer): 38
+🔍 DEBUG - MinMaxTransformer.transform() called with 215 rows
+🔄 Applying MinMax scaling to DenseVector features...
+✅ MinMaxTransformer applied using PySpark ML MinMaxScaler (range [-1.0, 1.0]) - DEBUG
+🔍 DEBUG - MinMaxTransformer.transform() returning 215 rows
+   📊 Feature dimension (after MinMaxTransformer): 38
+      ✅ MinMaxTransformer applied successfully
+✅ Pipeline transformation completed
+✅ Feature transformations completed successfully
+   🔄 Converting DenseVector to array for Ray compatibility...
+   ✅ Added features_array column for Ray compatibility
+   🔄 Converting DenseVector to array for Ray compatibility...
+   ✅ Added features_array column for Ray compatibility
+   📁 Saving LPSO fold to: data/lpso/transformed/sub-1_sub-37
+      📁 Train data: data/lpso/transformed/sub-1_sub-37/train_data
+      📁 Test data: data/lpso/transformed/sub-1_sub-37/test_data
+   💾 Saving LPSO fold 1 train data to: data/lpso/transformed/sub-1_sub-37/train_data
+   ✅ Successfully saved LPSO fold 1 train data
+   💾 Saving LPSO fold 1 test data to: data/lpso/transformed/sub-1_sub-37/test_data
+   ✅ Successfully saved LPSO fold 1 test data
+   📋 _SUCCESS flag created for transformed stage
+      ✅ Completed fold 1 with cleanup
+   🔄 Processing LPSO fold 2/2...
+      📁 Test subjects: [2, 38]
+🔧 Loading configuration from: /tmp/tmpamlfsr66.yaml
+📋 Configuration loaded successfully!
+🔍 Validating configuration...
+⚠️  WARNING: Using deprecated 'max_concurrent' field. Please use 'max_concurrent_trials' instead.
+💡 INFO: Low resource utilization (0.0%)
+   💡 You could increase max_concurrent_trials for better performance
+   📊 Resource Summary: 0/4 CPUs used
+✅ Configuration validation completed!
+✅ Configuration loaded and validated successfully!
+🔄 Applying feature transformations...
+✅ transform_features: Using UnifiedConfigHandler
+🔧 Transformation configured: ['MinMax scaler']
+🔍 SplitManager: Strategy = '1 test/1 train split (inter subject split) with transforms applied to training set only (faster, single split)'
+📊 Found 4 total subjects in configuration
+⚠️  Warning: Expected 0 test subjects, found 2
+📊 Manual split: 2 train, 2 test subjects
+🔧 Building transformation pipeline for: MinMax scaler
+   Transformations will be applied in the order selected
+   [1/1] Processing: MinMax scaler
+      📊 Adding MinMaxTransformer
+✅ Pipeline built with 1 transformers
+🎯 Updating pipeline for LPSO fold 2...
+🎯 LPSO Fold 2: 2 train, 2 test subjects
+   Test subjects: [2, 38]
+🎯 Standard LPSO strategy: splitting FIRST, then fitting on train data only
+🔍 SplitManager: DataFrame columns: ['SubjectID', 'EpochID', 'Group', 'features', 'label']
+🔧 Fitting 1 transformers...
+   [1/1] Fitting MinMaxTransformer
+   📊 Feature dimension (before MinMaxTransformer): 38
+🔍 DEBUG - MinMaxTransformer.fit() called with 215 rows
+🔧 MinMaxTransformer: Filtered to 215 train samples for fitting
+🔧 MinMaxTransformer: Fitting MinMaxScaler on DenseVector features
+   Range: [-1.0, 1.0]
+✅ MinMaxTransformer fitted using PySpark ML MinMaxScaler (range [-1.0, 1.0])
+      ✅ MinMaxTransformer fitted successfully
+✅ All transformers fitted successfully
+🔄 Transforming data through 1 transformers...
+   [1/1] Applying MinMaxTransformer
+   📊 Feature dimension (before MinMaxTransformer): 38
+🔍 DEBUG - MinMaxTransformer.transform() called with 215 rows
+🔄 Applying MinMax scaling to DenseVector features...
+✅ MinMaxTransformer applied using PySpark ML MinMaxScaler (range [-1.0, 1.0]) - DEBUG
+🔍 DEBUG - MinMaxTransformer.transform() returning 215 rows
+   📊 Feature dimension (after MinMaxTransformer): 38
+      ✅ MinMaxTransformer applied successfully
+✅ Pipeline transformation completed
+🔄 Transforming data through 1 transformers...
+   [1/1] Applying MinMaxTransformer
+   📊 Feature dimension (before MinMaxTransformer): 38
+🔍 DEBUG - MinMaxTransformer.transform() called with 265 rows
+🔄 Applying MinMax scaling to DenseVector features...
+✅ MinMaxTransformer applied using PySpark ML MinMaxScaler (range [-1.0, 1.0]) - DEBUG
+🔍 DEBUG - MinMaxTransformer.transform() returning 265 rows
+   📊 Feature dimension (after MinMaxTransformer): 38
+      ✅ MinMaxTransformer applied successfully
+✅ Pipeline transformation completed
+✅ Feature transformations completed successfully
+   🔄 Converting DenseVector to array for Ray compatibility...
+   ✅ Added features_array column for Ray compatibility
+   🔄 Converting DenseVector to array for Ray compatibility...
+   ✅ Added features_array column for Ray compatibility
+   📁 Saving LPSO fold to: data/lpso/transformed/sub-2_sub-38
+      📁 Train data: data/lpso/transformed/sub-2_sub-38/train_data
+      📁 Test data: data/lpso/transformed/sub-2_sub-38/test_data
+   💾 Saving LPSO fold 2 train data to: data/lpso/transformed/sub-2_sub-38/train_data
+   ✅ Successfully saved LPSO fold 2 train data
+   💾 Saving LPSO fold 2 test data to: data/lpso/transformed/sub-2_sub-38/test_data
+   ✅ Successfully saved LPSO fold 2 test data
+   📋 _SUCCESS flag created for transformed stage
+      ✅ Completed fold 2 with cleanup
+   ✅ Completed all 2 LPSO folds
+💾 STEP 6: SAVE CONFIGURED - Individual fold directories saved
+   ✅ Each fold saved in separate directory with train/test splits
+   💡 Use individual fold directories for proper cross-validation
+   🔐 Saving configuration hash for reproducibility...
+💾 Saved config hash for transformed: f8748a5e...
+✅ LPSO processing completed - skipping non-LPSO processing
+   🧹 LPSO cleanup: Individual fold DataFrames already cleaned up
+==================================================
+🎯 PROCESSING COMPLETED SUCCESSFULLY!
+   💾 Processed subjects saved: ✅ Yes
+   🔄 Transformations applied: ✅ Yes
+   🎯 LPSO processing: 2 folds, 2 subjects per group
+   🧹 Memory cleanup: Applied after each fold to prevent memory buildup
+   💾 Transformed features saved: ✅ Yes
+==================================================
+Processing result: {'status': 'completed', 'message': 'processed subjects - saved_subjects:Yes, transformed:True, saved_transformed:True'}
+Total execution spark execution time: 14.80 seconds
+Total execution time: 16.28 seconds
+[ENTRYPOINT] Starting EEG Ray Tuner container
+[ENTRYPOINT] Log directories created/verified
+[ENTRYPOINT] Python path set to: /app:
+[ENTRYPOINT] Ray environment variables set
+[ENTRYPOINT] Ray startup temporarily disabled - will be started by Python code
+[ENTRYPOINT] Ray resources: 2 CPUs, 4GB memory, 2GB object store
+[ENTRYPOINT] Ray will be started by Python code
+[ENTRYPOINT] Ray dashboard will be available at: http://localhost:8265
+[ENTRYPOINT] For external access, use: http://HOST_IP:8265
+[ENTRYPOINT] Running: python /app/main.py --config /app/config.yaml
+2025-11-05 19:28:42 - ray_driver - INFO - 🚀 Driver logging initialized - Log file: logs/ray-events/driver/driver.log
+2025-11-05 19:28:42,695	WARNING services.py:2155 -- WARNING: The object store is using /tmp instead of /dev/shm because /dev/shm has only 67108864 bytes available. This will harm performance! You may be able to free up space by deleting files in /dev/shm. If you are inside a Docker container, you can increase /dev/shm size by passing '--shm-size=4.40gb' to 'docker run' (or add it to the run_options list in a Ray cluster config). Make sure to set this to more than 30% of available RAM.
+2025-11-05 19:28:42,849	INFO worker.py:2013 -- Started a local Ray instance.
+❌ Task failed: KNN_1_9754: Error executing task KNN_1_9754: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_3846: Error executing task KNN_1_3846: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_9708: Error executing task KNN_1_9708: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_0017: Error executing task KNN_1_0017: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_8760: Error executing task KNN_1_8760: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_9804: Error executing task KNN_1_9804: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_6646: Error executing task KNN_1_6646: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_9128: Error executing task KNN_1_9128: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_4061: Error executing task KNN_1_4061: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_1_0667: Error executing task KNN_1_0667: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_3846: Error executing task KNN_0_3846: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_9804: Error executing task KNN_0_9804: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_0017: Error executing task KNN_0_0017: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_9754: Error executing task KNN_0_9754: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_9708: Error executing task KNN_0_9708: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_4061: Error executing task KNN_0_4061: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_8760: Error executing task KNN_0_8760: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_9128: Error executing task KNN_0_9128: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_6646: Error executing task KNN_0_6646: ❌ Critical error training KNN: test_table columns do not match expected_cols
+❌ Task failed: KNN_0_0667: Error executing task KNN_0_0667: ❌ Critical error training KNN: test_table columns do not match expected_cols
+📁 Using config: /app/config.yaml
+✅ Log directories created: logs/ray-events
+🔧 Ray log rotation configured: max_bytes=1048576, backup_count=5
+🚀 Starting EEG Ray Tuner Pipeline...
+📋 Config: config.yaml
+📊 Log level: INFO
+🔧 Loading configuration from: /app/config.yaml
+📋 Configuration loaded successfully!
+🔍 Validating configuration...
+✅ LPSO configuration validation passed: 2 folds, 4 total subjects
+✅ Standard LPSO: No data leakage (default)
+⚠️  WARNING: Using deprecated 'max_concurrent' field. Please use 'max_concurrent_trials' instead.
+💡 INFO: Low resource utilization (0.0%)
+   💡 You could increase max_concurrent_trials for better performance
+   📊 Resource Summary: 0/4 CPUs used
+✅ Configuration validation completed!
+✅ Configuration loaded and validated successfully!
+🚀 Initializing Ray cluster...
+🚀 Building Ray cluster...
+✅ session_builder: Using UnifiedConfigHandler
+🔧 Using Ray-specific resource configuration
+🚀 Initializing Ray cluster...
+✅ Ray cluster initialized successfully!
+📊 Ray cluster resources: {'object_store_memory': 4294967296.0, 'node:__internal_head__': 1.0, 'memory': 3279900672.0, 'CPU': 4.0, 'node:172.17.0.2': 1.0}
+⚠️ Could not get dashboard information: module 'ray' has no attribute 'get_dashboard_url'
+🆕 Using Strategy-based system
+
+======================================================================
+🏭 Strategy Factory: Creating 1 strategies
+======================================================================
+📋 Enabled strategies: grid_search
+
+🏭 Factory creating strategy: grid_search
+✅ Ray cluster verified and running
+🔧 Initializing 4 Ray workers...
+✅ 4 workers initialized
+
+🎯 GRID_SEARCH Strategy Initialized
+📁 Data path: /app/data/lpso
+📊 Results path: /app/data/lpso/ml_results_grid_search
+🚀 4 concurrent workers
+🔄 5 CV folds per model
+✅ Grid Search Strategy initialized
+📊 Models: KNN
+🔄 Max concurrent: 4
+📈 CV folds: 5
+✅ Successfully created grid_search strategy
+
+
+✅ Successfully created 1 strategies
+======================================================================
+
+
+======================================================================
+🚀 Running GRID_SEARCH Strategy
+======================================================================
+
+======================================================================
+🎯 Starting GRID_SEARCH Hyperparameter Optimization
+======================================================================
+📊 Execution Model: STATIC (pre-compute all tasks)
+
+📋 PHASE 1: Discovering Data Folds
+======================================================================
+
+📋 FOLD DISCOVERY SUMMARY
+======================================================================
+📊 Total Folds: 4
+🔍 Split Types:
+   • lpso: 4 folds
+
+📁 Fold Details:
+   0: sub-002_sub-038 (lpso) [transformed]
+      Train: /app/data/lpso/transformed/sub-002_sub-038/train_data
+      Test:  /app/data/lpso/transformed/sub-002_sub-038/test_data
+   1: sub-001_sub-037 (lpso) [transformed]
+      Train: /app/data/lpso/transformed/sub-001_sub-037/train_data
+      Test:  /app/data/lpso/transformed/sub-001_sub-037/test_data
+   2: sub-2_sub-38 (lpso) [transformed]
+      Train: /app/data/lpso/transformed/sub-2_sub-38/train_data
+      Test:  /app/data/lpso/transformed/sub-2_sub-38/test_data
+   3: sub-1_sub-37 (lpso) [transformed]
+      Train: /app/data/lpso/transformed/sub-1_sub-37/train_data
+      Test:  /app/data/lpso/transformed/sub-1_sub-37/test_data
+======================================================================
+
+📋 PHASE 2: Generating Tasks
+======================================================================
+🔧 Generating tasks for 1 models × 4 folds
+
+📊 Generating tasks for: KNN
+   ℹ️  Using default Grid Search space for KNN
+   🔢 10 hyperparameter combinations
+   ✅ Generated 40 tasks for KNN
+
+✅ Total tasks generated: 40
+✅ Generated 40 tasks
+
+📋 PHASE 3: Optimizing Task Order
+======================================================================
+   🎯 Tasks ordered for data locality optimization
+
+📋 PHASE 4: Saving Task Table
+======================================================================
+
+📋 TASK STATUS SUMMARY
+======================================================================
+📊 Total Tasks: 40
+⏳ Pending: 40
+🔄 Running: 0
+✅ Completed: 0
+❌ Failed: 0
+📈 Completion Rate: 0.0%
+
+🤖 Models:
+   • KNN: 40 tasks
+
+📁 Unique Data Paths: 8
+   • /app/data/lpso/transformed/sub-001_sub-037/test_data
+   • /app/data/lpso/transformed/sub-001_sub-037/train_data
+   • /app/data/lpso/transformed/sub-002_sub-038/test_data
+   • /app/data/lpso/transformed/sub-002_sub-038/train_data
+   • /app/data/lpso/transformed/sub-1_sub-37/test_data
+   ... and 3 more
+======================================================================
+
+📋 PHASE 5: Executing Tasks
+======================================================================
+
+🚀 PHASE 3: Executing Tasks
+======================================================================
+📊 Executing 40 tasks
+🔄 Using 4 concurrent workers
+📤 Submitted 40 tasks to workers
+📈 Progress: 0.0% (0 completed, 0 failed, 40 remaining) [1.0s elapsed]
+📈 Progress: 0.0% (0 completed, 0 failed, 40 remaining) [2.0s elapsed]
+📈 Progress: 0.0% (0 completed, 0 failed, 40 remaining) [3.0s elapsed]
+📈 Progress: 0.0% (0 completed, 0 failed, 40 remaining) [4.0s elapsed]
+❌ Task failed: KNN_1_9754
+❌ Task failed: KNN_1_3846
+❌ Task failed: KNN_1_9708
+❌ Task failed: KNN_1_0017
+❌ Task failed: KNN_1_8760
+📈 Progress: 12.5% (0 completed, 5 failed, 35 remaining) [4.9s elapsed]
+❌ Task failed: KNN_1_9804
+❌ Task failed: KNN_1_6646
+❌ Task failed: KNN_1_9128
+❌ Task failed: KNN_1_4061
+❌ Task failed: KNN_1_0667
+📈 Progress: 25.0% (0 completed, 10 failed, 30 remaining) [5.0s elapsed]
+❌ Task failed: KNN_0_3846
+❌ Task failed: KNN_0_9804
+❌ Task failed: KNN_0_0017
+❌ Task failed: KNN_0_9754
+❌ Task failed: KNN_0_9708
+📈 Progress: 37.5% (0 completed, 15 failed, 25 remaining) [5.5s elapsed]
+❌ Task failed: KNN_0_4061
+❌ Task failed: KNN_0_8760
+❌ Task failed: KNN_0_9128
+❌ Task failed: KNN_0_6646
+❌ Task failed: KNN_0_0667
+📈 Progress: 50.0% (0 completed, 20 failed, 20 remaining) [5.5s elapsed]
+✅ Task completed: KNN_3_9754 (accuracy: 0.8000)
+✅ Task completed: KNN_3_3846 (accuracy: 0.8000)
+✅ Task completed: KNN_3_0017 (accuracy: 0.8000)
+✅ Task completed: KNN_3_9708 (accuracy: 0.7256)
+✅ Task completed: KNN_3_8760 (accuracy: 0.8279)
+📈 Progress: 62.5% (5 completed, 20 failed, 15 remaining) [6.2s elapsed]
+✅ Task completed: KNN_3_9804 (accuracy: 0.8000)
+✅ Task completed: KNN_3_9128 (accuracy: 0.7860)
+✅ Task completed: KNN_3_6646 (accuracy: 0.8279)
+✅ Task completed: KNN_3_4061 (accuracy: 0.8279)
+✅ Task completed: KNN_3_0667 (accuracy: 0.8279)
+📈 Progress: 75.0% (10 completed, 20 failed, 10 remaining) [6.4s elapsed]
+✅ Task completed: KNN_2_3846 (accuracy: 0.7698)
+✅ Task completed: KNN_2_0017 (accuracy: 0.7698)
+✅ Task completed: KNN_2_9804 (accuracy: 0.7962)
+✅ Task completed: KNN_2_9754 (accuracy: 0.7698)
+✅ Task completed: KNN_2_9128 (accuracy: 0.7321)
+📈 Progress: 87.5% (15 completed, 20 failed, 5 remaining) [6.9s elapsed]
+✅ Task completed: KNN_2_9708 (accuracy: 0.7132)
+✅ Task completed: KNN_2_4061 (accuracy: 0.7925)
+✅ Task completed: KNN_2_8760 (accuracy: 0.8038)
+✅ Task completed: KNN_2_0667 (accuracy: 0.7925)
+✅ Task completed: KNN_2_6646 (accuracy: 0.8038)
+
+🎉 All tasks completed!
+   ✅ Successful: 20
+   ❌ Failed: 20
+   ⏱️  Duration: 7.1 seconds
+
+📋 PHASE 6: Processing Results
+======================================================================
+
+📊 Processing Results
+======================================================================
+📊 Processing 20 completed tasks
+📊 Aggregating task results...
+📈 Processing 20 completed tasks
+   📊 Aggregating KNN: 20 task results
+✅ Aggregation complete: 1 models
+💾 Saving results...
+   📄 Overall summary saved: overall_summary.json, overall_summary.yaml, overall_summary.txt
+   📊 KNN results saved: KNN/
+2025-11-05 19:28:51 - ray_driver - INFO - Single strategy run - comparison skipped
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Graph generator initialized
+2025-11-05 19:28:51 - ray_driver - INFO - 📁 ML results path: /app/data/lpso/ml_results_grid_search
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Graphs output: /app/data/lpso/ml_results_grid_search/graphs
+2025-11-05 19:28:51 - ray_driver - INFO - 🎨 Starting graph generation...
+2025-11-05 19:28:51 - ray_driver - INFO - 📁 ML results path: /app/data/lpso/ml_results_grid_search
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Graphs output dir: /app/data/lpso/ml_results_grid_search/graphs
+2025-11-05 19:28:51 - ray_driver - INFO - 📁 Graphs directory is already empty
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 Detected multi-fold structure via config: LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation (recommended for small datasets)
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 Detected split type: multi_fold
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Generating multi-fold graphs...
+2025-11-05 19:28:51 - ray_driver - INFO - 📈 Creating best models multi-fold graph...
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Loading multi-fold model comparison data from: /app/data/lpso/ml_results_grid_search
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Processing model: KNN
+2025-11-05 19:28:51 - ray_driver - INFO - Found 2 fold directories for KNN
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Loaded 2 models for multi-fold best models graph
+2025-11-05 19:28:51 - ray_driver - INFO - 💾 Graph saved: /app/data/lpso/ml_results_grid_search/graphs/best_models_comparison_multifold.png
+2025-11-05 19:28:51 - ray_driver - INFO - ✅ Best models multi-fold graph generated and saved successfully
+2025-11-05 19:28:51 - ray_driver - INFO - ✅ Best models multi-fold graph created successfully
+2025-11-05 19:28:51 - ray_driver - INFO - 📈 Creating hyperparameter multi-fold comparison graphs...
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Creating hyperparameter multi-fold graph for KNN...
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Loading multi-fold hyperparameter data for KNN from: /app/data/lpso/ml_results_grid_search
+2025-11-05 19:28:51 - ray_driver - INFO - Found 2 fold directories for KNN
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Loaded 20 hyperparameter combinations for KNN
+2025-11-05 19:28:51 - ray_driver - INFO - 💾 Graph saved: /app/data/lpso/ml_results_grid_search/graphs/knn_hyperparameter_comparison_multifold.png
+2025-11-05 19:28:51 - ray_driver - INFO - ✅ Hyperparameter multi-fold graph for KNN generated and saved successfully
+2025-11-05 19:28:51 - ray_driver - INFO - ✅ Hyperparameter multi-fold graph for KNN created successfully
+2025-11-05 19:28:51 - ray_driver - INFO - 📈 Creating per-model per-hyperparameter across folds graphs...
+2025-11-05 19:28:51 - ray_driver - INFO - 📈 Creating per-subject analysis graph...
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Loading per-subject data from: /app/data/lpso/ml_results_grid_search
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Processing model: KNN
+2025-11-05 19:28:51 - ray_driver - INFO - 📂 Found 2 fold directories for KNN
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 DEBUG: Parquet file test_predictions.parquet columns: ['SubjectID', 'EpochID', 'Group', 'label', 'prediction']
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 DEBUG: Parquet file shape: (215, 5)
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 DEBUG: Unique subjects in this file: [ 1 37]
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 DEBUG: Subject counts in this file: {37: 122, 1: 93}
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 DEBUG: No 'fold' column found in test_predictions.parquet, extracting fold ID from directory name
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 DEBUG: Extracted fold ID: 3 from directory: task_KNN_3_0667
+2025-11-05 19:28:51 - ray_driver - INFO - 🔍 DEBUG: Model name from directory: task_KNN
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Loaded 2 subjects for per-subject analysis
+2025-11-05 19:28:51 - ray_driver - INFO - 🎯 Looking for best KNN config with accuracy 0.816
+2025-11-05 19:28:51 - ray_driver - INFO -    n_neighbors=7, weights=uniform, metric=euclidean
+2025-11-05 19:28:51 - ray_driver - INFO - ✅ Found best directory: task_KNN_3_6646 with accuracy 0.828
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 KNN best accuracy: 0.828
+2025-11-05 19:28:51 - ray_driver - INFO - 💾 Graph saved: /app/data/lpso/ml_results_grid_search/graphs/per_subject_analysis.png
+2025-11-05 19:28:51 - ray_driver - INFO - ✅ Overall per-subject analysis graph generated and saved successfully
+2025-11-05 19:28:51 - ray_driver - INFO - 📊 Creating Subject Difficulty Ranking graph...
+2025-11-05 19:28:52 - ray_driver - INFO - 💾 Graph saved: /app/data/lpso/ml_results_grid_search/graphs/subject_difficulty_ranking.png
+2025-11-05 19:28:52 - ray_driver - INFO - ✅ Subject Difficulty Ranking graph generated and saved successfully
+2025-11-05 19:28:52 - ray_driver - INFO - 📊 Creating Subject Similarity Matrix...
+2025-11-05 19:28:52 - ray_driver - WARNING - ⚠️ Insufficient model/hyperparameter combinations for correlation: 1 combinations
+2025-11-05 19:28:52 - ray_driver - WARNING - ⚠️ Failed to create Subject Similarity Matrix
+2025-11-05 19:28:52 - ray_driver - INFO - 📁 Created individual per-subject graphs directory: /app/data/lpso/ml_results_grid_search/graphs/per_subject_individual
+2025-11-05 19:28:52 - ray_driver - INFO - 🎯 Looking for best KNN config with accuracy 0.816
+2025-11-05 19:28:52 - ray_driver - INFO -    n_neighbors=7, weights=uniform, metric=euclidean
+2025-11-05 19:28:52 - ray_driver - INFO - ✅ Found best directory: task_KNN_3_6646 with accuracy 0.828
+2025-11-05 19:28:52 - ray_driver - INFO - 💾 Individual per-subject graph saved: /app/data/lpso/ml_results_grid_search/graphs/per_subject_individual/per_subject_knn_n_neighbors_11__weights_uniform__metric_euclidean.png
+2025-11-05 19:28:52 - ray_driver - INFO - 📊 Creating individual per-subject bar charts for each hyperparameter combination (across all folds)...
+2025-11-05 19:28:52 - ray_driver - INFO - 📊 Processing KNN - n_neighbors=11, weights=uniform, metric=euclidean across all folds...
+2025-11-05 19:28:52 - ray_driver - INFO - 🔍 DEBUG: Before aggregation - 2 rows
+2025-11-05 19:28:52 - ray_driver - INFO - 🔍 DEBUG: Unique subjects: [ 1 37]
+2025-11-05 19:28:52 - ray_driver - INFO - 🔍 DEBUG: Subject counts: {1: 1, 37: 1}
+2025-11-05 19:28:52 - ray_driver - INFO - 🔍 DEBUG: After aggregation - 2 rows
+2025-11-05 19:28:52 - ray_driver - INFO - 🔍 DEBUG: Aggregated subjects: [ 1 37]
+2025-11-05 19:28:52 - ray_driver - INFO - ✅ Saved individual bar chart for KNN - n_neighbors=11, weights=uniform, metric=euclidean
+2025-11-05 19:28:52 - ray_driver - INFO - ✅ All per-subject analysis graphs generated and saved successfully
+2025-11-05 19:28:52 - ray_driver - INFO - ✅ Per-subject analysis graph created successfully
+2025-11-05 19:28:52 - ray_driver - INFO - ✅ Graph generation completed successfully!
+2025-11-05 19:28:52 - ray_driver - INFO - ✅ Graph generation completed successfully!
+2025-11-05 19:28:54 - ray_driver - INFO - 🔄 Ray shutdown completed
+   📊 Model comparison saved: model_comparison.csv
+✅ All results saved to /app/data/lpso/ml_results_grid_search
+📁 Results saved to: /app/data/lpso/ml_results_grid_search
+
+🏆 GRID_SEARCH RESULTS SUMMARY
+======================================================================
+📊 Total Models: 1
+✅ Successful Models: 1
+
+🥇 TOP MODELS:
+🥇 1. KNN
+   Overall Accuracy: 0.8158% (±0.012)
+   Train Accuracy: 0.9660
+   Best Config: {'n_neighbors': 7, 'weights': 'uniform', 'metric': 'euclidean'}
+
+🏆 CHAMPION: KNN
+   🎯 Overall Accuracy: 0.8158% (±0.012)
+   📈 Train Accuracy: 0.9660
+
+📈 ACCURACY STATISTICS:
+   Test Accuracy Range: 0.8158 - 0.8158
+   Mean Test Accuracy: 0.8158 (±0.0000)
+======================================================================
+
+======================================================================
+🎉 GRID_SEARCH Optimization Completed Successfully!
+======================================================================
+🔄 Shutting down workers...
+✅ Workers shutdown complete
+🔄 Cleanup completed
+
+======================================================================
+✅ All strategies completed successfully!
+======================================================================
+
+
+📊 Single strategy run - comparison skipped
+
+🎨 PHASE 6: Legacy Centralized Graph Generation (Deprecated)
+==================================================
+📊 Graph Configuration Status:
+   • best_models_graph: True
+   • per_model_across_hyperparameters_graph: True
+   • per_model_per_hyperparameter_across_folds_graph: True
+   • per_subject_analysis_graph: True
+   • graphs_wanted: True
+📊 Importing graph generation modules...
+✅ Graph generation modules imported successfully
+📊 Generating graphs from: /app/data/lpso/ml_results_grid_search
+📊 Project name: lpso
+📊 Base output dir: ./data
+📊 Data path: /app/data/lpso
+📊 ML results path: /app/data/lpso/ml_results_grid_search
+📊 ML results path exists: True
+📊 Creating graph generator...
+✅ Graph generator created successfully
+📊 Starting graph generation...
+🧹 Clearing existing graph files to avoid confusion...
+🔍 DEBUG: After aggregation for KNN - n_neighbors=11, weights=uniform, metric=euclidean:
+   📊 Shape: (2, 3)
+   👥 Unique subjects: 2
+   📋 Subject IDs: [1, 37]
+🔍 DEBUG: Bar chart data shape: (2, 4)
+🔍 DEBUG: Bar chart columns: ['SubjectID', 'group', 'accuracy', 'num_folds']
+🔍 DEBUG: Bar chart data:
+   SubjectID  group  accuracy  num_folds
+0          1    alz  0.881720          1
+1         37  cntrl  0.786885          1
+🔍 DEBUG: Fold counts - min: 1, max: 1
+🔍 DEBUG: Individual fold counts: [1, 1]
+🔍 DEBUG: All subjects have same fold count (1), using blue
+🔍 DEBUG: All subjects have same fold count (1), using blue
+🔍 DEBUG: Subject with 1 folds -> normalized: nan, color: (np.float64(nan), 0.2, np.float64(nan))
+📁 Graphs saved to: /app/data/lpso/ml_results_grid_search/graphs
+📊 Generated 4 main graph files:
+   • per_subject_analysis.png
+   • best_models_comparison_multifold.png
+   • subject_difficulty_ranking.png
+   • knn_hyperparameter_comparison_multifold.png
+📊 Generated 1 individual per-subject graph files:
+✅ Graph generation completed successfully!
+
+📊 NOTE: Each strategy generated its own graphs:
+   • Grid Search: ml_results_grid_search/graphs/
+   • Ax: ml_results_ax/graphs/
+start time: 1762370901.8236501 seconds
+📁 Using specified config: config/config_lpso_24-09-2025_1954.yaml
+🚀 Starting pipeline with deployment method: Docker
+🎯 Pipeline mode: full
+💡 Ports blocked (expose_ports = No in config)
+
+🐳 Running PySpark container...
+📁 Created/verified log directory: ./logs/spark-events/lpso_2025-11-05_1428
+🔗 Adding dynamic log mount: ./logs/spark-events/lpso_2025-11-05_1428 -> /opt/bitnami/spark/logs/
+📁 Created/verified directory: config
+📁 Created/verified directory: config/spark
+📁 Created/verified directory: logs
+📁 Created/verified directory: /Volumes/CrucialX6/Home/projects/eeg-full-pipeline/data
+🔗 Adding mount: /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+🔗 Adding mount: /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+🔗 Adding mount: /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+🔗 Adding mount: /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+🔗 Mounting 8 directories:
+🔗 Running command: ['docker', 'run', '--rm', '-v', '/Volumes/CrucialX6/Home/projects/eeg-full-pipeline/config/config_lpso_24-09-2025_1954.yaml:/app/config.yaml', '-v', './logs/spark-events/lpso_2025-11-05_1428:/opt/bitnami/spark/logs/', '-v', './config/spark:/opt/bitnami/spark/conf', '-v', './data:/app/data', '-v', '/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set:/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set', '-v', '/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set:/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set', '-v', '/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set:/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set', '-v', '/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set:/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set', 'nour333/eeg-spark-pipeline:latest', 'spark-submit', '--conf', 'spark.jars.ivy=/tmp/.ivy2', '/app/main.py', '--config', '/app/config.yaml']
+
+🐳 Running Ray pipeline container...
+📁 Created/verified log directory: ./logs/ray-events/lpso_2025-11-05_1428
+🔗 Adding dynamic log mount: ./logs/ray-events/lpso_2025-11-05_1428 -> /app/logs/ray-events
+📁 Created/verified directory: config
+📁 Created/verified directory: config/spark
+📁 Created/verified directory: logs
+📁 Created/verified directory: /Volumes/CrucialX6/Home/projects/eeg-full-pipeline/data
+🔗 Adding mount: /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set
+🔗 Adding mount: /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set
+🔗 Adding mount: /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+🔗 Adding mount: /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set -> /Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+🔗 Mounting 7 directories:
+🔗 Running command: ['docker', 'run', '--rm', '-v', '/Volumes/CrucialX6/Home/projects/eeg-full-pipeline/config/config_lpso_24-09-2025_1954.yaml:/app/config.yaml', '-v', './logs/ray-events/lpso_2025-11-05_1428:/app/logs/ray-events', '-v', './data:/app/data', '-v', '/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set:/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-001/eeg/sub-001_task-eyesclosed_eeg.set', '-v', '/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set:/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-002/eeg/sub-002_task-eyesclosed_eeg.set', '-v', '/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set:/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set', '-v', '/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set:/Volumes/CrucialX6/Home/bigData/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set', 'nour333/eeg-ray-tuner:latest', 'python', '/app/main.py', '--config', '/app/config.yaml']
+Total time: 33.21246123313904 seconds
