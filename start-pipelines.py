@@ -145,6 +145,38 @@ def load_config(config_path: str) -> Dict[str, Any]:
     return config
 
 
+def get_docker_shared_mem_arg(
+    container_type: str, config_data: Dict[str, Any]
+) -> Optional[str]:
+    """Get optional Docker --shm-size value from config in MB."""
+    container_config = config_data.get(container_type, {})
+    if not isinstance(container_config, dict):
+        return None
+
+    shared_mem_mb = container_config.get("docker_shared_mem_mb")
+    if shared_mem_mb in (None, ""):
+        return None
+
+    if isinstance(shared_mem_mb, bool):
+        raise ValueError(
+            f"{container_type}.docker_shared_mem_mb must be a positive integer in MB, got: {shared_mem_mb}"
+        )
+
+    try:
+        shared_mem_mb_int = int(shared_mem_mb)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"{container_type}.docker_shared_mem_mb must be a positive integer in MB, got: {shared_mem_mb}"
+        )
+
+    if shared_mem_mb_int <= 0:
+        raise ValueError(
+            f"{container_type}.docker_shared_mem_mb must be > 0, got: {shared_mem_mb_int}"
+        )
+
+    return f"{shared_mem_mb_int}m"
+
+
 def infer_pipeline_mode() -> str:
     """Infer which pipeline mode to run based on repository name."""
     this_path = Path(
@@ -324,6 +356,19 @@ def run_docker_container(container_type: str, config_path: str) -> None:
 
     # Build docker run command with volume mounts
     docker_cmd = ["docker", "run", "--rm"]
+
+    # Optional per-container shared memory limit (in MB), e.g. ray.docker_shared_mem_mb
+    try:
+        shared_mem_arg = get_docker_shared_mem_arg(container_type, config_data)
+    except ValueError as e:
+        print(f"{EMOJI_ERROR} {e}")
+        sys.exit(1)
+
+    if shared_mem_arg:
+        docker_cmd.extend(["--shm-size", shared_mem_arg])
+        print(
+            f"{EMOJI_INFO} Using Docker shared memory for {container_type}: {shared_mem_arg}"
+        )
 
     # !! All Spark and Hadoop configurations are now centralized in session_builder.py
 
