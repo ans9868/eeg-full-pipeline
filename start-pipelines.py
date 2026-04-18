@@ -59,13 +59,13 @@ CONTAINER_CONFIG = {
                 "./config/spark",
                 "/opt/bitnami/spark/conf",
             ),  # Spark configs (editable) - removing this puts spark logs in console
-            
             # Log mounts are now added dynamically based on config[project][config_name]
             # ("./logs/spark-events", "/opt/bitnami/spark/logs/"),  # Spark event logs - COMMENTED OUT: Added dynamically
             # Done through config file
             # (f"./config/{user_config_namec}", "/app/config"),   # User YAML configs (editable)
             # ("./data", "/app/data"),
             # and all the eeg data
+            ("./logs/spark-events-history", "/tmp/spark-events-history"),
         ],
         "ports": ["4040:4040"],
         "expose_spark_ui": True,  # Whether to expose Spark UI port for HPC access
@@ -86,7 +86,7 @@ CONTAINER_CONFIG = {
             # ("./data", "/app/data"),
         ],
         # "ports": [ # TODO: add ray ports if needed]
-        "ports": ["8265:8265"], # ask ports in config but now using those ... ? 
+        "ports": ["8265:8265"],  # ask ports in config but now using those ... ?
     },
 }
 
@@ -308,42 +308,28 @@ def get_all_mount_mappings(
 
     # Get config name for dynamic log directory creation
     config_name = config_data.get("project", {}).get("name", "default")
-    
+
     # Generate timestamp in format '2025-09-03_1741' for current datetime
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-    
+
     # Create dynamic log directories based on config name and timestamp
     if container_type == "pyspark":
         log_dir = f"./logs/spark-events/{config_name}_{timestamp}"
         container_log_path = "/opt/bitnami/spark/logs/"
-        history_log_dir = None
-        history_container_path = None
     elif container_type == "ray":
         log_dir = f"./logs/ray-events/{config_name}_{timestamp}"
         container_log_path = "/app/logs/ray-events"
-        history_log_dir = None
-        history_container_path = None
     else:
         log_dir = None
         container_log_path = None
-        history_log_dir = None
-        history_container_path = None
-    
     # Create the log directory if it exists
     if log_dir:
         Path(log_dir).mkdir(parents=True, exist_ok=True)
         print(f"{EMOJI_CREATING} Created/verified log directory: {log_dir}")
         # Add dynamic log mount
         mount_mappings.append((log_dir, container_log_path))
-        print(f"{EMOJI_MOUNTING} Adding dynamic log mount: {log_dir} -> {container_log_path}")
-
-    # Keep Spark event history logs on a mounted host directory (not /tmp) for Docker+Apptainer reliability.
-    if history_log_dir and history_container_path:
-        Path(history_log_dir).mkdir(parents=True, exist_ok=True)
-        print(f"{EMOJI_CREATING} Created/verified history log directory: {history_log_dir}")
-        mount_mappings.append((history_log_dir, history_container_path))
         print(
-            f"{EMOJI_MOUNTING} Adding spark history mount: {history_log_dir} -> {history_container_path}"
+            f"{EMOJI_MOUNTING} Adding dynamic log mount: {log_dir} -> {container_log_path}"
         )
 
     # TODO don't need to mount .set directories for ray tuner
@@ -918,7 +904,9 @@ def check_and_build_sif_files(
             )
             print(f"{EMOJI_INFO} Will build from: docker://{docker_uri}")
             if use_slurm:
-                slurm_options = config.get("project", {}).get("slurm_options", {}).get("build", "")
+                slurm_options = (
+                    config.get("project", {}).get("slurm_options", {}).get("build", "")
+                )
                 build_sif_with_slurm(
                     sif_name, docker_uri, f"{build_type}_build", slurm_options
                 )
@@ -1208,9 +1196,13 @@ def main() -> None:
     experiment_type = config.get("project", {}).get("experiment_type", "")
     if "Analysis (No Ray ML)" in experiment_type:
         if pipeline_mode == "ray-only":
-            raise ValueError("Ray pipeline is not supported for Analysis (No Ray ML) experiments")
-        
-        print(f"{EMOJI_INFO} Analysis experiment detected - limiting to PySpark pipeline only")
+            raise ValueError(
+                "Ray pipeline is not supported for Analysis (No Ray ML) experiments"
+            )
+
+        print(
+            f"{EMOJI_INFO} Analysis experiment detected - limiting to PySpark pipeline only"
+        )
         pipeline_mode = "pyspark-only"
 
     print(
@@ -1226,7 +1218,6 @@ def main() -> None:
         print(f"{EMOJI_INFO} Ports blocked (expose_ports = No in config)")
     else:
         print(f"{EMOJI_CREATING} Ports exposed for monitoring dashboards")
-
     if deployment_method == "Docker":
         if pipeline_mode == "pyspark-only":
             run_docker_pyspark_only(config_path)
@@ -1245,16 +1236,24 @@ def main() -> None:
     elif deployment_method == "Singularity with Slurm":
         check_and_build_sif_files(config, pipeline_mode, use_slurm=True)
         if pipeline_mode == "pyspark-only":
-            slurm_options = config.get("project", {}).get("slurm_options", {}).get("pyspark", "")
+            slurm_options = (
+                config.get("project", {}).get("slurm_options", {}).get("pyspark", "")
+            )
             run_singularity_slurm_pyspark_only(config_path, slurm_options)
             # TODO: NECESSARY FOR LATER - Uncomment when Spark UI access is needed
             # print_spark_ui_instructions()
         elif pipeline_mode == "ray-only":
-            slurm_options = config.get("project", {}).get("slurm_options", {}).get("ray", "")
+            slurm_options = (
+                config.get("project", {}).get("slurm_options", {}).get("ray", "")
+            )
             run_singularity_slurm_ray_only(config_path, slurm_options)
         else:  # full
-            pyspark_slurm = config.get("project", {}).get("slurm_options", {}).get("pyspark", "")
-            ray_slurm = config.get("project", {}).get("slurm_options", {}).get("ray", "")
+            pyspark_slurm = (
+                config.get("project", {}).get("slurm_options", {}).get("pyspark", "")
+            )
+            ray_slurm = (
+                config.get("project", {}).get("slurm_options", {}).get("ray", "")
+            )
             run_singularity_with_slurm_separate_options(
                 config_path, pyspark_slurm, ray_slurm
             )
@@ -1269,4 +1268,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    start_time = time.time()
+    print(f"start time: {time.time()} seconds")
     main()
+    print(f"Total time: {time.time() - start_time} seconds")
