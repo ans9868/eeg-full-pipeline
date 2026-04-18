@@ -3,66 +3,70 @@ project:
   output_dir: ./data
   experiment_type: ML Classification
   subjects_or_events: subjects
-  deployment_method: Docker
+  deployment_method: Singularity with Slurm
   random_seed: 49
   expose_ports: 'No'
   config_name: config_PCA_W_C_ftd_vs_cntrl_seed49.yaml
+  slurm_options:
+    build: --time=00:30:00 --mem=8G --cpus-per-task=2 --account=torch_pr_60_general
+    pyspark: --time=08:00:00 --mem=56G --cpus-per-task=12 --account=torch_pr_60_general
+    ray: --time=08:00:00 --mem=56G --cpus-per-task=12 --account=torch_pr_60_general
 data_input:
   groups:
     ftd:
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-066/eeg/sub-066_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-067/eeg/sub-067_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-068/eeg/sub-068_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-069/eeg/sub-069_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-070/eeg/sub-070_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-071/eeg/sub-071_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-072/eeg/sub-072_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-073/eeg/sub-073_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-074/eeg/sub-074_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-075/eeg/sub-075_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-076/eeg/sub-076_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-077/eeg/sub-077_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-078/eeg/sub-078_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-079/eeg/sub-079_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-080/eeg/sub-080_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-081/eeg/sub-081_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-082/eeg/sub-082_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-083/eeg/sub-083_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-084/eeg/sub-084_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-085/eeg/sub-085_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-086/eeg/sub-086_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-087/eeg/sub-087_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-088/eeg/sub-088_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-066/eeg/sub-066_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-067/eeg/sub-067_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-068/eeg/sub-068_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-069/eeg/sub-069_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-070/eeg/sub-070_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-071/eeg/sub-071_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-072/eeg/sub-072_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-073/eeg/sub-073_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-074/eeg/sub-074_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-075/eeg/sub-075_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-076/eeg/sub-076_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-077/eeg/sub-077_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-078/eeg/sub-078_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-079/eeg/sub-079_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-080/eeg/sub-080_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-081/eeg/sub-081_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-082/eeg/sub-082_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-083/eeg/sub-083_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-084/eeg/sub-084_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-085/eeg/sub-085_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-086/eeg/sub-086_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-087/eeg/sub-087_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-088/eeg/sub-088_task-eyesclosed_eeg.set
     cntrl:
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-039/eeg/sub-039_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-040/eeg/sub-040_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-041/eeg/sub-041_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-042/eeg/sub-042_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-043/eeg/sub-043_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-044/eeg/sub-044_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-045/eeg/sub-045_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-046/eeg/sub-046_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-047/eeg/sub-047_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-048/eeg/sub-048_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-049/eeg/sub-049_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-050/eeg/sub-050_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-051/eeg/sub-051_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-052/eeg/sub-052_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-053/eeg/sub-053_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-054/eeg/sub-054_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-055/eeg/sub-055_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-056/eeg/sub-056_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-057/eeg/sub-057_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-058/eeg/sub-058_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-059/eeg/sub-059_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-060/eeg/sub-060_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-061/eeg/sub-061_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-062/eeg/sub-062_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-063/eeg/sub-063_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-064/eeg/sub-064_task-eyesclosed_eeg.set
-    - /home/ans9868/eeg-workspace/ds004504-download/sub-065/eeg/sub-065_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-037/eeg/sub-037_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-038/eeg/sub-038_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-039/eeg/sub-039_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-040/eeg/sub-040_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-041/eeg/sub-041_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-042/eeg/sub-042_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-043/eeg/sub-043_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-044/eeg/sub-044_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-045/eeg/sub-045_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-046/eeg/sub-046_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-047/eeg/sub-047_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-048/eeg/sub-048_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-049/eeg/sub-049_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-050/eeg/sub-050_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-051/eeg/sub-051_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-052/eeg/sub-052_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-053/eeg/sub-053_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-054/eeg/sub-054_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-055/eeg/sub-055_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-056/eeg/sub-056_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-057/eeg/sub-057_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-058/eeg/sub-058_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-059/eeg/sub-059_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-060/eeg/sub-060_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-061/eeg/sub-061_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-062/eeg/sub-062_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-063/eeg/sub-063_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-064/eeg/sub-064_task-eyesclosed_eeg.set
+    - /scratch/ans9868/ds004504-download/sub-065/eeg/sub-065_task-eyesclosed_eeg.set
   reuse_processed_subjects: 'Yes'
   save_processed_subjects: 'Yes'
   reuse_transformed: 'No'
@@ -117,14 +121,12 @@ data_transformation_strategy:
     split_method: random
   shuffle_transformed_data: 'Yes'
 pyspark:
-  docker_shared_mem_mb: 4096
-  master: 10
-  driver_memory: 32
-  executor_memory: 32
-  executor_cores: 10
+  master: 12
+  driver_memory: 36
+  executor_memory: 36
+  executor_cores: 12
   shuffle_partitions: 24
 ray:
-  docker_shared_mem_mb: 8192
   search_strategies:
   - grid_search
   grid_search:
@@ -183,7 +185,7 @@ ray:
           - poly
           gamma:
           - auto
-    max_concurrent_trials: 6
+    max_concurrent_trials: 9
     cv_folds: 5
   metric: accuracy
   mode: max
@@ -196,7 +198,7 @@ ray:
     per_subject_top_n_models: 5
     per_subject_hyperparameter_analysis: 'Yes'
   resources:
-    num_cpus: 10
-    memory_gb: 38
-    object_store_memory_gb: 6
+    num_cpus: 12
+    memory_gb: 42
+    object_store_memory_gb: 8
     num_gpus: 0
