@@ -52,12 +52,6 @@ CONTAINER_CONFIG = {
         "spark_configs": [
             "--conf",
             "spark.jars.ivy=/tmp/.ivy2",
-            "--conf",
-            "spark.eventLog.enabled=true",
-            "--conf",
-            "spark.eventLog.dir=file:///opt/bitnami/spark/events-history",
-            "--conf",
-            "spark.history.fs.logDirectory=file:///opt/bitnami/spark/events-history",
         ],
         "mounts": [
             # ("./config_handler.py", "/app/config_handler.py"),
@@ -322,8 +316,8 @@ def get_all_mount_mappings(
     if container_type == "pyspark":
         log_dir = f"./logs/spark-events/{config_name}_{timestamp}"
         container_log_path = "/opt/bitnami/spark/logs/"
-        history_log_dir = f"./logs/spark-events-history/{config_name}_{timestamp}"
-        history_container_path = "/opt/bitnami/spark/events-history"
+        history_log_dir = None
+        history_container_path = None
     elif container_type == "ray":
         log_dir = f"./logs/ray-events/{config_name}_{timestamp}"
         container_log_path = "/app/logs/ray-events"
