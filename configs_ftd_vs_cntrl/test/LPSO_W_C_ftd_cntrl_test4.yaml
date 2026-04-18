@@ -20,8 +20,8 @@ data_input:
   save_processed_subjects: 'Yes'
   reuse_transformed: 'Yes'
   save_transformed: 'Yes'
-  reuse_transformed_across_experiments: 'Yes'
-  reuse_processed_subjects_across_experiments: 'Yes'
+  reuse_transformed_across_experiments: 'No'
+  reuse_processed_subjects_across_experiments: 'No'
 preprocessing:
   bands:
     Delta: [0.5, 4]
