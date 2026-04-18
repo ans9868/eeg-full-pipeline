@@ -2564,10 +2564,10 @@ class UnifiedConfigHandler:
         Hard cap for subjects per batch.
         Supports legacy alias 'subject_batch_size'.
         """
-        pyspark_config = self.get_pyspark_config()
+        pyspark_config = self.get_pyspark_config() # not sure what to return as a default here 
         value = pyspark_config.get(
             "max_subjects_per_batch",
-            pyspark_config.get("subject_batch_size", 6)
+            pyspark_config.get("subject_batch_size", 12)
         )
         return int(value)
 
