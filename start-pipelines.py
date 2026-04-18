@@ -49,7 +49,16 @@ CONTAINER_CONFIG = {
         "command": "spark-submit",
         "job_name": "pyspark-pipeline",
         # Spark-submit specific configurations (most Spark configs are in session_builder.py)
-        "spark_configs": ["--conf", "spark.jars.ivy=/tmp/.ivy2"],
+        "spark_configs": [
+            "--conf",
+            "spark.jars.ivy=/tmp/.ivy2",
+            "--conf",
+            "spark.eventLog.enabled=true",
+            "--conf",
+            "spark.eventLog.dir=file:///opt/bitnami/spark/events-history",
+            "--conf",
+            "spark.history.fs.logDirectory=file:///opt/bitnami/spark/events-history",
+        ],
         "mounts": [
             # ("./config_handler.py", "/app/config_handler.py"),
             (
@@ -313,12 +322,18 @@ def get_all_mount_mappings(
     if container_type == "pyspark":
         log_dir = f"./logs/spark-events/{config_name}_{timestamp}"
         container_log_path = "/opt/bitnami/spark/logs/"
+        history_log_dir = f"./logs/spark-events-history/{config_name}_{timestamp}"
+        history_container_path = "/opt/bitnami/spark/events-history"
     elif container_type == "ray":
         log_dir = f"./logs/ray-events/{config_name}_{timestamp}"
         container_log_path = "/app/logs/ray-events"
+        history_log_dir = None
+        history_container_path = None
     else:
         log_dir = None
         container_log_path = None
+        history_log_dir = None
+        history_container_path = None
     
     # Create the log directory if it exists
     if log_dir:
@@ -327,6 +342,15 @@ def get_all_mount_mappings(
         # Add dynamic log mount
         mount_mappings.append((log_dir, container_log_path))
         print(f"{EMOJI_MOUNTING} Adding dynamic log mount: {log_dir} -> {container_log_path}")
+
+    # Keep Spark event history logs on a mounted host directory (not /tmp) for Docker+Apptainer reliability.
+    if history_log_dir and history_container_path:
+        Path(history_log_dir).mkdir(parents=True, exist_ok=True)
+        print(f"{EMOJI_CREATING} Created/verified history log directory: {history_log_dir}")
+        mount_mappings.append((history_log_dir, history_container_path))
+        print(
+            f"{EMOJI_MOUNTING} Adding spark history mount: {history_log_dir} -> {history_container_path}"
+        )
 
     # TODO don't need to mount .set directories for ray tuner
     # Create required directories
