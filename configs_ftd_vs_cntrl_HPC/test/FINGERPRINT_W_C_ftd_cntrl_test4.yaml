@@ -24,7 +24,7 @@ data_input:
   reuse_transformed: 'No'
   save_transformed: 'Yes'
   reuse_transformed_across_experiments: 'No'
-  reuse_processed_subjects_across_experiments: 'No'
+  reuse_processed_subjects_across_experiments: 'Yes'
 preprocessing:
   bands:
     Delta:
