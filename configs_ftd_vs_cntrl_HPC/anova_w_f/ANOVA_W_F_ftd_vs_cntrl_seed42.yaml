@@ -8,7 +8,7 @@ project:
   expose_ports: 'No'
   config_name: config_ANOVA_W_F_ftd_vs_cntrl_seed42.yaml
   slurm_options:
-    build: --time=00:30:00 --mem=8G --cpus-per-task=2 --account=torch_pr_60_general
+    build: --time=00:15:00 --mem=12G --cpus-per-task=2 --account=torch_pr_60_general
     pyspark: --time=08:00:00 --mem=56G --cpus-per-task=12 --account=torch_pr_60_general
     ray: --time=08:00:00 --mem=56G --cpus-per-task=12 --account=torch_pr_60_general
 data_input:
