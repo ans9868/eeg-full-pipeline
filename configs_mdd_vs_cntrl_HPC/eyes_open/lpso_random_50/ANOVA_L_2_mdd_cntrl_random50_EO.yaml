@@ -210,8 +210,8 @@ data_transformation_strategy:
     - /scratch/ans9868/4244171_normalized/BIDS/sub-029/eeg/sub-029_task-eyesopen_eeg.edf
   - - /scratch/ans9868/4244171_normalized/BIDS/sub-042/eeg/sub-042_task-eyesopen_eeg.edf
     - /scratch/ans9868/4244171_normalized/BIDS/sub-019/eeg/sub-019_task-eyesopen_eeg.edf
-  - - /scratch/ans9868/4244171_normalized/BIDS/sub-037/eeg/sub-037_task-eyesopen_eeg.edf
-    - /scratch/ans9868/4244171_normalized/BIDS/sub-023/eeg/sub-023_task-eyesopen_eeg.edf
+  - - /scratch/ans9868/4244171_normalized/BIDS/sub-030/eeg/sub-030_task-eyesopen_eeg.edf
+    - /scratch/ans9868/4244171_normalized/BIDS/sub-002/eeg/sub-002_task-eyesopen_eeg.edf
   - - /scratch/ans9868/4244171_normalized/BIDS/sub-032/eeg/sub-032_task-eyesopen_eeg.edf
     - /scratch/ans9868/4244171_normalized/BIDS/sub-002/eeg/sub-002_task-eyesopen_eeg.edf
   - - /scratch/ans9868/4244171_normalized/BIDS/sub-052/eeg/sub-052_task-eyesopen_eeg.edf
