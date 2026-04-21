@@ -14,11 +14,11 @@ project:
 data_input:
   groups:
     scz:
-    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-015/eeg/sub-015_task-eyesclosed_eeg.edf
-    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-016/eeg/sub-016_task-eyesclosed_eeg.edf
+    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-015/eeg/sub-015_task-rest_eeg.edf
+    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-016/eeg/sub-016_task-rest_eeg.edf
     cntrl:
-    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-001/eeg/sub-001_task-eyesclosed_eeg.edf
-    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-002/eeg/sub-002_task-eyesclosed_eeg.edf
+    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-001/eeg/sub-001_task-rest_eeg.edf
+    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-002/eeg/sub-002_task-rest_eeg.edf
   reuse_processed_subjects: 'Yes'
   save_processed_subjects: 'Yes'
   reuse_transformed: 'No'
@@ -77,14 +77,14 @@ data_transformation_strategy:
   lpso_subjects_per_group: 2
   uneven_handling: cutoff
   lpso_folds:
-  - - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-015/eeg/sub-015_task-eyesclosed_eeg.edf
-    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-001/eeg/sub-001_task-eyesclosed_eeg.edf
-  - - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-015/eeg/sub-015_task-eyesclosed_eeg.edf
-    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-002/eeg/sub-002_task-eyesclosed_eeg.edf
-  - - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-016/eeg/sub-016_task-eyesclosed_eeg.edf
-    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-001/eeg/sub-001_task-eyesclosed_eeg.edf
-  - - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-016/eeg/sub-016_task-eyesclosed_eeg.edf
-    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-002/eeg/sub-002_task-eyesclosed_eeg.edf
+  - - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-015/eeg/sub-015_task-rest_eeg.edf
+    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-001/eeg/sub-001_task-rest_eeg.edf
+  - - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-015/eeg/sub-015_task-rest_eeg.edf
+    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-002/eeg/sub-002_task-rest_eeg.edf
+  - - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-016/eeg/sub-016_task-rest_eeg.edf
+    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-001/eeg/sub-001_task-rest_eeg.edf
+  - - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-016/eeg/sub-016_task-rest_eeg.edf
+    - /scratch/ans9868/EEG-in-schizophrenia/BIDS/sub-002/eeg/sub-002_task-rest_eeg.edf
   lpso_metadata:
     total_folds: 4
     subjects_per_group: 2

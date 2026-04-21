@@ -32,7 +32,7 @@ import yaml
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 BIDS_ROOT  = "/scratch/ans9868/EEG-in-schizophrenia/BIDS"
-TASK       = "eyesclosed"
+TASK       = "rest"
 OUT_DIR    = Path(__file__).parent
 
 SLURM = {
