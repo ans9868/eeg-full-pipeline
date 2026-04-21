@@ -3943,6 +3943,17 @@ def generate_lpso_folds(
         Tuple of (list_of_test_subject_lists, metadata_dict)
     """
 
+    def _extract_subject_id(path: str) -> str:
+        """Extract canonical subject id from a path, falling back to filename stem."""
+        match = re.search(r"(sub-\d+)", path)
+        if match:
+            return match.group(1)
+        return Path(path).stem
+
+    def _fold_key(fold_subjects: List[str]) -> Tuple[str, ...]:
+        """Canonical fold key independent of subject ordering."""
+        return tuple(sorted(_extract_subject_id(subject) for subject in fold_subjects))
+
     if individual_lpso:
         # Individual LPSO: each subject gets its own test fold
         print(f"   🎯 Generating Individual LPSO folds (one per subject)")
@@ -3968,6 +3979,14 @@ def generate_lpso_folds(
             "num_groups": len(groups),
             "fold_generation_method": "individual_lpso",
         }
+
+        # Safety check: accidental duplicate folds should fail fast.
+        fold_keys = [_fold_key(fold) for fold in all_folds]
+        if len(set(fold_keys)) != len(fold_keys):
+            raise ValueError(
+                "Duplicate LPSO folds detected during generation. "
+                "Please regenerate folds to ensure unique held-out subject sets."
+            )
 
         return all_folds, metadata
 
@@ -4123,6 +4142,15 @@ def generate_lpso_folds(
             "num_groups": num_groups,
             "fold_generation_method": "systematic_ordered",
         }
+
+        # Safety check: accidental duplicate folds should fail fast.
+        fold_keys = [_fold_key(fold) for fold in all_folds]
+        if len(set(fold_keys)) != len(fold_keys):
+            duplicate_count = len(fold_keys) - len(set(fold_keys))
+            raise ValueError(
+                f"Duplicate LPSO folds detected during generation ({duplicate_count} duplicate key(s)). "
+                "Please regenerate folds to ensure unique held-out subject sets."
+            )
 
         return all_folds, metadata
 

@@ -573,6 +573,17 @@ class UnifiedConfigHandler:
 
             if not isinstance(data_leakage_config["lpso_metadata"], dict):
                 raise ValueError("lpso_metadata must be a dictionary")
+
+            def _extract_subject_id(subject_path: str) -> str:
+                """Extract canonical subject ID from path or fallback to basename."""
+                match = re.search(r"(sub-\d+)", subject_path)
+                if match:
+                    return match.group(1)
+                return Path(subject_path).stem
+
+            def _fold_key(fold_subjects: List[str]) -> Tuple[str, ...]:
+                """Canonical fold key independent of ordering."""
+                return tuple(sorted(_extract_subject_id(path) for path in fold_subjects))
             
             # Get metadata and check generation method
             lpso_metadata = data_leakage_config["lpso_metadata"]
@@ -605,6 +616,47 @@ class UnifiedConfigHandler:
 
             if not groups:
                 return  # No groups configured, validation will happen later
+
+            lpso_folds = data_leakage_config["lpso_folds"]
+            if not lpso_folds:
+                raise ValueError("lpso_folds cannot be empty for LPSO strategy")
+
+            # Structural validation + duplicate detection.
+            duplicate_subjects_within_fold = []
+            fold_keys: List[Tuple[str, ...]] = []
+            for fold_idx, fold_subjects in enumerate(lpso_folds):
+                if not isinstance(fold_subjects, list) or not fold_subjects:
+                    raise ValueError(
+                        f"lpso_folds[{fold_idx}] must be a non-empty list of subject paths"
+                    )
+                if not all(isinstance(path, str) and path.strip() for path in fold_subjects):
+                    raise ValueError(
+                        f"lpso_folds[{fold_idx}] contains invalid entries; all must be non-empty strings"
+                    )
+
+                fold_subject_ids = [_extract_subject_id(path) for path in fold_subjects]
+                if len(fold_subject_ids) != len(set(fold_subject_ids)):
+                    duplicate_subjects_within_fold.append(fold_idx + 1)
+                fold_keys.append(tuple(sorted(fold_subject_ids)))
+
+            if duplicate_subjects_within_fold:
+                raise ValueError(
+                    "Duplicate subjects detected within fold(s): "
+                    f"{duplicate_subjects_within_fold}"
+                )
+
+            duplicate_fold_keys = len(fold_keys) - len(set(fold_keys))
+            if duplicate_fold_keys > 0:
+                raise ValueError(
+                    f"Duplicate LPSO folds detected: {duplicate_fold_keys} duplicate fold key(s). "
+                    "Each held-out subject set must be unique."
+                )
+
+            if "total_folds" in lpso_metadata and lpso_metadata["total_folds"] != len(lpso_folds):
+                raise ValueError(
+                    f"lpso_metadata.total_folds ({lpso_metadata['total_folds']}) does not match "
+                    f"lpso_folds length ({len(lpso_folds)})."
+                )
 
             # Calculate total subjects
             total_subjects = sum(len(paths) for paths in groups.values())
