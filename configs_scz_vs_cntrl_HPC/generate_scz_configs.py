@@ -120,7 +120,7 @@ FEATURE_EXTRACTION = {
 
 FEATURE_TRANSFORMATION_ANOVA = {
     "transformations":         ["ANOVA F-test", "MinMax scaler"],
-    "synthetic":               None,
+    "synthetic":               "None",
     "minmax_range":            [-1.0, 1.0],
     "anova_label_column":      "Group",
     "anova_label_type":        "categorical",
@@ -130,7 +130,7 @@ FEATURE_TRANSFORMATION_ANOVA = {
 
 FEATURE_TRANSFORMATION_PCA = {
     "transformations": ["Z-score standardization", "PCA (retain 95% variance)"],
-    "synthetic":       None,
+    "synthetic":       "None",
 }
 
 PYSPARK_LPSO = {"master": 12, "driver_memory": 36, "executor_memory": 36,

@@ -87,7 +87,7 @@ feature_transformation:
   transformations:
   - Z-score standardization
   - PCA (retain 95% variance)
-  synthetic: null
+  synthetic: None
 data_transformation_strategy:
   strategy: LPSO (Leave-P-Subjects-Out) (inter subject split) - systematic cross-validation
     (recommended for small datasets)

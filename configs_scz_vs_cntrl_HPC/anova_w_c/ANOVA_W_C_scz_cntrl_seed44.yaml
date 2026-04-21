@@ -87,7 +87,7 @@ feature_transformation:
   transformations:
   - ANOVA F-test
   - MinMax scaler
-  synthetic: null
+  synthetic: None
   minmax_range:
   - -1.0
   - 1.0
