@@ -114,8 +114,9 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--config-root",
-        default="configs_ftd_vs_cntrl_google_cloud",
-        help="Folder containing YAML configs",
+        nargs="+",
+        default=["configs_ftd_vs_cntrl_google_cloud"],
+        help="One or more folders containing YAML configs",
     )
     p.add_argument(
         "--recursive",
@@ -178,19 +179,22 @@ def main() -> int:
     args = parse_args()
     recursive = not args.non_recursive
 
-    config_root = Path(args.config_root).resolve()
+    config_roots = [Path(r).resolve() for r in args.config_root]
     start_script = Path(args.start_script).resolve()
     logs_dir = Path(args.logs_dir).resolve()
     summary_csv = Path(args.summary_csv).resolve()
 
-    if not config_root.exists():
-        print(f"ERROR: config root not found: {config_root}")
-        return 2
+    for config_root in config_roots:
+        if not config_root.exists():
+            print(f"ERROR: config root not found: {config_root}")
+            return 2
     if not start_script.exists():
         print(f"ERROR: start script not found: {start_script}")
         return 2
 
-    configs = discover_configs(config_root, recursive=recursive)
+    configs = []
+    for config_root in config_roots:
+        configs.extend(discover_configs(config_root, recursive=recursive))
     if not configs:
         print(f"ERROR: no .yaml files found under {config_root}")
         return 2
