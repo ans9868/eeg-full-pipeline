@@ -259,6 +259,13 @@ def get_container_command(container_type: str, config_path: str) -> str:
 
     smoke_config = config_data.get("deep_learning_smoke")
     if smoke_config:
+        smoke_source = str(smoke_config.get("source", "processed_features"))
+        if smoke_source == "raw-waveform" and container_type == "pyspark":
+            command_parts = [config["command"]]
+            spark_configs = config.get("spark_configs", [])
+            command_parts.extend(spark_configs)
+            command_parts.extend([config["entrypoint"], "--config", "/app/config.yaml"])
+            return " ".join(command_parts)
         if container_type == "pyspark":
             return " ".join(
                 [
@@ -274,6 +281,41 @@ def get_container_command(container_type: str, config_path: str) -> str:
                 ]
             )
         if container_type == "ray":
+            if smoke_source == "raw-waveform":
+                project_name = config_data.get("project", {}).get("name")
+                processed_subjects = smoke_config.get(
+                    "processed_subjects",
+                    f"/app/data/{project_name}/processed_subjects",
+                )
+                return " ".join(
+                    [
+                        "python",
+                        "-m",
+                        "eeg_ray_tuner.deep_learning_smoke.training",
+                        "--processed-subjects",
+                        str(processed_subjects),
+                        "--output-dir",
+                        str(smoke_config.get("output_dir", "/app/data/rebuttal/deep_learning_local_smoke_test/outputs/pipeline_start_pipeline")),
+                        "--max-rows",
+                        str(smoke_config.get("max_rows", 512)),
+                        "--epochs",
+                        str(smoke_config.get("epochs", 1)),
+                        "--batch-size",
+                        str(smoke_config.get("batch_size", 32)),
+                        "--learning-rate",
+                        str(smoke_config.get("learning_rate", 1e-3)),
+                        "--chunk-size",
+                        str(smoke_config.get("chunk_size", 64)),
+                        "--embed-dim",
+                        str(smoke_config.get("embed_dim", 32)),
+                        "--heads",
+                        str(smoke_config.get("heads", 4)),
+                        "--eegnet-dropout",
+                        str(smoke_config.get("eegnet_dropout", 0.25)),
+                        "--transformer-dropout",
+                        str(smoke_config.get("transformer_dropout", 0.1)),
+                    ]
+                )
             return " ".join(
                 [
                     "python",

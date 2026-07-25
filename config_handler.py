@@ -330,7 +330,7 @@ class UnifiedConfigHandler:
 
         # Validate output_format
         output_format = feature_extraction_config["output_format"]
-        valid_formats = ["ml", "analysis"]
+        valid_formats = ["ml", "analysis", "raw-waveform"]
         if output_format not in valid_formats:
             raise ValueError(f"Output format must be one of: {valid_formats}")
 

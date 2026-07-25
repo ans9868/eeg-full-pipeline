@@ -1,22 +1,114 @@
 project:
   name: deep_learning_test_laptop
-  output_dir: .
-  experiment_type: Deep Learning Smoke Test
+  output_dir: ./data
+  experiment_type: ML Classification
+  subjects_or_events: subjects
   deployment_method: Docker
   random_seed: 42
+  config_name: deep_learning_test_laptop.yaml
   expose_ports: "No"
 
+data_input:
+  groups:
+    alz:
+    - /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/tests/test_eeg_data/sub-001_task-eyesclosed_eeg.set
+    - /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/tests/test_eeg_data/sub-002_task-eyesclosed_eeg.set
+    cntrl:
+    - /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/tests/test_eeg_data/sub-003_task-eyesclosed_eeg.set
+    - /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/tests/test_eeg_data/sub-004_task-eyesclosed_eeg.set
+  reuse_processed_subjects: "No"
+  save_processed_subjects: "Yes"
+  reuse_transformed: "No"
+  save_transformed: "No"
+  reuse_transformed_across_experiments: "No"
+
+preprocessing:
+  window_size: 3.0
+  sliding_window: 0.5
+  downsampling: 64
+  reject_by_annotation: "Yes"
+  normalize_psd: "No"
+  use_epoch_rejection: "No"
+  epoch_rejection:
+    reject: 600.0
+    flat: 0.3
+  extreme_datapoint_removal: null
+
+feature_extraction:
+  method: welch
+  features:
+    per_channel_across_bands: []
+    per_channel_per_band: []
+  output_format: raw-waveform
+  show_intermediate_results: "No"
+  show_intermediate_counts: "No"
+
+feature_transformation:
+  transformations: null
+  synthetic: None
+
+data_transformation_strategy:
+  strategy: Transform all data together (intra subject split) (no split - fastest, and potential data leakage)
+
 deep_learning_smoke:
-  input_dir: /app/data/ANOVA_L_2_ad_cntrl_random50/processed_subjects
-  data_output: /app/data/rebuttal/deep_learning_local_smoke_test/outputs/deep_learning_test_laptop_data.npz
-  output_dir: /app/data/rebuttal/deep_learning_local_smoke_test/outputs/deep_learning_test_laptop
+  source: raw-waveform
+  processed_subjects: /app/data/deep_learning_test_laptop/processed_subjects
+  output_dir: /app/data/deep_learning_test_laptop/deep_learning_smoke_outputs
   max_rows: 512
   epochs: 1
-  batch_size: 32
+  batch_size: 16
+  learning_rate: 0.001
+  chunk_size: 32
+  embed_dim: 32
+  heads: 4
+  eegnet_dropout: 0.25
+  transformer_dropout: 0.1
 
 pyspark:
   docker_image: eeg-spark-pipeline:latest
+  master: "2"
+  driver_memory: "2"
+  executor_memory: "2"
+  executor_cores: "1"
+  shuffle_partitions: "2"
 
 ray:
   docker_image: eeg-ray-tuner:latest
   docker_shared_mem_mb: 2048
+  search_strategies:
+  - grid_search
+  grid_search:
+    models:
+    - KNN
+    model_configs:
+      KNN:
+        use_default: false
+        n_neighbors:
+        - 3
+        weights:
+        - uniform
+        metric:
+        - euclidean
+    max_concurrent: "1"
+    cv_folds: "2"
+    max_concurrent_trials: 1
+  ax:
+    models: []
+    max_concurrent: "1"
+    cv_folds: "2"
+    max_concurrent_trials: 1
+  metric: accuracy
+  mode: max
+  graph_data_visualization:
+    save_prediction_outputs: "No"
+    best_models_graph: "No"
+    per_model_accross_hyperparameters_graph: "No"
+    per_model_per_hyperparameter_across_folds_graph: "No"
+    per_subject_analysis_graph: "No"
+    per_subject_hyperparameter_analysis: "No"
+  resources:
+    num_cpus: "2"
+    memory_gb: "2"
+    object_store_memory_gb: "1"
+    num_gpus: 0
+    dashboard_port: "8265"

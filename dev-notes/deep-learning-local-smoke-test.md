@@ -80,7 +80,23 @@ python3 start-pipelines.py config/config_deep_learning_smoke_docker.yaml
 
 The Docker smoke test wrote `rebuttal/deep_learning_local_smoke_test/outputs/pipeline_docker/summary_metrics.csv` with four runs. Integrity checks confirmed zero shared subjects for subject-disjoint runs and four shared subjects for subject-overlap runs.
 
-Added `config/deep_learning_test_laptop.yaml` as the human-facing laptop Docker smoke config. It points at the same already-validated ANOVA L2 processed-subject fixture, keeps the dataset to 512 rows, trains for one epoch, writes to a distinct `deep_learning_test_laptop` output directory, and uses the local Docker images without pushing.
+Added `config/deep_learning_test_laptop.yaml` as the human-facing laptop Docker smoke config.
+
+The first version intentionally used an existing processed-feature parquet fixture. After review, that was replaced with a config-faithful raw EEG path: the YAML now lists subjects explicitly under `data_input.groups`, controls `window_size`, `sliding_window`, `downsampling`, annotation rejection, and epoch rejection through the normal preprocessing section, and sets `feature_extraction.output_format: raw-waveform`.
+
+Minimal Spark changes:
+
+- Added `raw-waveform` as a valid output format.
+- Added a raw-waveform processed-subject schema.
+- Added a narrow `process_epoch` branch that returns `epoch.get_data()[0]` as flattened channel-major waveform samples with `n_channels`, `n_times`, `sfreq`, and `channel_names`.
+- Added use of the existing `preprocessing.downsampling` setting before epoch construction.
+- Skipped feature transformations only after raw-waveform processed subjects are saved.
+
+Ray changes:
+
+- Added a deep-learning reader for raw-waveform `processed_subjects` parquet.
+- Reconstructs waveform rows to `(samples, channels, time)` tensors.
+- Uses raw-waveform EEGNet-style and transformer-style smoke models when the input is 3D.
 
 Verified with:
 
@@ -88,7 +104,9 @@ Verified with:
 python3 start-pipelines.py deep_learning_test_laptop.yaml
 ```
 
-The run completed both Docker stages successfully. PySpark exported 512 rows, 4 subjects, 95 features, and balanced labels to `rebuttal/deep_learning_local_smoke_test/outputs/deep_learning_test_laptop_data.npz`. Ray then ran EEGNet-style and transformer-style smoke training for subject-disjoint and subject-overlap splits, wrote `rebuttal/deep_learning_local_smoke_test/outputs/deep_learning_test_laptop/summary_metrics.csv`, and preserved the expected leakage sentinels: zero shared subjects for subject-disjoint runs and four shared subjects for subject-overlap runs.
+The final raw-waveform Docker run completed both stages successfully. PySpark loaded the four bundled `.set` files, downsampled 256 Hz to 64 Hz, made 35 epochs per subject with `window_size: 3.0` and `sliding_window: 0.5`, saved `data/deep_learning_test_laptop/processed_subjects`, and skipped transformations. A schema check confirmed waveform rows with columns `SubjectID`, `EpochID`, `Group`, `waveform`, `n_channels`, `n_times`, `sfreq`, `channel_names`, and `label`; a sampled row had shape `4 x 193`, flattened length `772`, `sfreq=64.0`, and finite values.
+
+Ray read directly from `data/deep_learning_test_laptop/processed_subjects`, wrote `_raw_waveform_smoke_data.npz`, and ran EEGNet-style and transformer-style smoke training. Results were written to `data/deep_learning_test_laptop/deep_learning_smoke_outputs/summary_metrics.csv`. The expected leakage sentinels were preserved: zero shared subjects for subject-disjoint runs and four shared subjects for subject-overlap runs.
 
 ## Non-Deep-Learning Full-Pipeline Sanity
 
