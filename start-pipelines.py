@@ -287,6 +287,7 @@ def get_container_command(container_type: str, config_path: str) -> str:
                     "processed_subjects",
                     f"/app/data/{project_name}/processed_subjects",
                 )
+                early_stopping = smoke_config.get("early_stopping", {})
                 return " ".join(
                     [
                         "python",
@@ -314,6 +315,20 @@ def get_container_command(container_type: str, config_path: str) -> str:
                         str(smoke_config.get("eegnet_dropout", 0.25)),
                         "--transformer-dropout",
                         str(smoke_config.get("transformer_dropout", 0.1)),
+                        "--validation-split",
+                        str(smoke_config.get("validation_split", 0.2)),
+                        "--early-stopping-enabled",
+                        str(early_stopping.get("enabled", "No")),
+                        "--early-stopping-monitor",
+                        str(early_stopping.get("monitor", "validation_loss")),
+                        "--early-stopping-mode",
+                        str(early_stopping.get("mode", "min")),
+                        "--early-stopping-patience",
+                        str(early_stopping.get("patience", 10)),
+                        "--early-stopping-min-delta",
+                        str(early_stopping.get("min_delta", 0.0)),
+                        "--restore-best-weights",
+                        str(early_stopping.get("restore_best_weights", "Yes")),
                     ]
                 )
             return " ".join(

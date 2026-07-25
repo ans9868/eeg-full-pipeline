@@ -108,6 +108,12 @@ The final raw-waveform Docker run completed both stages successfully. PySpark lo
 
 Ray read directly from `data/deep_learning_test_laptop/processed_subjects`, wrote `_raw_waveform_smoke_data.npz`, and ran EEGNet-style and transformer-style smoke training. Results were written to `data/deep_learning_test_laptop/deep_learning_smoke_outputs/summary_metrics.csv`. The expected leakage sentinels were preserved: zero shared subjects for subject-disjoint runs and four shared subjects for subject-overlap runs.
 
+Added early stopping support in the Ray deep-learning smoke trainer. The YAML now supports `validation_split` plus an `early_stopping` block with `enabled`, `monitor`, `mode`, `patience`, `min_delta`, and `restore_best_weights`. Validation rows are split only from the training partition after the smoke train/test subject split, so held-out test rows are not used for stopping decisions. The summary metrics now include requested max epochs, epochs actually run, whether early stopping fired, best epoch, best validation metric, validation loss, validation accuracy, and validation row count.
+
+Verified the updated `deep_learning_test_laptop.yaml` through `python3 start-pipelines.py deep_learning_test_laptop.yaml` after rebuilding the local Ray container. The Docker run completed end to end and wrote early-stopping metrics for all four smoke runs; none stopped early on this seed-42 laptop data because the monitored validation loss kept improving before the 10-epoch cap.
+
+Also ran a direct trainer check with an intentionally large `early_stopping.min_delta` to force the stop branch. All four smoke runs stopped at 2 of 5 requested epochs with `early_stopped: true`, confirming the autostop path fires and reports `epochs_ran` correctly.
+
 ## Non-Deep-Learning Full-Pipeline Sanity
 
 Added `config/config_testanova1_seed42_testdata_smoke.yaml` by copying the shape of `config/config_testanova1_09-10-2025_1727.yaml` and pointing it at the bundled PySpark test EEG files. This keeps the run full end-to-end through Docker while avoiding unavailable raw-data paths. The config uses seed 42, the ANOVA F-test plus MinMax transformation path, a within-subject split, and a single small KNN grid point for laptop-safe Ray execution.
