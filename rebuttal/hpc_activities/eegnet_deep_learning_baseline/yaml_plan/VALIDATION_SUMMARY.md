@@ -26,3 +26,9 @@ Launcher command sanity:
 - Ray selects `python -m eeg_ray_tuner.deep_learning_smoke.training` with `--processed-subjects /app/data/DL_W_C_ad_cntrl_seed42_hpc/processed_subjects`.
 
 Note: the current deep-learning runner emits both `subject_disjoint_smoke` and `subject_overlap_smoke` outputs. For this WC-style config, the overlap output is the closest current deep-learning diagnostic to the within-subject disease-prediction setup.
+
+TODO for rebuttal-grade neural baselines:
+
+- Replace the current lightweight EEGNet-style smoke model with a canonical EEGNet implementation.
+- Keep a separate slot for a Transformer / BIOT-style EEG baseline rather than treating the current tiny transformer smoke model as final.
+- Split future configs/results clearly by model family so EEGNet and Transformer/BIOT can each have their own validated HPC run and output folder.
