@@ -17,28 +17,28 @@
 
 ## Phase 1: Inspect Available Model Options
 
-- [ ] Check whether Braindecode is already installed locally in `py-neuro-env`.
-- [ ] Check whether Braindecode is already present in the Ray Docker/Singularity dependency stack.
+- [x] Check whether Braindecode is already installed locally in `py-neuro-env`.
+- [x] Check whether Braindecode is already present in the Ray Docker/Singularity dependency stack.
 - [ ] Inspect Braindecode model names and constructor signatures for:
   - [ ] EEGNet
   - [ ] EEGConformer or equivalent Conformer model
-- [ ] Decide whether to use Braindecode directly or implement small in-repo PyTorch versions.
-- [ ] Record decision in `CONTEXT.md`.
+- [x] Decide whether to use Braindecode directly or implement small in-repo PyTorch versions.
+- [x] Record decision in `CONTEXT.md`.
 
 ## Phase 2: Model Code
 
-- [ ] Add `canonical_eegnet` model builder.
-- [ ] Add `eeg_conformer_small` model builder.
-- [ ] Keep existing smoke model builders available as debug paths.
-- [ ] Ensure models accept raw waveform tensors shaped like:
+- [x] Add `canonical_eegnet` model builder.
+- [x] Add `eeg_conformer_small` model builder.
+- [x] Keep existing smoke model builders available as debug paths.
+- [x] Ensure models accept raw waveform tensors shaped like:
   - local: `4 x 193`
   - HPC: `19 x 193`
-- [ ] Ensure binary classification output shape is `[batch, 2]`.
-- [ ] Add clear model metadata to training logs.
+- [x] Ensure binary classification output shape is `[batch, 2]`.
+- [x] Add clear model metadata to training logs.
 
 ## Phase 3: Config Selection
 
-- [ ] Add config support for selecting model list, for example:
+- [x] Add config support for selecting model list, for example:
 
 ```yaml
 deep_learning_smoke:
@@ -47,45 +47,45 @@ deep_learning_smoke:
   - eeg_conformer_small
 ```
 
-- [ ] Support EEGNet-only local/HPC runs.
-- [ ] Support Conformer-only local/HPC runs.
-- [ ] Support running both.
-- [ ] Preserve backward compatibility if `models` is omitted.
-- [ ] Keep output model names explicit in metrics and filenames.
+- [x] Support EEGNet-only local/HPC runs.
+- [x] Support Conformer-only local/HPC runs.
+- [x] Support running both.
+- [x] Preserve backward compatibility if `models` is omitted.
+- [x] Keep output model names explicit in metrics and filenames.
 
 ## Phase 4: Training Loop Integration
 
-- [ ] Wire `canonical_eegnet` into the existing raw-waveform training path.
-- [ ] Wire `eeg_conformer_small` into the existing raw-waveform training path.
-- [ ] Preserve early stopping behavior.
-- [ ] Preserve validation split behavior.
-- [ ] Preserve subject-disjoint and subject-overlap diagnostics.
+- [x] Wire `canonical_eegnet` into the existing raw-waveform training path.
+- [x] Wire `eeg_conformer_small` into the existing raw-waveform training path.
+- [x] Preserve early stopping behavior.
+- [x] Preserve validation split behavior.
+- [x] Preserve subject-disjoint and subject-overlap diagnostics.
 - [ ] Confirm test metrics are not used for early stopping.
 
 ## Phase 5: Local Laptop Sanity
 
-- [ ] Update or create laptop config for tiny model sanity.
-- [ ] Use bundled `.set` files.
-- [ ] Use tiny settings:
+- [x] Update or create laptop config for tiny model sanity.
+- [x] Use bundled `.set` files.
+- [x] Use tiny settings:
   - `max_rows: 256`
   - `epochs: 2`
   - small batch size
-- [ ] Run local compile checks.
-- [ ] Rebuild Ray Docker image if dependencies/code require it.
-- [ ] Run:
+- [x] Run local compile checks.
+- [x] Rebuild Ray Docker image if dependencies/code require it.
+- [x] Run:
 
 ```bash
 python3 start-pipelines.py deep_learning_test_laptop.yaml
 ```
 
-- [ ] Verify both selected models instantiate.
-- [ ] Verify both selected models train for at least one epoch.
-- [ ] Verify `summary_metrics.csv` exists.
-- [ ] Verify predictions/log files exist.
-- [ ] Verify split sentinels:
+- [x] Verify both selected models instantiate.
+- [x] Verify both selected models train for at least one epoch.
+- [x] Verify `summary_metrics.csv` exists.
+- [x] Verify predictions/log files exist.
+- [x] Verify split sentinels:
   - subject-disjoint shared subjects = `0`
   - subject-overlap shared subjects > `0`
-- [ ] Update `CONTEXT.md` with local result summary.
+- [x] Update `CONTEXT.md` with local result summary.
 
 ## Phase 6: User Checkpoint Before HPC
 

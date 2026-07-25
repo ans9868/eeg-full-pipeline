@@ -54,8 +54,11 @@ deep_learning_smoke:
   source: raw-waveform
   processed_subjects: /app/data/deep_learning_test_laptop/processed_subjects
   output_dir: /app/data/deep_learning_test_laptop/deep_learning_smoke_outputs
-  max_rows: 512
-  epochs: 10
+  models:
+  - canonical_eegnet
+  - eeg_conformer_small
+  max_rows: 256
+  epochs: 2
   batch_size: 16
   learning_rate: 0.001
   validation_split: 0.2
@@ -64,6 +67,9 @@ deep_learning_smoke:
   heads: 4
   eegnet_dropout: 0.25
   transformer_dropout: 0.1
+  conformer_patch_size: 16
+  conformer_depth: 1
+  conformer_dropout: 0.1
   early_stopping:
     enabled: "Yes"
     monitor: validation_loss

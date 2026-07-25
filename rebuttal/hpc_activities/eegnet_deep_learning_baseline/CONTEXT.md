@@ -99,6 +99,16 @@ BIOT is a possible future candidate but is not the first pick because it is like
   - `subject_disjoint_smoke`
   - `subject_overlap_smoke`
 
+## Local Dependency Inspection
+
+Initial local inspection in `py-neuro-env` found:
+
+- `torch`: installed, version `2.8.0`
+- `braindecode`: not installed
+- `torcheeg`: not installed
+
+The Ray Docker requirements also do not currently include Braindecode. For the first fast local implementation, use small in-repo PyTorch model builders rather than adding a new dependency. This keeps the local and container sanity path simpler. Revisit Braindecode later if exact library parity becomes more important than dependency stability.
+
 ## Known Risks
 
 - Braindecode dependency may bring extra packages or version conflicts.
@@ -107,3 +117,36 @@ BIOT is a possible future candidate but is not the first pick because it is like
 - Conformer may require input time length/channel count constraints.
 - HPC SIFs must be rebuilt after code/dependency changes.
 - Current launcher always passes `--max-rows`; avoid YAML null unless launcher is fixed.
+
+## Local Canonical Model Sanity Result
+
+Implemented in-repo PyTorch builders for:
+
+- `canonical_eegnet`
+- `eeg_conformer_small`
+
+Local direct trainer check passed with existing laptop raw-waveform `processed_subjects`:
+
+```bash
+PYTHONPATH=eeg-ray-tuner:$PYTHONPATH python3 -m eeg_ray_tuner.deep_learning_smoke.training \
+  --processed-subjects data/deep_learning_test_laptop/processed_subjects \
+  --output-dir /tmp/canonical_neural_local_check \
+  --max-rows 256 \
+  --epochs 2 \
+  --models canonical_eegnet,eeg_conformer_small
+```
+
+Full Docker laptop run also passed:
+
+```bash
+python3 start-pipelines.py deep_learning_test_laptop.yaml
+```
+
+Summary from `data/deep_learning_test_laptop/deep_learning_smoke_outputs/summary_metrics.csv`:
+
+- `canonical_eegnet_subject_disjoint_smoke`: balanced accuracy `0.500`
+- `canonical_eegnet_subject_overlap_smoke`: balanced accuracy `0.786`
+- `eeg_conformer_small_subject_disjoint_smoke`: balanced accuracy `0.014`
+- `eeg_conformer_small_subject_overlap_smoke`: balanced accuracy `0.857`
+
+The purpose of this run was only model/launcher sanity. Both models instantiated, trained for two epochs, wrote metrics/predictions/training logs, and preserved split sentinels.
