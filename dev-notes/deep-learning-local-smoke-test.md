@@ -65,3 +65,17 @@ python3 start-pipelines.py config/config_deep_learning_smoke_local.yaml
 ```
 
 This produced the same engineering smoke result shape through the root launcher: 512 rows, 4 subjects, two classes, zero shared subjects for subject-disjoint splits, four shared subjects for subject-overlap splits, and finite metrics for EEGNet-style and transformer-style smoke models.
+
+Container updates:
+
+- Rebuilt PySpark image locally with `cd eeg-pyspark-pipeline && make build`; produced `eeg-spark-pipeline:latest`.
+- Rebuilt Ray image locally with `cd eeg-ray-tuner && make build`; produced `eeg-ray-tuner:latest`.
+- No Docker Hub push was run.
+
+Final Docker orchestrator test passed:
+
+```bash
+python3 start-pipelines.py config/config_deep_learning_smoke_docker.yaml
+```
+
+The Docker smoke test wrote `rebuttal/deep_learning_local_smoke_test/outputs/pipeline_docker/summary_metrics.csv` with four runs. Integrity checks confirmed zero shared subjects for subject-disjoint runs and four shared subjects for subject-overlap runs.

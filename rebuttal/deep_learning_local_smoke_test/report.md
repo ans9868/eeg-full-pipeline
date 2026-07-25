@@ -34,4 +34,15 @@ Pipeline-owned smoke entrypoints were later added to `eeg-pyspark-pipeline/`, `e
 python3 start-pipelines.py config/config_deep_learning_smoke_local.yaml
 ```
 
-Because containerized execution code changed, the PySpark and Ray Docker images should be rebuilt locally with each subproject Makefile before Docker/Singularity smoke execution. No Docker Hub push is needed for this local validation.
+Because containerized execution code changed, both Docker images were rebuilt locally with the subproject Makefiles:
+
+- `cd eeg-pyspark-pipeline && make build`
+- `cd eeg-ray-tuner && make build`
+
+No Docker Hub push was run. The Docker root-orchestrator smoke config also completed successfully:
+
+```bash
+python3 start-pipelines.py config/config_deep_learning_smoke_docker.yaml
+```
+
+The Docker run wrote `outputs/pipeline_docker/summary_metrics.csv` with four finite-metric runs; subject-disjoint runs had zero shared train/test subjects and subject-overlap runs had four shared train/test subjects.

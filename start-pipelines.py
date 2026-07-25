@@ -212,6 +212,7 @@ def create_required_directories(output_dir: str = "./data") -> None:
         "config/spark",
         # config/ray
         "logs",
+        "logs/spark-events-history",
         # Log subdirectories are now created dynamically based on config[project][config_name]
         # "logs/spark-events",  # COMMENTED OUT: Created dynamically
         # "logs/ray-events",    # COMMENTED OUT: Created dynamically
