@@ -79,3 +79,17 @@ python3 start-pipelines.py config/config_deep_learning_smoke_docker.yaml
 ```
 
 The Docker smoke test wrote `rebuttal/deep_learning_local_smoke_test/outputs/pipeline_docker/summary_metrics.csv` with four runs. Integrity checks confirmed zero shared subjects for subject-disjoint runs and four shared subjects for subject-overlap runs.
+
+## Non-Deep-Learning Full-Pipeline Sanity
+
+Added `config/config_testanova1_seed42_testdata_smoke.yaml` by copying the shape of `config/config_testanova1_09-10-2025_1727.yaml` and pointing it at the bundled PySpark test EEG files. This keeps the run full end-to-end through Docker while avoiding unavailable raw-data paths. The config uses seed 42, the ANOVA F-test plus MinMax transformation path, a within-subject split, and a single small KNN grid point for laptop-safe Ray execution.
+
+First full Docker attempt reached PySpark subject processing and mounted all four test files successfully, but the copied config's epoch rejection settings dropped every epoch in the tiny test fixture. For this smoke config only, epoch rejection was disabled so the fixture produces rows for the ANOVA transform and downstream Ray stage.
+
+Successful full Docker run:
+
+```bash
+python3 start-pipelines.py config/config_testanova1_seed42_testdata_smoke.yaml
+```
+
+PySpark processed all four bundled test `.set` files, created 18 epochs per subject, saved processed subjects, fit ANOVA on 56 training rows, selected 2 of 12 features, applied MinMax scaling, and saved the within-subject train/test transformed data. Ray then discovered the transformed fold and completed the single KNN grid-search task successfully. Results were written under `data/testAnova1Seed42TestDataSmoke/ml_results_grid_search`; `model_comparison.csv` reported KNN test accuracy `0.8125` and train accuracy `0.9285714285714286`.

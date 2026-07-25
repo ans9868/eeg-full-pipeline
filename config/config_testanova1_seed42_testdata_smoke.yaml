@@ -1,0 +1,122 @@
+project:
+  name: testAnova1Seed42TestDataSmoke
+  output_dir: ./data
+  experiment_type: ML Fingerprinting
+  subjects_or_events: subjects
+  deployment_method: Docker
+  random_seed: 42
+  config_name: config_testanova1_seed42_testdata_smoke.yaml
+  expose_ports: "No"
+
+data_input:
+  groups:
+    alz:
+    - /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/tests/test_eeg_data/sub-001_task-eyesclosed_eeg.set
+    - /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/tests/test_eeg_data/sub-002_task-eyesclosed_eeg.set
+    cntrl:
+    - /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/tests/test_eeg_data/sub-003_task-eyesclosed_eeg.set
+    - /Users/user/projects/eeg-full-pipeline/eeg-pyspark-pipeline/tests/test_eeg_data/sub-004_task-eyesclosed_eeg.set
+  reuse_processed_subjects: "No"
+  save_processed_subjects: "Yes"
+  reuse_transformed: "No"
+  save_transformed: "Yes"
+
+preprocessing:
+  bands:
+    Delta:
+    - 0.5
+    - 4
+    Theta:
+    - 4
+    - 8
+  window_size: 3.0
+  sliding_window: 0.0
+  reject_by_annotation: "Yes"
+  normalize_psd: "Yes"
+  use_epoch_rejection: "No"
+  epoch_rejection:
+    reject: 800.0
+    flat: 0.3
+  extreme_datapoint_removal: null
+
+feature_extraction:
+  method: welch
+  features:
+    per_channel_across_bands:
+    - none
+    - band_power
+    per_channel_per_band:
+    - relative_band_power
+  show_intermediate_results: "No"
+  show_intermediate_counts: "No"
+  output_format: ml
+
+feature_transformation:
+  transformations:
+  - ANOVA F-test
+  - MinMax scaler
+  minmax_range:
+  - -1.0
+  - 1.0
+  synthetic: None
+  anova_label_column: Group
+  anova_label_type: categorical
+  anova_selection_mode: percentile
+  anova_selection_threshold: 0.2
+
+data_transformation_strategy:
+  strategy: Within-subject (intra subject split) train/test split (80/20 per subject)
+    - each subject contributes to both train and test
+  intra_test_train_split:
+    train_ratio: 0.8
+    random_seed: 42
+    split_method: random
+
+pyspark:
+  docker_image: eeg-spark-pipeline:latest
+  master: "2"
+  driver_memory: "2"
+  executor_memory: "2"
+  executor_cores: "1"
+  shuffle_partitions: "2"
+
+ray:
+  docker_image: eeg-ray-tuner:latest
+  docker_shared_mem_mb: 2048
+  search_strategies:
+  - grid_search
+  grid_search:
+    models:
+    - KNN
+    model_configs:
+      KNN:
+        use_default: false
+        n_neighbors:
+        - 3
+        weights:
+        - uniform
+        metric:
+        - euclidean
+    max_concurrent: "1"
+    cv_folds: "2"
+    max_concurrent_trials: 1
+  ax:
+    models: []
+    max_concurrent: "1"
+    cv_folds: "2"
+    max_concurrent_trials: 1
+  metric: accuracy
+  mode: max
+  graph_data_visualization:
+    save_prediction_outputs: "Yes"
+    best_models_graph: "No"
+    per_model_accross_hyperparameters_graph: "No"
+    per_model_per_hyperparameter_across_folds_graph: "No"
+    per_subject_analysis_graph: "No"
+    per_subject_hyperparameter_analysis: "No"
+  resources:
+    num_cpus: "2"
+    memory_gb: "2"
+    object_store_memory_gb: "1"
+    num_gpus: 0
+    dashboard_port: "8265"
