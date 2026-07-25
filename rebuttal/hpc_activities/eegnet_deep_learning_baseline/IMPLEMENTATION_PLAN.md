@@ -2,7 +2,7 @@
 
 ## Checkpoint Rule
 
-- [ ] Stop and ping the user after local implementation and local laptop sanity test pass.
+- [x] Stop and ping the user after local implementation and local laptop sanity test pass.
 - [ ] Do not rebuild/run on HPC before the user checkpoint.
 
 ## Phase 0: Planning And Context
@@ -13,22 +13,22 @@
 - [x] Record why BIOT is not the first transformer-family choice.
 - [x] Create living context file.
 - [x] Create checkbox implementation plan.
-- [ ] Update this plan whenever tasks are added, removed, completed, or marked not needed.
+- [x] Update this plan whenever tasks are added, removed, completed, or marked not needed.
 
 ## Phase 1: Inspect Available Model Options
 
 - [x] Check whether Braindecode is already installed locally in `py-neuro-env`.
 - [x] Check whether Braindecode is already present in the Ray Docker/Singularity dependency stack.
-- [ ] Inspect Braindecode model names and constructor signatures for:
-  - [ ] EEGNet
-  - [ ] EEGConformer or equivalent Conformer model
+- [x] Inspect Braindecode model names and constructor signatures for:
+  - [x] EEGNet
+  - [x] EEGConformer or equivalent Conformer model
 - [x] Decide whether to use Braindecode directly or implement small in-repo PyTorch versions.
 - [x] Record decision in `CONTEXT.md`.
 
 ## Phase 2: Model Code
 
-- [x] Add `canonical_eegnet` model builder.
-- [x] Add `eeg_conformer_small` model builder.
+- [x] Add `canonical_eegnet` model builder backed by `braindecode.models.EEGNet`.
+- [x] Add `eeg_conformer_small` model builder backed by `braindecode.models.EEGConformer`.
 - [x] Keep existing smoke model builders available as debug paths.
 - [x] Ensure models accept raw waveform tensors shaped like:
   - local: `4 x 193`
@@ -87,11 +87,34 @@ python3 start-pipelines.py deep_learning_test_laptop.yaml
   - subject-overlap shared subjects > `0`
 - [x] Update `CONTEXT.md` with local result summary.
 
+## Phase 5b: Braindecode Container Sanity
+
+- [x] Install/inspect `braindecode==1.2.0` locally in `py-neuro-env`.
+- [x] Align local `torchaudio==2.8.0` with local `torch==2.8.0`.
+- [x] Confirm direct Braindecode fake tensor forward passes:
+  - `2 x 4 x 193 -> 2 x 2`
+  - `2 x 19 x 193 -> 2 x 2`
+- [x] Replace final baseline builders with direct Braindecode models.
+- [x] Add `braindecode==1.2.0` and `torchaudio==2.8.0` to Ray Docker requirements.
+- [x] Regenerate Ray Docker lock for Python 3.10.
+- [x] Rebuild local `eeg-ray-tuner:latest`.
+- [x] Confirm container imports Braindecode, Torch, and Torchaudio.
+- [x] Confirm container fake tensor forward passes for both models and both channel counts.
+- [x] Run full local Docker launcher:
+
+```bash
+python3 start-pipelines.py config/deep_learning_test_laptop.yaml
+```
+
+- [x] Verify training logs name:
+  - `braindecode.models.EEGNet`
+  - `braindecode.models.EEGConformer`
+
 ## Phase 6: User Checkpoint Before HPC
 
-- [ ] Ping user before any HPC rebuild/run.
-- [ ] Include changed files.
-- [ ] Include local test result.
+- [x] Ping user before any HPC rebuild/run.
+- [x] Include changed files.
+- [x] Include local test result.
 - [ ] Include commit hashes.
 - [ ] Include proposed HPC commands.
 - [ ] Include risks/odd behavior.

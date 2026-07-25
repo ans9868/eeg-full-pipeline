@@ -107,7 +107,33 @@ Initial local inspection in `py-neuro-env` found:
 - `braindecode`: not installed
 - `torcheeg`: not installed
 
-The Ray Docker requirements also do not currently include Braindecode. For the first fast local implementation, use small in-repo PyTorch model builders rather than adding a new dependency. This keeps the local and container sanity path simpler. Revisit Braindecode later if exact library parity becomes more important than dependency stability.
+The Ray Docker requirements did not initially include Braindecode. The first fast local implementation used small in-repo PyTorch builders, but the final reviewer-facing decision is to use direct Braindecode implementations instead.
+
+Braindecode local install/check:
+
+- `braindecode==1.2.0`
+- local `torch==2.8.0`
+- local `torchaudio` initially mismatched at `2.11.0`
+- aligned local `torchaudio==2.8.0`
+
+Direct Braindecode fake tensor checks passed:
+
+- `EEGNet`, input `2 x 4 x 193`, output `2 x 2`
+- `EEGNet`, input `2 x 19 x 193`, output `2 x 2`
+- `EEGConformer`, input `2 x 4 x 193`, output `2 x 2`
+- `EEGConformer`, input `2 x 19 x 193`, output `2 x 2`
+
+Ray now keeps the same config names but backs them with Braindecode:
+
+- `canonical_eegnet` -> `braindecode.models.EEGNet`
+- `eeg_conformer_small` -> `braindecode.models.EEGConformer`
+
+Ray Docker dependency notes:
+
+- Added `braindecode==1.2.0`
+- Added `torchaudio==2.8.0` to match `torch==2.8.0`
+- Regenerated `requirements/docker.txt` with `uv pip compile --python-version 3.10`
+- The explicit Python 3.10 compile matters because `mne-bids==0.19.0` requires Python 3.11; the Python 3.10-compatible lock uses `mne-bids==0.17.0`
 
 ## Known Risks
 
@@ -120,7 +146,7 @@ The Ray Docker requirements also do not currently include Braindecode. For the f
 
 ## Local Canonical Model Sanity Result
 
-Implemented in-repo PyTorch builders for:
+Initial in-repo PyTorch builders were implemented for:
 
 - `canonical_eegnet`
 - `eeg_conformer_small`
@@ -150,3 +176,42 @@ Summary from `data/deep_learning_test_laptop/deep_learning_smoke_outputs/summary
 - `eeg_conformer_small_subject_overlap_smoke`: balanced accuracy `0.857`
 
 The purpose of this run was only model/launcher sanity. Both models instantiated, trained for two epochs, wrote metrics/predictions/training logs, and preserved split sentinels.
+
+## Local Braindecode Container Sanity Result
+
+Replaced the final baseline builders with direct Braindecode models and rebuilt the local Ray Docker image:
+
+```bash
+make build
+```
+
+The first build attempt failed because the generated lock selected `mne-bids==0.19.0`, which is Python 3.11-only. Regenerating for Python 3.10 selected `mne-bids==0.17.0`, and the image then built successfully.
+
+Container import and fake tensor checks passed:
+
+- `braindecode 1.2.0`
+- `torch 2.8.0+cpu`
+- `torchaudio 2.8.0`
+- both models accepted `4 x 193` and `19 x 193` raw waveform inputs
+
+Full local Docker launcher passed:
+
+```bash
+python3 start-pipelines.py config/deep_learning_test_laptop.yaml
+```
+
+The run processed 4 bundled `.set` test files, wrote raw-waveform `processed_subjects`, then trained both Braindecode-backed models for 2 epochs. Training logs confirm:
+
+- `canonical_eegnet`: `braindecode.models.EEGNet`
+- `eeg_conformer_small`: `braindecode.models.EEGConformer`
+
+Summary metrics were written to:
+
+```text
+data/deep_learning_test_laptop/deep_learning_smoke_outputs/summary_metrics.csv
+```
+
+Split sentinels remained valid:
+
+- subject-disjoint shared subjects: `0`
+- subject-overlap shared subjects: `4`
