@@ -80,6 +80,16 @@ python3 start-pipelines.py config/config_deep_learning_smoke_docker.yaml
 
 The Docker smoke test wrote `rebuttal/deep_learning_local_smoke_test/outputs/pipeline_docker/summary_metrics.csv` with four runs. Integrity checks confirmed zero shared subjects for subject-disjoint runs and four shared subjects for subject-overlap runs.
 
+Added `config/deep_learning_test_laptop.yaml` as the human-facing laptop Docker smoke config. It points at the same already-validated ANOVA L2 processed-subject fixture, keeps the dataset to 512 rows, trains for one epoch, writes to a distinct `deep_learning_test_laptop` output directory, and uses the local Docker images without pushing.
+
+Verified with:
+
+```bash
+python3 start-pipelines.py deep_learning_test_laptop.yaml
+```
+
+The run completed both Docker stages successfully. PySpark exported 512 rows, 4 subjects, 95 features, and balanced labels to `rebuttal/deep_learning_local_smoke_test/outputs/deep_learning_test_laptop_data.npz`. Ray then ran EEGNet-style and transformer-style smoke training for subject-disjoint and subject-overlap splits, wrote `rebuttal/deep_learning_local_smoke_test/outputs/deep_learning_test_laptop/summary_metrics.csv`, and preserved the expected leakage sentinels: zero shared subjects for subject-disjoint runs and four shared subjects for subject-overlap runs.
+
 ## Non-Deep-Learning Full-Pipeline Sanity
 
 Added `config/config_testanova1_seed42_testdata_smoke.yaml` by copying the shape of `config/config_testanova1_09-10-2025_1727.yaml` and pointing it at the bundled PySpark test EEG files. This keeps the run full end-to-end through Docker while avoiding unavailable raw-data paths. The config uses seed 42, the ANOVA F-test plus MinMax transformation path, a within-subject split, and a single small KNN grid point for laptop-safe Ray execution.
