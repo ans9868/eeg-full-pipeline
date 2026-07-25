@@ -254,6 +254,40 @@ def print_spark_ui_instructions() -> None:
 def get_container_command(container_type: str, config_path: str) -> str:
     """Get the command to run inside the container."""
     config = CONTAINER_CONFIG[container_type]
+    config_data = load_config(config_path)
+
+    smoke_config = config_data.get("deep_learning_smoke")
+    if smoke_config:
+        if container_type == "pyspark":
+            return " ".join(
+                [
+                    "python",
+                    "-m",
+                    "eeg_spark_etl.utils.deep_learning_smoke_export",
+                    "--input-dir",
+                    str(smoke_config.get("input_dir", "/app/data/ANOVA_L_2_ad_cntrl_random50/processed_subjects")),
+                    "--output",
+                    str(smoke_config.get("data_output", "/app/data/rebuttal/deep_learning_local_smoke_test/outputs/pipeline_anova_l2_tiny_smoke_data.npz")),
+                    "--max-rows",
+                    str(smoke_config.get("max_rows", 512)),
+                ]
+            )
+        if container_type == "ray":
+            return " ".join(
+                [
+                    "python",
+                    "-m",
+                    "eeg_ray_tuner.deep_learning_smoke.training",
+                    "--data",
+                    str(smoke_config.get("data_output", "/app/data/rebuttal/deep_learning_local_smoke_test/outputs/pipeline_anova_l2_tiny_smoke_data.npz")),
+                    "--output-dir",
+                    str(smoke_config.get("output_dir", "/app/data/rebuttal/deep_learning_local_smoke_test/outputs/pipeline_start_pipeline")),
+                    "--epochs",
+                    str(smoke_config.get("epochs", 1)),
+                    "--batch-size",
+                    str(smoke_config.get("batch_size", 32)),
+                ]
+            )
 
     # Build command parts
     command_parts = [config["command"]]
@@ -267,6 +301,76 @@ def get_container_command(container_type: str, config_path: str) -> str:
     command_parts.extend([config["entrypoint"], "--config", "/app/config.yaml"])
 
     return " ".join(command_parts)
+
+
+def get_container_image(container_type: str, config_data: Dict[str, Any]) -> str:
+    """Resolve container image, allowing config-local overrides for smoke tests."""
+    override = config_data.get(container_type, {}).get("docker_image")
+    if override:
+        return str(override)
+    return str(CONTAINER_CONFIG[container_type]["docker_image"])
+
+
+def run_local_deep_learning_smoke(config_path: str) -> None:
+    """Run the deep-learning smoke path locally through pipeline-owned modules."""
+    config_data = load_config(config_path)
+    smoke_config = config_data.get("deep_learning_smoke")
+    if not smoke_config:
+        raise ValueError("Local mode currently requires a deep_learning_smoke section")
+
+    repo_root = Path(__file__).resolve().parent
+    input_dir = repo_root / smoke_config.get(
+        "host_input_dir", "ANOVA_L_2_ad_cntrl_random50/processed_subjects"
+    )
+    data_output = repo_root / smoke_config.get(
+        "host_data_output",
+        "rebuttal/deep_learning_local_smoke_test/outputs/pipeline_start_anova_l2_tiny_smoke_data.npz",
+    )
+    output_dir = repo_root / smoke_config.get(
+        "host_output_dir",
+        "rebuttal/deep_learning_local_smoke_test/outputs/pipeline_start_pipeline",
+    )
+    max_rows = str(smoke_config.get("max_rows", 512))
+    epochs = str(smoke_config.get("epochs", 1))
+    batch_size = str(smoke_config.get("batch_size", 32))
+
+    env = os.environ.copy()
+    pyspark_path = str(repo_root / "eeg-pyspark-pipeline")
+    ray_path = str(repo_root / "eeg-ray-tuner")
+    env["PYTHONPATH"] = os.pathsep.join(
+        [pyspark_path, ray_path, env.get("PYTHONPATH", "")]
+    )
+
+    commands = [
+        [
+            sys.executable,
+            "-m",
+            "eeg_spark_etl.utils.deep_learning_smoke_export",
+            "--input-dir",
+            str(input_dir),
+            "--output",
+            str(data_output),
+            "--max-rows",
+            max_rows,
+        ],
+        [
+            sys.executable,
+            "-m",
+            "eeg_ray_tuner.deep_learning_smoke.training",
+            "--data",
+            str(data_output),
+            "--output-dir",
+            str(output_dir),
+            "--epochs",
+            epochs,
+            "--batch-size",
+            batch_size,
+        ],
+    ]
+
+    for command in commands:
+        print(f"{EMOJI_RUNNING} Running local smoke command: {command}")
+        subprocess.run(command, cwd=repo_root, env=env, check=True)
 
 
 def build_user_mounts(config: Dict[str, Any]) -> List[Tuple[str, str]]:
@@ -403,7 +507,7 @@ def run_docker_container(container_type: str, config_path: str) -> None:
         docker_cmd.extend(["-v", f"{host_path_resolved}:{container_path}"])
 
     # Add image and command
-    docker_cmd.extend([config["docker_image"]] + command_parts)
+    docker_cmd.extend([get_container_image(container_type, config_data)] + command_parts)
 
     print(f"{EMOJI_MOUNTING} Mounting {len(mount_mappings)} directories:")
 
@@ -1209,6 +1313,10 @@ def main() -> None:
         f"{EMOJI_RUNNING} Starting pipeline with deployment method: {deployment_method}"
     )
     print(f"{EMOJI_TARGET} Pipeline mode: {pipeline_mode}")
+
+    if deployment_method == "Local" and config.get("deep_learning_smoke"):
+        run_local_deep_learning_smoke(config_path)
+        return
 
     # Block ports if expose_ports is set to "No" in config
     expose_ports = config.get("project", {}).get("expose_ports", "No") == "Yes"

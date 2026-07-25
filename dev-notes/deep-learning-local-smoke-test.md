@@ -43,3 +43,25 @@ Integrity checks:
 - Subject-overlap runs reported four shared train/test subjects.
 - All metrics were finite.
 - `report.md` and `outputs/summary_metrics.csv` were refreshed locally.
+
+## Pipeline Integration
+
+Added pipeline-owned entrypoints after the initial standalone rebuttal smoke activity passed:
+
+- PySpark pipeline: `eeg_spark_etl.utils.deep_learning_smoke_export`
+- Ray pipeline: `eeg_ray_tuner.deep_learning_smoke.training`
+- Root orchestrator: `start-pipelines.py` now recognizes a `deep_learning_smoke` YAML section.
+
+Small YAML configs were added under `config/`:
+
+- `config/config_deep_learning_smoke_local.yaml`
+- `config/config_deep_learning_smoke_docker.yaml`
+
+Final local orchestrator test passed:
+
+```bash
+py-neuro-env
+python3 start-pipelines.py config/config_deep_learning_smoke_local.yaml
+```
+
+This produced the same engineering smoke result shape through the root launcher: 512 rows, 4 subjects, two classes, zero shared subjects for subject-disjoint splits, four shared subjects for subject-overlap splits, and finite metrics for EEGNet-style and transformer-style smoke models.

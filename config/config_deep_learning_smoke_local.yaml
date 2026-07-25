@@ -1,0 +1,24 @@
+project:
+  name: deep_learning_smoke_local
+  output_dir: .
+  experiment_type: Deep Learning Smoke Test
+  deployment_method: Local
+  random_seed: 42
+  expose_ports: "No"
+
+deep_learning_smoke:
+  host_input_dir: ANOVA_L_2_ad_cntrl_random50/processed_subjects
+  host_data_output: rebuttal/deep_learning_local_smoke_test/outputs/pipeline_start_anova_l2_tiny_smoke_data.npz
+  host_output_dir: rebuttal/deep_learning_local_smoke_test/outputs/pipeline_start_pipeline
+  input_dir: /app/data/ANOVA_L_2_ad_cntrl_random50/processed_subjects
+  data_output: /app/data/rebuttal/deep_learning_local_smoke_test/outputs/pipeline_start_anova_l2_tiny_smoke_data.npz
+  output_dir: /app/data/rebuttal/deep_learning_local_smoke_test/outputs/pipeline_start_pipeline
+  max_rows: 512
+  epochs: 1
+  batch_size: 32
+
+pyspark:
+  docker_image: eeg-spark-pipeline:latest
+
+ray:
+  docker_image: eeg-ray-tuner:latest

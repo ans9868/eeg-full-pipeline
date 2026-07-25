@@ -28,4 +28,10 @@ Last refreshed: 2026-07-25T03:28:24
 
 ## Container Notes
 
-No containerized execution code or dependency files were changed for this local smoke test, so no `make build` container rebuild was required.
+Pipeline-owned smoke entrypoints were later added to `eeg-pyspark-pipeline/`, `eeg-ray-tuner/`, and `start-pipelines.py`. The local root-orchestrator smoke config completed successfully with:
+
+```bash
+python3 start-pipelines.py config/config_deep_learning_smoke_local.yaml
+```
+
+Because containerized execution code changed, the PySpark and Ray Docker images should be rebuilt locally with each subproject Makefile before Docker/Singularity smoke execution. No Docker Hub push is needed for this local validation.
