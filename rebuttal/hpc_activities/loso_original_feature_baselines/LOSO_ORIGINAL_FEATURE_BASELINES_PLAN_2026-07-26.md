@@ -55,3 +55,5 @@ new: LOSO/P=1, one held-out subject per fold, 65 folds total
 ## Notes
 
 These configs are intended as direct split-design sensitivity checks. They are not new hyperparameter optimization experiments.
+
+Local and Torch/HPC `config_handler.py` validation passed for all four generated configs on 2026-07-26.
