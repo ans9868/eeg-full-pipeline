@@ -46,9 +46,9 @@ new: LOSO/P=1, one held-out subject per fold, 65 folds total
 - [x] Validate `PCA_LOSO_ad_cntrl_smoke5.yaml`.
 - [x] Validate `ANOVA_LOSO_ad_cntrl_all65.yaml`.
 - [x] Validate `PCA_LOSO_ad_cntrl_all65.yaml`.
-- [ ] Run ANOVA smoke.
-- [ ] Run PCA smoke.
-- [ ] Inspect smoke outputs for fold shape and zero subject overlap.
+- [x] Run ANOVA smoke.
+- [x] Run PCA smoke.
+- [x] Inspect smoke outputs for fold shape and zero subject overlap.
 - [ ] Run ANOVA all65.
 - [ ] Run PCA all65.
 
@@ -57,3 +57,16 @@ new: LOSO/P=1, one held-out subject per fold, 65 folds total
 These configs are intended as direct split-design sensitivity checks. They are not new hyperparameter optimization experiments.
 
 Local and Torch/HPC `config_handler.py` validation passed for all four generated configs on 2026-07-26.
+
+Smoke run finding on Torch/HPC:
+
+- ANOVA smoke jobs: PySpark `14775302` completed, Ray `14775303` completed with zero successful model tasks.
+- PCA smoke jobs: PySpark `14775311` completed, Ray `14775312` completed with zero successful model tasks.
+- Both Ray runs failed model tasks with `Need at least 2 labels for classification, found: [0.]`.
+- Cause: true LOSO holds out one subject per fold, so each test fold contains only that subject's class. The current Ray metric/evaluation path expects two classes inside each fold rather than aggregating predictions across all LOSO folds before computing AD/CN metrics.
+- Do not run the all65 true-LOSO configs as-is until this evaluation mismatch is resolved.
+
+Possible next paths:
+
+- Implement true LOSO support in Ray by storing per-fold predictions and computing final metrics after aggregating predictions across all held-out subjects.
+- Or use a paired leave-one-AD-and-one-control-out fold design as a lower-code-change sensitivity check, recognizing that it is not strict single-subject LOSO.
