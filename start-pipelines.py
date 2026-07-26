@@ -287,6 +287,7 @@ def get_container_command(container_type: str, config_path: str) -> str:
                     "processed_subjects",
                     f"/app/data/{project_name}/processed_subjects",
                 )
+                project_seed = config_data.get("project", {}).get("random_seed", 42)
                 early_stopping = smoke_config.get("early_stopping", {})
                 return " ".join(
                     [
@@ -307,6 +308,8 @@ def get_container_command(container_type: str, config_path: str) -> str:
                         str(smoke_config.get("batch_size", 32)),
                         "--learning-rate",
                         str(smoke_config.get("learning_rate", 1e-3)),
+                        "--seed",
+                        str(smoke_config.get("seed", project_seed)),
                         "--chunk-size",
                         str(smoke_config.get("chunk_size", 64)),
                         "--embed-dim",
