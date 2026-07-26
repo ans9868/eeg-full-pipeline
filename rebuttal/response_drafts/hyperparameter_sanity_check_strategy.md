@@ -60,6 +60,38 @@ accuracy across 50 LPSO folds). We therefore treat the 19/20 run as an
 effectively complete tuning sensitivity check rather than evidence of an
 unfinished optimization trend.
 
+Additional SVM and MLP model-family checks also completed. Across the final
+AX sensitivity set, W/C subject-overlap performance remained higher than P=6
+subject-disjoint performance:
+
+| model | W/C best BA | LPSO best BA |
+| --- | ---: | ---: |
+| KNN | 0.8373 | 0.7297 |
+| XGBoost | 0.9603 | 0.7253 |
+| SVM | 0.8105 | 0.7368 |
+| MLP | 0.9689 | 0.7440 |
+
+Evidence file:
+
+```text
+/Users/user/projects/eeg-full-pipeline/rebuttal/response_drafts/hpc_results_2026-07-25/ax_model_family_summary_2026-07-25.csv
+```
+
+The neural baselines show the same qualitative pattern. Braindecode EEGNet and
+small EEG Conformer W/C runs completed for seeds 42-51. Under W/C
+subject-overlap, mean balanced accuracy was `0.9092` for canonical EEGNet and
+`0.9825` for EEG Conformer. Under the full 50-fold P=6 subject-disjoint GPU
+run, mean balanced accuracy was near chance: `0.4987` for canonical EEGNet and
+`0.5062` for EEG Conformer. Thus, even when using raw-waveform neural models,
+the high W/C performance does not transfer to subject-disjoint evaluation.
+
+Evidence files:
+
+```text
+/Users/user/projects/eeg-full-pipeline/rebuttal/response_drafts/hpc_results_2026-07-25/neural_wc_seeds42_51_aggregate_2026-07-25.csv
+/Users/user/projects/eeg-full-pipeline/rebuttal/response_drafts/hpc_results_2026-07-25/neural_lpso_p6_results_status_2026-07-25.csv
+```
+
 ## Verification Before Citing
 
 - Tuning did not use test folds to choose hyperparameters.

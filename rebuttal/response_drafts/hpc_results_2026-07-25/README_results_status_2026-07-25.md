@@ -22,17 +22,28 @@ HPC project root:
 | `deep_learning_results_summary_2026-07-25.csv` | One row per deep-learning model/split from copied `summary_metrics.csv` files. |
 | `neural_lpso_p6_results_status_2026-07-25.csv` | Neural P=6 subject-disjoint GPU pilot/full-run status and aggregate metrics. |
 | `neural_lpso_p6_per_fold_2026-07-25.csv` | Per-fold metrics from the completed 10-fold neural P=6 GPU pilot. |
+| `neural_wc_seeds42_51_summary_2026-07-25.csv` | Per-seed W/C subject-overlap neural results for Braindecode EEGNet and EEG Conformer. |
+| `neural_wc_seeds42_51_aggregate_2026-07-25.csv` | Aggregate W/C subject-overlap neural results across seeds 42-51. |
+| `ax_model_family_summary_2026-07-25.csv` | Final KNN/XGBoost/SVM/MLP AX sensitivity summary across W/C and LPSO. |
 | `results_file_manifest_2026-07-25.csv` | Full local and HPC path manifest for copied raw result files. |
 | `current_squeue_2026-07-25.txt` | Latest saved scheduler snapshot when this local bundle was generated. |
 
 ## Current Scheduler Snapshot
 
 ```text
-JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
-          14769929       all fold-ax-  ans9868  R    1:46:01      1 ga013
-          14771787 cpu_short fold-ax-  ans9868  R       5:47      1 cs628
-          14771324 cpu_short neural_l  ans9868  R      35:50      1 cs640
+JOBID PARTITION NAME USER ST TIME NODES NODELIST(REASON)
 ```
+
+Final status check on Torch found no active jobs for `ans9868`. Key completed jobs:
+
+| job_id | name | state | elapsed | max RSS |
+| ---: | --- | --- | ---: | ---: |
+| 14774256 | neural_lpso_p6_gpu_full50 | COMPLETED | 00:36:06 | 5278352K |
+| 14774663 | neural_wc_ray_s43_51 | COMPLETED | 02:16:49 | 12894076K |
+| 14775146 | fold-ax-svm LPSO | COMPLETED | 00:09:37 | 2295652K |
+| 14775147 | fold-ax-mlp LPSO | COMPLETED | 01:47:35 | 2247600K |
+| 14775148 | fold-ax-svm W/C | COMPLETED | 00:02:41 | 1500564K |
+| 14775149 | fold-ax-mlp W/C | COMPLETED | 00:16:46 | 1338488K |
 
 ## Key AX Results In This Snapshot
 
@@ -69,7 +80,29 @@ JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
 | result_name | status | job_id | folds | protocol | resources | elapsed | canonical_eegnet mean BA | eeg_conformer_small mean BA | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DL_LPSO_P6_ad_cntrl_random50_braindecode_gpu_pilot10 | completed | 14772889 | 10 | P=6 random stratified, 3 AD + 3 CN held out, shared subjects 0 | 1 H200 GPU, 4 CPU, 56G RAM | 00:11:29 | 0.5258 | 0.5349 | Completed pilot; local raw outputs copied into `raw_deep_learning`. |
-| DL_LPSO_P6_ad_cntrl_random50_braindecode_gpu_full50 | pending | 14773564 | 50 | P=6 random stratified, 3 AD + 3 CN held out | 1 H200 GPU, 4 CPU, 56G RAM | not started | pending | pending | Submitted 2026-07-26; pending on `QOSGrpGRES` at last check. |
+| DL_LPSO_P6_ad_cntrl_random50_braindecode_gpu_full50 | completed | 14774256 | 50 | P=6 random stratified, 3 AD + 3 CN held out, shared subjects 0 | 1 H200 GPU, 4 CPU, 56G RAM | 00:36:06 | 0.4987 | 0.5062 | Canonical reviewer neural subject-disjoint result. |
+
+## Neural W/C Seeds 42-51
+
+Braindecode raw-waveform W/C overlap runs are complete for seeds 42-51. Seeds 43-51 were run by CPU Ray-only job `14774663`, elapsed `02:16:49`, peak RSS `12894076K`, reusing the seed-42 raw waveform `processed_subjects` to avoid rerunning PySpark.
+
+| model | seeds | mean BA | SD BA | range BA | mean accuracy | shared subjects |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| canonical_eegnet | 10 | 0.9092 | 0.0110 | 0.8922-0.9205 | 0.9110 | 65 |
+| eeg_conformer_small | 10 | 0.9825 | 0.0063 | 0.9720-0.9904 | 0.9823 | 65 |
+
+Interpretation: the same neural models that are near chance under full P=6 subject-disjoint evaluation are highly accurate under W/C subject-overlap evaluation. This is useful as leakage/split-sensitivity evidence, not as a claim that these architectures are optimally tuned.
+
+## AX Model-Family Sensitivity
+
+Final AD/CN AX sensitivity runs now cover KNN, XGBoost, SVM, and MLP.
+
+| model | W/C best BA | LPSO best BA | notes |
+| --- | ---: | ---: | --- |
+| KNN | 0.8373 | 0.7297 | Completed 20-trial grouped W/C and 50-fold LPSO. |
+| XGBoost | 0.9603 | 0.7253 | LPSO uses best fully completed trial from 19/20 complete trials. |
+| SVM | 0.8105 | 0.7368 | Completed full 20-trial grouped W/C and 50-fold LPSO. |
+| MLP | 0.9689 | 0.7440 | Completed full 20-trial grouped W/C and 50-fold LPSO. |
 
 ## Full Paths
 
@@ -99,7 +132,45 @@ The raw deep-learning result mirror is here:
 - `xgboost_lpso_full50_ax20` ended at 19 fully completed trials out of the planned 20 because the SLURM walltime limit stopped the final in-progress trial. The best fully completed trial was trial 17 with balanced accuracy `0.7252525512911437` and mean accuracy `0.7230845354398571` across 50 LPSO folds.
 - The XGBoost LPSO search had effectively plateaued before the walltime stop: the top completed balanced accuracies were `0.7253`, `0.7250`, `0.7235`, `0.7220`, and `0.7185`. This supports treating the 19/20 run as a near-complete tuning sensitivity check while still reporting the precise completed-trial count in methods/notes.
 - `archived_incorrect_independent_wc_seed_ax` is retained only as a diagnostic archive; it is not final rebuttal evidence.
-- The neural P=6 GPU pilot is completed and supports the reviewer-facing claim that true subject-disjoint neural evaluation is much harder than W/C subject-overlap evaluation. The 50-fold neural GPU run is submitted as the cleaner canonical result.
+- The neural P=6 full50 GPU result and W/C seeds 42-51 are completed. The reviewer-facing claim is now stronger: neural baselines show high W/C subject-overlap performance but chance-level full P=6 subject-disjoint performance.
+
+## Where To Double-Check On Torch
+
+Cluster root:
+
+```text
+/scratch/ans9868/rebuttal-deep-eeg-full-pipeline/eeg-full-pipeline
+```
+
+Neural P=6 full50 summary:
+
+```text
+data/DL_LPSO_P6_ad_cntrl_random50_braindecode_gpu_full50/deep_learning_lpso_p6_outputs/summary_by_model.csv
+data/DL_LPSO_P6_ad_cntrl_random50_braindecode_gpu_full50/deep_learning_lpso_p6_outputs/fold_metrics.csv
+```
+
+Neural W/C seed summaries:
+
+```text
+data/DL_W_C_ad_cntrl_seed42_hpc_braindecode_full/deep_learning_smoke_outputs/summary_metrics.csv
+data/DL_W_C_ad_cntrl_seed43_hpc_braindecode_full/deep_learning_smoke_outputs/summary_metrics.csv
+...
+data/DL_W_C_ad_cntrl_seed51_hpc_braindecode_full/deep_learning_smoke_outputs/summary_metrics.csv
+```
+
+Slurm logs/accounting:
+
+```text
+rebuttal/hpc_activities/eegnet_deep_learning_baseline/logs/neural_lpso_p6_gpu_full50-14774256.out
+rebuttal/hpc_activities/eegnet_deep_learning_baseline/logs/neural_wc_ray_s43_51-14774663.out
+sacct -j 14774256,14774663 --format=JobID,JobName,Partition,State,Elapsed,MaxRSS
+```
+
+AX model-family outputs:
+
+```text
+rebuttal/hpc_activities/ax_hyperparameter_sanity_ad_cn/outputs/fold_aggregated_ax_expanded_2026-07-25/{knn,xgboost,svm,mlp}_*
+```
 
 ## XGBoost LPSO 19/20 Trial Details
 

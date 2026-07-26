@@ -80,10 +80,10 @@ MLP uses sklearn early stopping.
 - [x] Submit full MLP LPSO 50 folds, 20 AX trials, 6-hour walltime. Job `14775147`.
 - [x] Submit full SVM grouped WC seed42..51, 20 AX trials, 6-hour walltime. Job `14775148`.
 - [x] Submit full MLP grouped WC seed42..51, 20 AX trials, 6-hour walltime. Job `14775149`.
-- [ ] Monitor full SVM LPSO job `14775146`.
-- [ ] Monitor full MLP LPSO job `14775147`.
-- [ ] Monitor full SVM grouped WC job `14775148`.
-- [ ] Monitor full MLP grouped WC job `14775149`.
+- [x] Monitor full SVM LPSO job `14775146`, completed `00:09:37`.
+- [x] Monitor full MLP LPSO job `14775147`, completed `01:47:35`.
+- [x] Monitor full SVM grouped WC job `14775148`, completed `00:02:41`.
+- [x] Monitor full MLP grouped WC job `14775149`, completed `00:16:46`.
 
 ## Proof Results
 
@@ -97,3 +97,14 @@ MLP uses sklearn early stopping.
 ## Timeout Interpretation
 
 If an MLP/SVM full run hits walltime, use only fully completed trials in `trials.csv`. Report the exact number completed and treat it as an AX-budget sensitivity check, consistent with the XGBoost LPSO 19/20 run.
+
+## Final Full Results
+
+All four full MLP/SVM AX jobs completed without walltime truncation.
+
+| Run | Job | Trials | Units | Best balanced accuracy | Best mean accuracy | Best parameters |
+|---|---:|---:|---:|---:|---:|---|
+| SVM LPSO full50 | `14775146` | 20 | 50 folds | `0.7367509422` | `0.7350160027` | `C=0.001`, `class_weight=balanced`, `max_iter=5000` |
+| MLP LPSO full50 | `14775147` | 20 | 50 folds | `0.7440630210` | `0.7427222009` | `alpha=0.01`, `learning_rate_init=0.0001`, `batch_size=256`, `activation=relu`, `max_iter=100`, `hidden_layer_sizes=128` |
+| SVM grouped W/C seeds42-51 | `14775148` | 20 | 10 seed roots | `0.8104940605` | `0.8146619842` | `C=0.2275256886`, `class_weight=balanced`, `max_iter=8000` |
+| MLP grouped W/C seeds42-51 | `14775149` | 20 | 10 seed roots | `0.9689624566` | `0.9695785777` | `alpha=0.01`, `learning_rate_init=0.0021319416`, `batch_size=256`, `activation=tanh`, `max_iter=150`, `hidden_layer_sizes=128_64` |
