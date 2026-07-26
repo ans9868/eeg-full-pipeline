@@ -29,6 +29,10 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, balanced_accuracy_score
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import LinearSVC
 from xgboost import XGBClassifier
 
 
@@ -54,10 +58,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--experiment-name", required=True)
-    parser.add_argument("--model", choices=["xgboost", "knn"], default="xgboost")
+    parser.add_argument("--model", choices=["xgboost", "knn", "svm", "mlp"], default="xgboost")
     parser.add_argument(
         "--search-space",
-        choices=["xgboost_max_depth", "xgboost_expanded", "knn_expanded"],
+        choices=["xgboost_max_depth", "xgboost_expanded", "knn_expanded", "svm_expanded", "mlp_expanded"],
         default="xgboost_max_depth",
     )
     parser.add_argument("--num-trials", type=int, default=5)
@@ -182,6 +186,12 @@ def load_split(path: Path) -> tuple[np.ndarray, np.ndarray]:
     return x, y
 
 
+def parse_hidden_layer_sizes(value: Any) -> tuple[int, ...]:
+    if isinstance(value, (tuple, list)):
+        return tuple(int(item) for item in value)
+    return tuple(int(item) for item in str(value).split("_") if item)
+
+
 def evaluate_one_fold(
     fold: Fold,
     parameters: dict[str, Any],
@@ -215,6 +225,37 @@ def evaluate_one_fold(
             weights=str(parameters["weights"]),
             metric=str(parameters["metric"]),
             n_jobs=n_jobs,
+        )
+    elif model_name == "svm":
+        class_weight = parameters.get("class_weight")
+        if class_weight == "none":
+            class_weight = None
+        model = make_pipeline(
+            StandardScaler(),
+            LinearSVC(
+                C=float(parameters["C"]),
+                class_weight=class_weight,
+                max_iter=int(parameters.get("max_iter", 5000)),
+                random_state=random_seed,
+                dual=False,
+            ),
+        )
+    elif model_name == "mlp":
+        model = make_pipeline(
+            StandardScaler(),
+            MLPClassifier(
+                hidden_layer_sizes=parse_hidden_layer_sizes(parameters["hidden_layer_sizes"]),
+                alpha=float(parameters["alpha"]),
+                learning_rate_init=float(parameters["learning_rate_init"]),
+                batch_size=int(parameters["batch_size"]),
+                activation=str(parameters.get("activation", "relu")),
+                solver="adam",
+                early_stopping=True,
+                validation_fraction=0.15,
+                n_iter_no_change=10,
+                max_iter=int(parameters.get("max_iter", 150)),
+                random_state=random_seed,
+            ),
         )
     else:
         raise ValueError(f"Unsupported model: {model_name}")
@@ -279,6 +320,21 @@ def ax_parameters(args: argparse.Namespace) -> list[dict[str, Any]]:
             {"name": "weights", "type": "choice", "values": ["uniform", "distance"]},
             {"name": "metric", "type": "choice", "values": ["euclidean", "manhattan"]},
         ]
+    if args.search_space == "svm_expanded":
+        return [
+            {"name": "C", "type": "range", "bounds": [0.001, 100.0], "value_type": "float", "log_scale": True},
+            {"name": "class_weight", "type": "choice", "values": ["none", "balanced"]},
+            {"name": "max_iter", "type": "choice", "values": [3000, 5000, 8000], "value_type": "int"},
+        ]
+    if args.search_space == "mlp_expanded":
+        return [
+            {"name": "hidden_layer_sizes", "type": "choice", "values": ["64", "128", "64_32", "128_64"]},
+            {"name": "alpha", "type": "range", "bounds": [0.00001, 0.01], "value_type": "float", "log_scale": True},
+            {"name": "learning_rate_init", "type": "range", "bounds": [0.0001, 0.01], "value_type": "float", "log_scale": True},
+            {"name": "batch_size", "type": "choice", "values": [64, 128, 256], "value_type": "int"},
+            {"name": "activation", "type": "choice", "values": ["relu", "tanh"]},
+            {"name": "max_iter", "type": "choice", "values": [100, 150], "value_type": "int"},
+        ]
     raise ValueError(f"Unsupported search space: {args.search_space}")
 
 
@@ -301,6 +357,10 @@ def main() -> None:
     if args.model == "xgboost" and not args.search_space.startswith("xgboost"):
         raise ValueError(f"Model {args.model} is incompatible with search space {args.search_space}")
     if args.model == "knn" and args.search_space != "knn_expanded":
+        raise ValueError(f"Model {args.model} is incompatible with search space {args.search_space}")
+    if args.model == "svm" and args.search_space != "svm_expanded":
+        raise ValueError(f"Model {args.model} is incompatible with search space {args.search_space}")
+    if args.model == "mlp" and args.search_space != "mlp_expanded":
         raise ValueError(f"Model {args.model} is incompatible with search space {args.search_space}")
 
     logging.info("Starting fold-aggregated Ax run")
